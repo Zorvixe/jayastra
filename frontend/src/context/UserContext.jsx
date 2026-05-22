@@ -3,12 +3,13 @@ import axios from "axios";
 
 const UserContext = createContext();
 
+const API_URL = process.env.REACT_APP_API_URL;
+
 export const UserProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const [showLogin, setShowLogin] = useState(false);
 
-const API_URL = process.env.REACT_APP_API_URL;
 
   const fetchUser = async () => {
     const token = localStorage.getItem("token");

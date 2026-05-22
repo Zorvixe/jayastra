@@ -316,7 +316,8 @@ const initDatabase = async () => {
       ADD COLUMN IF NOT EXISTS pincode VARCHAR(10),
       ADD COLUMN IF NOT EXISTS store_name VARCHAR(255),
       ADD COLUMN IF NOT EXISTS balance DECIMAL(10,2) DEFAULT 0,
-      ADD COLUMN IF NOT EXISTS gst_number VARCHAR(50);
+      ADD COLUMN IF NOT EXISTS gst_number VARCHAR(50),
+      ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP;
     `);
     await pool.query(`
       ALTER TABLE users 
@@ -900,8 +901,29 @@ app.delete("/api/admin/wishlist/:id", verifyToken, verifyAnyAdmin, async (req, r
 
 // ================= PROFILE / ADDRESS ROUTES =================
 app.get("/api/user/profile", verifyToken, async (req, res) => {
-  const user = await pool.query(`SELECT id,first_name,last_name,email,phone,gender,address,city,state,pincode,balance,store_name FROM users WHERE id=$1`, [req.user.id]);
-  res.json(user.rows[0]);
+  try {
+    const user = await pool.query(
+      `SELECT 
+        id, first_name, last_name, email, phone, gender, 
+        address, city, state, pincode, balance, 
+        store_name, gst_number,
+        pickup_address_line1, pickup_address_line2, 
+        pickup_city, pickup_state, pickup_pincode, 
+        pickup_location_name
+      FROM users 
+      WHERE id = $1`,
+      [req.user.id]
+    );
+    
+    if (user.rows.length === 0) {
+      return res.status(404).json({ message: "User not found" });
+    }
+    
+    res.json(user.rows[0]);
+  } catch (error) {
+    console.error("Profile fetch error:", error);
+    res.status(500).json({ message: "Failed to fetch profile" });
+  }
 });
 
 app.put("/api/user/profile", verifyToken, async (req, res) => {
@@ -964,6 +986,101 @@ app.delete("/api/user/address/:id", verifyToken, async (req, res) => {
     res.json({ message: "Address deleted" });
   } catch (error) {
     res.status(500).json({ message: "Delete failed" });
+  }
+});
+
+// Combined profile update for all user types
+app.put("/api/user/profile/all", verifyToken, async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const {
+      // Personal fields
+      first_name,
+      last_name,
+      gender,
+      address,
+      city,
+      state,
+      pincode,
+      // Vendor fields
+      store_name,
+      gst_number,
+      pickup_address_line1,
+      pickup_address_line2,
+      pickup_city,
+      pickup_state,
+      pickup_pincode,
+      pickup_location_name
+    } = req.body;
+
+    // Build dynamic update query
+    const updates = [];
+    const values = [];
+    let paramCount = 1;
+
+    const addField = (field, value) => {
+      if (value !== undefined) {
+        updates.push(`${field} = $${paramCount++}`);
+        values.push(value);
+      }
+    };
+
+    addField('first_name', first_name);
+    addField('last_name', last_name);
+    addField('gender', gender);
+    addField('address', address);
+    addField('city', city);
+    addField('state', state);
+    addField('pincode', pincode);
+    addField('store_name', store_name);
+    addField('gst_number', gst_number);
+    addField('pickup_address_line1', pickup_address_line1);
+    addField('pickup_address_line2', pickup_address_line2);
+    addField('pickup_city', pickup_city);
+    addField('pickup_state', pickup_state);
+    addField('pickup_pincode', pickup_pincode);
+    addField('pickup_location_name', pickup_location_name);
+
+    // Also update the full name
+    if (first_name || last_name) {
+      const currentUser = await pool.query(
+        "SELECT first_name, last_name FROM users WHERE id = $1",
+        [userId]
+      );
+      const newFirstName = first_name || currentUser.rows[0].first_name;
+      const newLastName = last_name || currentUser.rows[0].last_name;
+      const fullName = `${newFirstName} ${newLastName}`.trim();
+      addField('name', fullName);
+    }
+
+    updates.push(`updated_at = CURRENT_TIMESTAMP`);
+    values.push(userId);
+
+    if (updates.length === 1) {
+      return res.status(400).json({ message: "No fields to update" });
+    }
+
+    const query = `
+      UPDATE users 
+      SET ${updates.join(", ")} 
+      WHERE id = $${paramCount} 
+      RETURNING *
+    `;
+
+    const result = await pool.query(query, values);
+    
+    res.json({ 
+      success: true, 
+      message: "Profile updated successfully",
+      user: result.rows[0]
+    });
+    
+  } catch (error) {
+    console.error("Profile update error:", error);
+    res.status(500).json({ 
+      success: false, 
+      message: error.message || "Failed to update profile" 
+    });
   }
 });
 
@@ -1174,6 +1291,76 @@ app.put("/api/vendor/pickup-addresses/:id/default", verifyToken, async (req, res
   }
 });
 
+// Update vendor details (store_name, gst_number, and pickup address)
+app.put("/api/user/profile/vendor", verifyToken, async (req, res) => {
+  try {
+    const {
+      store_name,
+      gst_number,
+      pickup_address_line1,
+      pickup_address_line2,
+      pickup_city,
+      pickup_state,
+      pickup_pincode,
+      pickup_location_name
+    } = req.body;
+
+    const userId = req.user.id;
+
+    // Update all vendor fields in one query
+    const result = await pool.query(
+      `UPDATE users SET 
+        store_name = COALESCE($1, store_name),
+        gst_number = COALESCE($2, gst_number),
+        pickup_address_line1 = COALESCE($3, pickup_address_line1),
+        pickup_address_line2 = COALESCE($4, pickup_address_line2),
+        pickup_city = COALESCE($5, pickup_city),
+        pickup_state = COALESCE($6, pickup_state),
+        pickup_pincode = COALESCE($7, pickup_pincode),
+        pickup_location_name = COALESCE($8, pickup_location_name),
+        updated_at = CURRENT_TIMESTAMP
+      WHERE id = $9
+      RETURNING 
+        store_name, 
+        gst_number, 
+        pickup_address_line1, 
+        pickup_address_line2, 
+        pickup_city, 
+        pickup_state, 
+        pickup_pincode, 
+        pickup_location_name`,
+      [
+        store_name, 
+        gst_number, 
+        pickup_address_line1, 
+        pickup_address_line2, 
+        pickup_city, 
+        pickup_state, 
+        pickup_pincode, 
+        pickup_location_name,
+        userId
+      ]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ success: false, message: "User not found" });
+    }
+
+    res.json({ 
+      success: true, 
+      message: "Vendor details updated successfully",
+      data: result.rows[0]
+    });
+    
+  } catch (error) {
+    console.error("Vendor update error:", error);
+    res.status(500).json({ 
+      success: false, 
+      message: error.message || "Failed to update vendor details" 
+    });
+  }
+});
+
 // ================= ADMIN DASHBOARD =================
 app.get("/api/admin/dashboard", verifyToken, verifyAnyAdmin, (req, res) => {
   res.json({ message: "Welcome Admin Dashboard" });
@@ -1213,6 +1400,58 @@ app.put("/api/admin/users/status/:id", verifyToken, verifySuperAdmin, async (req
     res.json({ success: true, status: newStatus });
   } catch (err) {
     res.status(500).json({ message: "Status update failed" });
+  }
+});
+
+// Update phone number
+app.put("/api/user/profile/phone", verifyToken, async (req, res) => {
+  try {
+    const { phone } = req.body;
+    const userId = req.user.id;
+
+    // Validate phone number
+    if (!phone) {
+      return res.status(400).json({ success: false, message: "Phone number is required" });
+    }
+    
+    const phoneRegex = /^[6-9]\d{9}$/;
+    if (!phoneRegex.test(phone)) {
+      return res.status(400).json({ 
+        success: false, 
+        message: "Phone number must be 10 digits and start with 6,7,8, or 9" 
+      });
+    }
+
+    // Check if phone number is already taken by another user
+    const existingUser = await pool.query(
+      "SELECT id FROM users WHERE phone = $1 AND id != $2",
+      [phone, userId]
+    );
+    
+    if (existingUser.rows.length > 0) {
+      return res.status(400).json({ 
+        success: false, 
+        message: "This phone number is already registered with another account" 
+      });
+    }
+
+    // Update phone number
+    await pool.query(
+      "UPDATE users SET phone = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2",
+      [phone, userId]
+    );
+
+    res.json({ 
+      success: true, 
+      message: "Phone number updated successfully" 
+    });
+    
+  } catch (error) {
+    console.error("Phone update error:", error);
+    res.status(500).json({ 
+      success: false, 
+      message: error.message || "Failed to update phone number" 
+    });
   }
 });
 

@@ -2,6 +2,7 @@ import { createContext, useContext, useState, useEffect, useCallback } from "rea
 import axios from "axios";
 
 const WishlistContext = createContext();
+
 const API_URL = process.env.REACT_APP_API_URL;
 
 export const WishlistProvider = ({ children }) => {

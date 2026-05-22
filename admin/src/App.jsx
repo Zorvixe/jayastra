@@ -26,6 +26,8 @@ import StockNotifications from "./Pages/StockNotifications";
 import Wishlist from "./Pages/Wishlist";
 import VendorPickupAddresses from "./Pages/VendorPickupSettings/VendorPickupAddresses";
 import PlatformFeeSettings from "./Pages/PlatformFeeSettings/PlatformFeeSettings";
+import Profile from "./Pages/Profile/Profile";
+
 
 
 // Protected Route Component
@@ -74,6 +76,8 @@ function App() {
           <Route path="edit-product/:id" element={<EditProduct />} />
           <Route path="vendor-pickup" element={<VendorPickupAddresses />} />
           <Route path="platform-fee" element={<PlatformFeeSettings />} />
+          <Route path="/admin/profile" element={<Profile />} />
+
         </Route>
 
         {/* Default redirect */}
