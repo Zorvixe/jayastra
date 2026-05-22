@@ -435,14 +435,6 @@ const Topbar = ({ toggleSidebar, isSidebarCollapsed }) => {
                 </div>
 
                 <div className="dropdown-item" onClick={() => {
-                  navigate('/admin/settings');
-                  setOpenProfile(false);
-                }}>
-                  <i className="bi bi-gear"></i>
-                  <span>Settings</span>
-                </div>
-
-                <div className="dropdown-item" onClick={() => {
                   navigate('/admin/orders');
                   setOpenProfile(false);
                 }}>
@@ -460,15 +452,7 @@ const Topbar = ({ toggleSidebar, isSidebarCollapsed }) => {
                   </div>
                 )}
 
-                {showPlatformRevenue && (
-                  <div className="dropdown-item" onClick={() => {
-                    navigate('/admin/payouts');
-                    setOpenProfile(false);
-                  }}>
-                    <i className="bi bi-graph-up"></i>
-                    <span>Platform Analytics</span>
-                  </div>
-                )}
+               
               </div>
 
               <div className="dropdown-divider"></div>

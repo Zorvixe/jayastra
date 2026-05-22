@@ -26,7 +26,7 @@ const Sidebar = ({ isCollapsed, toggleSidebar }) => {
     { path: "/admin/banners", icon: "bi bi-image", label: "Banners", roles: ["super_admin"] },
     { path: "/admin/vendor-pickup", icon: "bi bi-building", label: "Shipping", roles: ["super_admin", "admin", "vendor"] },
     { path: "/admin/platform-fee", icon: "bi bi-percent", label: "Platform Fee", roles: ["super_admin"] },
-    { path: "/admin/reports", icon: "bi bi-bar-chart", label: "Reports", roles: ["super_admin", "admin", "vendor"] },
+    { path: "/admin/reports", icon: "bi bi-bar-chart", label: "Reports", roles: ["super_admin", "admin"] },
     { path: "/admin/settings", icon: "bi bi-gear", label: "Settings", roles: ["super_admin"] }
   ];
 

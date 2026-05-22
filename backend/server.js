@@ -32,15 +32,32 @@ if (process.env.SENDGRID_API_KEY) {
 }
 
 // Initialize Razorpay Safely
-let razorpay;
-if (process.env.RAZORPAY_KEY_ID && process.env.RAZORPAY_KEY_SECRET) {
-  razorpay = new Razorpay({
-    key_id: process.env.RAZORPAY_KEY_ID,
-    key_secret: process.env.RAZORPAY_KEY_SECRET,
-  });
-} else {
-  console.warn("⚠️ Razorpay keys missing. Payment endpoints might fail if accessed.");
-}
+let razorpay = null;
+
+// Function to initialize/update Razorpay instance
+const initRazorpay = async () => {
+  try {
+    const keyResult = await pool.query("SELECT value FROM settings WHERE key = 'razorpay_key_id'");
+    const secretResult = await pool.query("SELECT value FROM settings WHERE key = 'razorpay_key_secret'");
+    
+    const keyId = keyResult.rows[0]?.value;
+    const keySecret = secretResult.rows[0]?.value;
+    
+    if (keyId && keySecret && keyId !== '' && keySecret !== '') {
+      razorpay = new Razorpay({
+        key_id: keyId,
+        key_secret: keySecret,
+      });
+      console.log("✅ Razorpay initialized with admin credentials");
+    } else {
+      razorpay = null;
+      console.warn("⚠️ Razorpay credentials not configured in admin settings");
+    }
+  } catch (err) {
+    console.error("Failed to initialize Razorpay:", err);
+    razorpay = null;
+  }
+};
 
 const PORT = process.env.PORT || 5000;
 const JWT_SECRET = process.env.JWT_SECRET || 'fallback_secret';
@@ -738,6 +755,15 @@ const initDatabase = async () => {
         ON CONFLICT (key) DO NOTHING
       `);
 
+    // In initDatabase() function, add these settings if not exists
+    await pool.query(`
+      INSERT INTO settings (key, value)
+      VALUES 
+        ('razorpay_key_id', ''),
+        ('razorpay_key_secret', '')
+      ON CONFLICT (key) DO NOTHING
+    `);
+
     const defaultSettings = [
       { key: 'online_payment_discount', value: '0' },
       { key: 'cod_fee', value: '0' }
@@ -914,11 +940,11 @@ app.get("/api/user/profile", verifyToken, async (req, res) => {
       WHERE id = $1`,
       [req.user.id]
     );
-    
+
     if (user.rows.length === 0) {
       return res.status(404).json({ message: "User not found" });
     }
-    
+
     res.json(user.rows[0]);
   } catch (error) {
     console.error("Profile fetch error:", error);
@@ -1068,18 +1094,18 @@ app.put("/api/user/profile/all", verifyToken, async (req, res) => {
     `;
 
     const result = await pool.query(query, values);
-    
-    res.json({ 
-      success: true, 
+
+    res.json({
+      success: true,
       message: "Profile updated successfully",
       user: result.rows[0]
     });
-    
+
   } catch (error) {
     console.error("Profile update error:", error);
-    res.status(500).json({ 
-      success: false, 
-      message: error.message || "Failed to update profile" 
+    res.status(500).json({
+      success: false,
+      message: error.message || "Failed to update profile"
     });
   }
 });
@@ -1330,13 +1356,13 @@ app.put("/api/user/profile/vendor", verifyToken, async (req, res) => {
         pickup_pincode, 
         pickup_location_name`,
       [
-        store_name, 
-        gst_number, 
-        pickup_address_line1, 
-        pickup_address_line2, 
-        pickup_city, 
-        pickup_state, 
-        pickup_pincode, 
+        store_name,
+        gst_number,
+        pickup_address_line1,
+        pickup_address_line2,
+        pickup_city,
+        pickup_state,
+        pickup_pincode,
         pickup_location_name,
         userId
       ]
@@ -1346,17 +1372,17 @@ app.put("/api/user/profile/vendor", verifyToken, async (req, res) => {
       return res.status(404).json({ success: false, message: "User not found" });
     }
 
-    res.json({ 
-      success: true, 
+    res.json({
+      success: true,
       message: "Vendor details updated successfully",
       data: result.rows[0]
     });
-    
+
   } catch (error) {
     console.error("Vendor update error:", error);
-    res.status(500).json({ 
-      success: false, 
-      message: error.message || "Failed to update vendor details" 
+    res.status(500).json({
+      success: false,
+      message: error.message || "Failed to update vendor details"
     });
   }
 });
@@ -1413,12 +1439,12 @@ app.put("/api/user/profile/phone", verifyToken, async (req, res) => {
     if (!phone) {
       return res.status(400).json({ success: false, message: "Phone number is required" });
     }
-    
+
     const phoneRegex = /^[6-9]\d{9}$/;
     if (!phoneRegex.test(phone)) {
-      return res.status(400).json({ 
-        success: false, 
-        message: "Phone number must be 10 digits and start with 6,7,8, or 9" 
+      return res.status(400).json({
+        success: false,
+        message: "Phone number must be 10 digits and start with 6,7,8, or 9"
       });
     }
 
@@ -1427,11 +1453,11 @@ app.put("/api/user/profile/phone", verifyToken, async (req, res) => {
       "SELECT id FROM users WHERE phone = $1 AND id != $2",
       [phone, userId]
     );
-    
+
     if (existingUser.rows.length > 0) {
-      return res.status(400).json({ 
-        success: false, 
-        message: "This phone number is already registered with another account" 
+      return res.status(400).json({
+        success: false,
+        message: "This phone number is already registered with another account"
       });
     }
 
@@ -1441,16 +1467,16 @@ app.put("/api/user/profile/phone", verifyToken, async (req, res) => {
       [phone, userId]
     );
 
-    res.json({ 
-      success: true, 
-      message: "Phone number updated successfully" 
+    res.json({
+      success: true,
+      message: "Phone number updated successfully"
     });
-    
+
   } catch (error) {
     console.error("Phone update error:", error);
-    res.status(500).json({ 
-      success: false, 
-      message: error.message || "Failed to update phone number" 
+    res.status(500).json({
+      success: false,
+      message: error.message || "Failed to update phone number"
     });
   }
 });
@@ -4123,10 +4149,19 @@ app.put("/api/settings", verifyToken, verifySuperAdmin, async (req, res) => {
   try {
     const { settings } = req.body;
     for (const key in settings) {
-      await pool.query("INSERT INTO settings (key, value) VALUES ($1, $2) ON CONFLICT (key) DO UPDATE SET value = $2, updated_at = CURRENT_TIMESTAMP", [key, settings[key].toString()]);
+      await pool.query(
+        "INSERT INTO settings (key, value) VALUES ($1, $2) ON CONFLICT (key) DO UPDATE SET value = $2, updated_at = CURRENT_TIMESTAMP",
+        [key, settings[key].toString()]
+      );
     }
+    
+    // Re-initialize Razorpay if keys were updated
+    await initRazorpay();
+    
     res.json({ success: true, message: "Settings updated successfully" });
-  } catch (err) { res.status(500).json({ error: err.message }); }
+  } catch (err) { 
+    res.status(500).json({ error: err.message }); 
+  }
 });
 
 app.get("/api/settings/platform-fee", async (req, res) => {
@@ -4769,5 +4804,6 @@ app.use((err, req, res, next) => {
 
 // ================= START SERVER =================
 initDatabase().then(() => {
+  initRazorpay();
   server.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));
 });

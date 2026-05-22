@@ -595,6 +595,15 @@ const WeddingVideoSlider = ({ banners }) => {
   const [index, setIndex] = useState(0);
   const navigate = useNavigate();
 
+  // Helper function to get full video URL
+  const getFullVideoUrl = (videoUrl) => {
+    if (!videoUrl) return "";
+    if (videoUrl.startsWith("http")) return videoUrl;
+    // Remove /api from API_URL if present and add the videoUrl
+    const baseUrl = API_URL.replace(/\/api$/, "");
+    return `${baseUrl}${videoUrl}`;
+  };
+
   const handleNext = () => setIndex((prev) => (prev + 1) % banners.length);
   const handlePrev = () => setIndex((prev) => (prev - 1 + banners.length) % banners.length);
 
@@ -617,6 +626,9 @@ const WeddingVideoSlider = ({ banners }) => {
               const isCenter = offset === 0;
               const isLeft = offset === -1;
               const isRight = offset === 1;
+
+              // Get the correct video URL
+              const videoUrl = getFullVideoUrl(item.video_url);
 
               return (
                 <motion.div
@@ -646,17 +658,18 @@ const WeddingVideoSlider = ({ banners }) => {
                     marginLeft: window.innerWidth < 768 ? "-100px" : "-200px"
                   }}
                 >
-                  <video 
-                    src={`${API_URL.replace(/\/api\/?$/, "")}${item.video_url}`} 
-                    muted 
-                    autoPlay 
-                    loop 
-                    playsInline 
-                  />
+                  {videoUrl && (
+                    <video 
+                      src={videoUrl}
+                      muted 
+                      autoPlay 
+                      loop 
+                      playsInline 
+                      preload="auto"
+                    />
+                  )}
                   {isCenter && (
                     <div className="card-3d-overlay">
-                      {/* <span className="script-text">The</span>
-                      <h3 className="caps-text">Wedding</h3> */}
                       <button className="btn-shop-3d">View Collection</button>
                     </div>
                   )}

@@ -20,6 +20,9 @@ const PaymentPage = () => {
     const [orderId, setOrderId] = useState(null);
     const [settings, setSettings] = useState({ online_payment_discount: 0, cod_fee: 0 });
 
+    const [razorpayKey, setRazorpayKey] = useState(null);
+
+
     const token = localStorage.getItem("token");
 
     useEffect(() => {
@@ -43,6 +46,25 @@ const PaymentPage = () => {
             console.error("Error fetching settings:", err);
         }
     };
+
+    useEffect(() => {
+        // Fetch Razorpay key from settings
+        const fetchRazorpayKey = async () => {
+            try {
+                const res = await axios.get(`${API_URL}/settings`);
+                if (res.data.success && res.data.settings.razorpay_key_id) {
+                    setRazorpayKey(res.data.settings.razorpay_key_id);
+                } else {
+                    console.error("Razorpay key not configured");
+                    toast.error("Payment gateway not configured. Please contact support.");
+                }
+            } catch (err) {
+                console.error("Failed to fetch Razorpay key:", err);
+            }
+        };
+
+        fetchRazorpayKey();
+    }, []);
 
     // Calculate Adjusted Total
     const getAdjustedTotal = () => {
@@ -95,6 +117,10 @@ const PaymentPage = () => {
 
     // Update Razorpay payment to use correct amount
     const handleRazorpayPayment = async () => {
+        if (!razorpayKey) {
+            toast.error("Payment gateway not configured. Please try COD or contact support.");
+            return;
+        }
         try {
             setIsPlacingOrder(true);
 
@@ -118,7 +144,7 @@ const PaymentPage = () => {
 
             // 2. Open Razorpay Modal
             const options = {
-                key: process.env.REACT_APP_RAZORPAY_KEY_ID,
+                key: razorpayKey,
                 amount: order.amount,
                 currency: order.currency,
                 name: "JAYASTRA",

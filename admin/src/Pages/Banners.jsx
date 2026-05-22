@@ -25,6 +25,15 @@ const Banners = () => {
   const [submitting, setSubmitting] = useState(false);
   const token = localStorage.getItem("token");
 
+  // Helper function to get full image URL
+  const getFullImageUrl = (url) => {
+    if (!url) return "";
+    if (url.startsWith("http")) return url;
+    // Remove /api from API_URL if present and add the url
+    const baseUrl = API_URL.replace(/\/api$/, "");
+    return `${baseUrl}${url}`;
+  };
+
   useEffect(() => {
     const fetchInitialData = async () => {
       try {
@@ -86,9 +95,9 @@ const Banners = () => {
     setActiveTab(b.type);
     setBanner({
       image: null,
-      imagePreview: b.image_url ? `${API_URL.replace(/\/api$/, "")}${b.image_url}` : "",
+      imagePreview: b.image_url ? getFullImageUrl(b.image_url) : "",
       video: null,
-      videoPreview: b.video_url ? `${API_URL.replace(/\/api$/, "")}${b.video_url}` : "",
+      videoPreview: b.video_url ? getFullImageUrl(b.video_url) : "",
       buttonLink: b.link || "",
       status: b.is_active,
       type: b.type,
@@ -119,6 +128,7 @@ const Banners = () => {
         headers: { Authorization: `Bearer ${token}` }
       });
       fetchBanners();
+      toast.success("Status updated!");
     } catch (err) {
       toast.error("Toggle failed");
     }
@@ -131,6 +141,7 @@ const Banners = () => {
         headers: { Authorization: `Bearer ${token}` }
       });
       fetchBanners();
+      toast.success("Banner deleted!");
     } catch (err) {
       toast.error("❌ Delete failed");
     }
@@ -175,6 +186,18 @@ const Banners = () => {
     }
   };
 
+  // Get media thumbnail URL for display
+  const getMediaThumbnail = (banner) => {
+    const baseUrl = API_URL.replace(/\/api$/, "");
+    if (banner.video_url) {
+      return `${baseUrl}${banner.video_url}#t=0.1`;
+    }
+    if (banner.image_url) {
+      return `${baseUrl}${banner.image_url}`;
+    }
+    return "";
+  };
+
   return (
     <div className="banners-container">
       <div className="banners-header">
@@ -212,11 +235,21 @@ const Banners = () => {
                 <div className="form-group">
                   <label><i className="bi bi-image"></i> Media: Image</label>
                   <input type="file" accept="image/*" onChange={handleImageUpload} required={!editingId && !banner.imagePreview} />
+                  {banner.imagePreview && (
+                    <div className="preview-thumb">
+                      <img src={banner.imagePreview} alt="Preview" style={{ maxWidth: '100px', marginTop: '10px' }} />
+                    </div>
+                  )}
                 </div>
               ) : (
                 <div className="form-group">
                   <label><i className="bi bi-play-btn"></i> Media: Mosaic Video</label>
                   <input type="file" accept="video/*" onChange={handleVideoUpload} required={!editingId && !banner.videoPreview} />
+                  {banner.videoPreview && (
+                    <div className="preview-thumb">
+                      <video src={banner.videoPreview} style={{ maxWidth: '100px', marginTop: '10px' }} muted />
+                    </div>
+                  )}
                 </div>
               )}
 
@@ -292,29 +325,31 @@ const Banners = () => {
                   </tr>
                 </thead>
                 <tbody>
-                  {bannersList.filter(b => b.type === activeTab).sort((a,b) => a.position - b.position).map(b => (
+                  {bannersList.filter(b => b.type === activeTab).sort((a,b) => (a.position || 0) - (b.position || 0)).map(b => (
                     <tr key={b.id}>
-                      <td className="slot-cell">#{b.position}</td>
+                      <td className="slot-cell">#{b.position || '—'}</td>
                       <td className="media-cell">
                         {b.video_url ? (
                           <div className="media-thumb vid">
-                            <video src={`${API_URL.replace(/\/api$/, "")}${b.video_url}#t=0.1`} muted preload="metadata" />
+                            <video src={getMediaThumbnail(b)} muted preload="metadata" />
                             <div className="vid-overlay"><i className="bi bi-play-fill"></i></div>
                           </div>
+                        ) : b.image_url ? (
+                          <img src={getMediaThumbnail(b)} alt="thumb" />
                         ) : (
-                          <img src={`${API_URL.replace(/\/api$/, "")}${b.image_url}`} alt="thumb" />
+                          <div className="no-media">No media</div>
                         )}
-                      </td>
-                      <td>
+                       </td>
+                       <td>
                         <div className="info-cell">
-                          <span className="link-text">{b.link}</span>
+                          <span className="link-text">{b.link || '-'}</span>
                         </div>
-                      </td>
-                      <td>
+                       </td>
+                       <td>
                         <button className={`status-pill ${b.is_active ? 'active' : 'inactive'}`} onClick={() => toggleStatus(b.id)}>
                           {b.is_active ? 'Enabled' : 'Disabled'}
                         </button>
-                      </td>
+                       </td>
                       <td className="actions-cell">
                         <button className="edit-icon-btn" onClick={() => handleEdit(b)} title="Edit">
                           <i className="bi bi-pencil-square"></i>
@@ -322,7 +357,7 @@ const Banners = () => {
                         <button className="delete-icon-btn" onClick={() => deleteBanner(b.id)} title="Delete">
                           <i className="bi bi-trash3"></i>
                         </button>
-                      </td>
+                       </td>
                     </tr>
                   ))}
                 </tbody>

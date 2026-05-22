@@ -1,45 +1,54 @@
-import React, { useState } from "react";
-import axios from '../utils/axiosConfig'; // Adjust path as needed
+// Settings.jsx - Updated version with sett prefix
+import React, { useState, useEffect } from "react";
+import axios from 'axios';
+import { toast } from 'react-toastify';
 import "./Settings.css";
+
+const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
 
 const Settings = () => {
   const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
   const [settings, setSettings] = useState({
-    logo: null,
-    logoPreview: "",
+    // Existing settings
     contactEmail: "",
     phone: "",
-    razorpayKey: "",
-    razorpaySecret: "",
     taxPercent: 0,
     shippingCharge: 0,
     online_payment_discount: 0,
-    cod_fee: 0
+    cod_fee: 0,
+    // Razorpay settings
+    razorpay_key_id: "",
+    razorpay_key_secret: "",
+    // Platform fee
+    platform_fee_percent: 10
   });
 
-  React.useEffect(() => {
+  useEffect(() => {
     fetchSettings();
   }, []);
 
   const fetchSettings = async () => {
     try {
-      const response = await axios.get(`${process.env.REACT_APP_API_URL}/settings`);
+      const response = await axios.get(`${API_URL}/settings`);
       if (response.data.success) {
         const s = response.data.settings;
-        setSettings(prev => ({
-          ...prev,
+        setSettings({
           contactEmail: s.contactEmail || "",
           phone: s.phone || "",
-          razorpayKey: s.razorpayKey || "",
-          razorpaySecret: s.razorpaySecret || "",
           taxPercent: parseFloat(s.taxPercent || 0),
           shippingCharge: parseFloat(s.shippingCharge || 0),
           online_payment_discount: parseFloat(s.online_payment_discount || 0),
           cod_fee: parseFloat(s.cod_fee || 0),
-        }));
+          razorpay_key_id: s.razorpay_key_id || "",
+          razorpay_key_secret: s.razorpay_key_secret || "",
+          platform_fee_percent: parseFloat(s.platform_fee_percent || 10)
+        });
+        toast.success("Settings loaded successfully");
       }
     } catch (err) {
       console.error("Failed to fetch settings", err);
+      toast.error("Failed to load settings");
     } finally {
       setLoading(false);
     }
@@ -53,38 +62,52 @@ const Settings = () => {
     });
   };
 
-  const handleLogoUpload = (e) => {
-    const file = e.target.files[0];
-    if (file) {
-      setSettings({
-        ...settings,
-        logo: file,
-        logoPreview: URL.createObjectURL(file)
-      });
-    }
-  };
-
   const handleSave = async (e) => {
     e.preventDefault();
+    setSaving(true);
     try {
       const token = localStorage.getItem("token");
-      await axios.put(`${process.env.REACT_APP_API_URL}/settings`, {
+      
+      // Validate Razorpay keys if provided
+      if (settings.razorpay_key_id && settings.razorpay_key_secret) {
+        if (settings.razorpay_key_id.length < 10) {
+          toast.error("Razorpay Key ID seems invalid (too short)");
+          setSaving(false);
+          return;
+        }
+        if (settings.razorpay_key_secret.length < 10) {
+          toast.error("Razorpay Key Secret seems invalid (too short)");
+          setSaving(false);
+          return;
+        }
+      }
+      
+      await axios.put(`${API_URL}/settings`, {
         settings: {
           contactEmail: settings.contactEmail,
           phone: settings.phone,
-          razorpayKey: settings.razorpayKey,
-          razorpaySecret: settings.razorpaySecret,
           taxPercent: settings.taxPercent,
           shippingCharge: settings.shippingCharge,
           online_payment_discount: settings.online_payment_discount,
-          cod_fee: settings.cod_fee
+          cod_fee: settings.cod_fee,
+          razorpay_key_id: settings.razorpay_key_id,
+          razorpay_key_secret: settings.razorpay_key_secret,
+          platform_fee_percent: settings.platform_fee_percent
         }
       }, {
         headers: { Authorization: `Bearer ${token}` }
       });
-      alert("Settings Updated Successfully!");
+      
+      toast.success("Settings Updated Successfully!");
+      
+      // Reload settings to confirm
+      await fetchSettings();
+      
     } catch (err) {
-      alert("Update failed: " + (err.response?.data?.error || err.message));
+      console.error("Save error:", err);
+      toast.error("Update failed: " + (err.response?.data?.error || err.message));
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -94,161 +117,206 @@ const Settings = () => {
 
     try {
       const token = localStorage.getItem("token");
-      await axios.post(`${process.env.REACT_APP_API_URL}/admin/system/reset`, {}, {
+      await axios.post(`${API_URL}/admin/system/reset`, {}, {
         headers: { Authorization: `Bearer ${token}` }
       });
-      alert("System Reset Successful! All test data has been cleared.");
-      window.location.reload();
+      toast.success("System Reset Successful! All test data has been cleared.");
+      setTimeout(() => {
+        window.location.reload();
+      }, 2000);
     } catch (err) {
-      alert("Reset failed: " + (err.response?.data?.error || err.message));
+      toast.error("Reset failed: " + (err.response?.data?.error || err.message));
     }
   };
 
-  if (loading) return <div className="dash-loader-overlay">
-    <div className="dash-loader-container">
-      <div className="dash-spinner"></div>
+  if (loading) return (
+    <div className="sett-loader-overlay">
+      <div className="sett-loader-container">
+        <div className="sett-spinner"></div>
+      </div>
     </div>
-  </div>;
+  );
 
   return (
-    <div className="settings-container">
+    <div className="sett-container">
+      <h4 className="sett-title">Settings & Configuration</h4>
 
-      <h4>Settings & Configuration</h4>
+      <form onSubmit={handleSave} className="sett-form">
 
-      <form onSubmit={handleSave} className="settings-form">
+        {/* ================= CONTACT ================= */}
+        <div className="sett-section">
+          <h5 className="sett-section-title"><i className="bi bi-envelope"></i> Contact Information</h5>
 
-        {/* ================= LOGO ================= */}
-        <div className="settings-section">
-          <h5><i className="bi bi-image"></i> Website Logo</h5>
+          <div className="sett-form-group">
+            <label className="sett-label">Contact Email</label>
+            <input
+              type="email"
+              name="contactEmail"
+              value={settings.contactEmail}
+              onChange={handleChange}
+              placeholder="Contact Email"
+              className="sett-input"
+            />
+          </div>
 
-          <input type="file" onChange={handleLogoUpload} />
+          <div className="sett-form-group">
+            <label className="sett-label">Phone Number</label>
+            <input
+              type="text"
+              name="phone"
+              value={settings.phone}
+              onChange={handleChange}
+              placeholder="Phone Number"
+              className="sett-input"
+            />
+          </div>
+        </div>
 
-          {settings.logoPreview && (
-            <div className="logo-preview">
-              <img src={settings.logoPreview} alt="Logo Preview" />
+        {/* ================= RAZORPAY PAYMENT ================= */}
+        <div className="sett-section">
+          <h5 className="sett-section-title"><i className="bi bi-credit-card"></i> Razorpay Payment Gateway</h5>
+
+          <div className="sett-form-group">
+            <label className="sett-label">Razorpay Key ID</label>
+            <input
+              type="text"
+              name="razorpay_key_id"
+              value={settings.razorpay_key_id}
+              onChange={handleChange}
+              placeholder="rzp_live_xxxxxxxxxxxxxx or rzp_test_xxxxxxxxxxxxxx"
+              className="sett-input"
+            />
+            <small className="sett-help-text">Your Razorpay Key ID (starts with rzp_)</small>
+          </div>
+
+          <div className="sett-form-group">
+            <label className="sett-label">Razorpay Key Secret</label>
+            <input
+              type="password"
+              name="razorpay_key_secret"
+              value={settings.razorpay_key_secret}
+              onChange={handleChange}
+              placeholder="Your Razorpay Secret Key"
+              className="sett-input"
+            />
+            <small className="sett-help-text">Your Razorpay Secret Key - keep this secure</small>
+          </div>
+
+          {settings.razorpay_key_id && settings.razorpay_key_secret && (
+            <div className="sett-success-badge">
+              <i className="bi bi-check-circle"></i> Razorpay credentials configured
             </div>
           )}
         </div>
 
-        {/* ================= CONTACT ================= */}
-        <div className="settings-section">
-          <h5><i className="bi bi-envelope"></i> Contact Information</h5>
-
-          <input
-            type="email"
-            name="contactEmail"
-            value={settings.contactEmail}
-            onChange={handleChange}
-            placeholder="Contact Email"
-          />
-
-          <input
-            type="text"
-            name="phone"
-            value={settings.phone}
-            onChange={handleChange}
-            placeholder="Phone Number"
-          />
-        </div>
-
-        {/* ================= PAYMENT ================= */}
-        <div className="settings-section">
-          <h5><i className="bi bi-credit-card"></i> Razorpay Settings</h5>
-
-          <input
-            type="text"
-            name="razorpayKey"
-            value={settings.razorpayKey}
-            onChange={handleChange}
-            placeholder="Razorpay Key"
-          />
-
-          <input
-            type="password"
-            name="razorpaySecret"
-            value={settings.razorpaySecret}
-            onChange={handleChange}
-            placeholder="Razorpay Secret"
-          />
-        </div>
-
         {/* ================= TAX & SHIPPING ================= */}
-        <div className="settings-section">
-          <h5><i className="bi bi-receipt"></i> Tax & Shipping</h5>
+        <div className="sett-section">
+          <h5 className="sett-section-title"><i className="bi bi-receipt"></i> Tax & Shipping</h5>
 
-          <input
-            type="number"
-            name="taxPercent"
-            value={settings.taxPercent}
-            onChange={handleChange}
-            placeholder="Tax %"
-          />
+          <div className="sett-form-group">
+            <label className="sett-label">Tax Percentage (%)</label>
+            <input
+              type="number"
+              name="taxPercent"
+              value={settings.taxPercent}
+              onChange={handleChange}
+              placeholder="Tax %"
+              className="sett-input"
+              step="0.01"
+            />
+            <small className="sett-help-text">Tax percentage to be applied on orders</small>
+          </div>
 
-          <input
-            type="number"
-            name="shippingCharge"
-            value={settings.shippingCharge}
-            onChange={handleChange}
-            placeholder="Shipping Charge"
-          />
+          <div className="sett-form-group">
+            <label className="sett-label">Shipping Charge (₹)</label>
+            <input
+              type="number"
+              name="shippingCharge"
+              value={settings.shippingCharge}
+              onChange={handleChange}
+              placeholder="Shipping Charge"
+              className="sett-input"
+              step="0.01"
+            />
+            <small className="sett-help-text">Flat shipping charge for all orders</small>
+          </div>
         </div>
 
         {/* ================= PAYMENT ADJUSTMENTS ================= */}
-        <div className="settings-section">
-          <h5><i className="bi bi-currency-exchange"></i> Payment Adjustments</h5>
+        <div className="sett-section">
+          <h5 className="sett-section-title"><i className="bi bi-currency-exchange"></i> Payment Adjustments</h5>
 
-          <div className="p-field">
-            <label>Online Payment Discount (₹)</label>
+          <div className="sett-form-group">
+            <label className="sett-label">Online Payment Discount (₹)</label>
             <input
               type="number"
               name="online_payment_discount"
               value={settings.online_payment_discount}
               onChange={handleChange}
               placeholder="e.g. 5"
+              className="sett-input"
+              step="0.01"
+              min="0"
             />
-            <small className="help-text">This amount will be reduced from total for prepaid orders.</small>
+            <small className="sett-help-text">This amount will be reduced from total for prepaid orders.</small>
           </div>
 
-          <div className="p-field" style={{ marginTop: '15px' }}>
-            <label>Cash on Delivery Fee (₹)</label>
+          <div className="sett-form-group">
+            <label className="sett-label">Cash on Delivery Fee (₹)</label>
             <input
               type="number"
               name="cod_fee"
               value={settings.cod_fee}
               onChange={handleChange}
               placeholder="e.g. 50"
+              className="sett-input"
+              step="0.01"
+              min="0"
             />
-            <small className="help-text">This amount will be added to total for COD orders.</small>
+            <small className="sett-help-text">This amount will be added to total for COD orders.</small>
           </div>
         </div>
 
-        <button type="submit" className="save-settings-btn">
-          <i className="bi bi-check-circle"></i> Save Settings
+        {/* ================= PLATFORM FEE ================= */}
+        <div className="sett-section">
+          <h5 className="sett-section-title"><i className="bi bi-percent"></i> Platform Fee (Vendor Commission)</h5>
+
+          <div className="sett-form-group">
+            <label className="sett-label">Platform Fee Percentage (%)</label>
+            <input
+              type="number"
+              name="platform_fee_percent"
+              value={settings.platform_fee_percent}
+              onChange={handleChange}
+              placeholder="10"
+              className="sett-input"
+              step="0.5"
+              min="0"
+              max="100"
+            />
+            <small className="sett-help-text">
+              Percentage deducted from each vendor's sale. Default: 10%
+            </small>
+          </div>
+        </div>
+
+       <div className="sett-form-actions">
+         <button type="submit" className="sett-save-btn" disabled={saving}>
+          <i className="bi bi-check-circle"></i> {saving ? "Saving..." : "Save Settings"}
         </button>
+       </div>
 
       </form>
 
       {/* ================= DANGER ZONE ================= */}
-      <div className="danger-zone-section" style={{ marginTop: '50px', borderTop: '2px solid #fee2e2', paddingTop: '30px' }}>
-        <h5 style={{ color: '#dc2626' }}><i className="bi bi-exclamation-triangle"></i> Danger Zone</h5>
-        <p style={{ color: '#64748b', fontSize: '0.9rem' }}>
+      <div className="sett-danger-zone">
+        <h5 className="sett-danger-title"><i className="bi bi-exclamation-triangle"></i> Danger Zone</h5>
+        <p className="sett-danger-text">
           Reset the system to its initial state. This will permanently delete all orders, reviews, and customers while keeping your products and admin accounts.
         </p>
         <button
-          className="reset-btn"
+          className="sett-reset-btn"
           onClick={handleResetSystem}
-          style={{
-            background: '#fee2e2',
-            color: '#dc2626',
-            border: '1px solid #fecaca',
-            padding: '10px 20px',
-            borderRadius: '8px',
-            fontWeight: '600',
-            cursor: 'pointer',
-            transition: 'all 0.3s'
-          }}
-          onMouseEnter={(e) => { e.target.style.background = '#dc2626'; e.target.style.color = '#fff'; }}
-          onMouseLeave={(e) => { e.target.style.background = '#fee2e2'; e.target.style.color = '#dc2626'; }}
         >
           Reset System Data
         </button>
