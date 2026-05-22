@@ -1,0 +1,71 @@
+/* Wishlist Card */
+.wishlist-card {
+  position: relative;
+  background: #fff;
+  border-radius: 10px;
+  overflow: hidden;
+  box-shadow: 0 10px 25px rgba(0,0,0,0.08);
+  transition: 0.3s;
+}
+
+.wishlist-card:hover {
+  transform: translateY(-5px);
+}
+
+/* Product Image */
+.wishlist-image img {
+  width: 100%;
+  height: auto;
+  aspect-ratio: 3/4; /* Maintains luxury apparel proportions perfectly on all screens */
+  object-fit: cover;
+  cursor: pointer;
+}
+
+/* Info */
+.wishlist-info {
+  padding: 12px 15px; /* Tighter padding for mobile */
+}
+
+.wishlist-info h6 {
+  font-size: 0.85rem; /* Slightly smaller for mobile wrapping */
+  font-weight: 600;
+  margin-bottom: 5px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis; /* Prevents long names from breaking layout */
+}
+
+.wishlist-info p {
+  font-weight: 600;
+  font-size: 0.95rem;
+  margin: 0;
+}
+
+/* ❤️ Remove Heart */
+.wishlist-remove-icon {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  background: white;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 5px 15px rgba(0,0,0,0.15);
+  cursor: pointer;
+  z-index: 5;
+}
+
+.wishlist-remove-icon i {
+  color: red;
+  font-size: 18px;
+}
+
+/* Empty Wishlist */
+.wishlist-empty {
+  text-align: center;
+  padding: 60px;
+  color: #777;
+}

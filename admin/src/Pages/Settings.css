@@ -1,0 +1,63 @@
+.settings-container {
+  background: white;
+  padding: 20px;
+  border-radius: 12px;
+}
+
+.settings-form {
+  margin-top: 20px;
+}
+
+.settings-section {
+  margin-bottom: 30px;
+  padding: 20px;
+  background: #f9fafb;
+  border-radius: 10px;
+}
+
+.settings-section h5 {
+  margin-bottom: 15px;
+}
+
+.settings-section input {
+  width: 100%;
+  margin-bottom: 12px;
+  padding: 8px;
+  border-radius: 6px;
+  border: 1px solid #d1d5db;
+}
+
+.logo-preview img {
+  margin-top: 10px;
+  height: 80px;
+  border-radius: 6px;
+}
+
+.save-settings-btn {
+  background: #2563eb;
+  color: white;
+  padding: 10px 16px;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.save-settings-btn:hover {
+  background: #1e40af;
+}
+
+.p-field label {
+  display: block;
+  font-weight: 500;
+  margin-bottom: 5px;
+  font-size: 0.9rem;
+  color: #374151;
+}
+
+.help-text {
+  font-size: 0.8rem;
+  color: #6b7280;
+  display: block;
+  margin-top: -8px;
+  margin-bottom: 10px;
+}

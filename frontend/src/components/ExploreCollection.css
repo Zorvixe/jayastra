@@ -1,0 +1,97 @@
+/* Container Background to match the light warm tone of your screenshot */
+.two-posters-section {
+  background-color: #FAF6F3; /* Very soft cream/warm grey */
+  padding: 0;
+  width: 100%;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+/* 
+  Decorative Top & Bottom Borders 
+  Uses a CSS radial pattern to mimic the traditional border in your screenshot 
+*/
+.pattern-border {
+  width: 100%;
+  height: 24px;
+  background-color: #FAF6F3;
+  background-image: 
+    radial-gradient(#b89b82 2px, transparent 2.5px),
+    radial-gradient(#b89b82 2px, transparent 2.5px);
+  background-size: 16px 16px;
+  background-position: 0 0, 8px 8px;
+  opacity: 0.6;
+}
+
+/* Grid Container for the two posters */
+.posters-container {
+  width: 100%;
+  max-width: 1400px;
+  margin: 40px auto;
+  padding: 0 30px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 30px;
+  align-items: center;
+}
+
+/* Link wrapper */
+.poster-link {
+  display: block;
+  text-decoration: none;
+  width: 100%;
+  overflow: hidden;
+}
+
+/* Poster Card styling */
+.poster-card {
+  width: 100%;
+  position: relative;
+  overflow: hidden;
+  background: transparent;
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+  /* Optional: gives a slight shadow so they pop off the background */
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.08);
+}
+
+
+
+/* The actual image */
+.poster-image {
+  width: 100%;
+  height: auto;
+  display: block;
+  object-fit: cover;
+  /* Adjusts the aspect ratio to maintain horizontal poster look */
+  aspect-ratio: 16 / 9; 
+  transition: transform 0.5s ease;
+}
+
+
+/* ================== RESPONSIVE DESIGN ================== */
+
+/* Tablets */
+@media (max-width: 992px) {
+  .posters-container {
+    gap: 20px;
+    padding: 0 20px;
+    margin: 30px auto;
+  }
+}
+
+/* Mobile Devices */
+@media (max-width: 768px) {
+  .posters-container {
+    grid-template-columns: 1fr; /* Stacks the posters vertically on phones */
+    gap: 25px;
+    margin: 25px auto;
+    padding: 0 15px;
+  }
+  
+  .pattern-border {
+    height: 16px;
+    background-size: 12px 12px;
+    background-position: 0 0, 6px 6px;
+  }
+}

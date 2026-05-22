@@ -1,0 +1,88 @@
+.reports-container {
+  background: white;
+  padding: 20px;
+  border-radius: 12px;
+}
+
+.report-filter {
+  margin-bottom: 20px;
+}
+
+.report-filter select {
+  padding: 6px 10px;
+  border-radius: 6px;
+}
+
+/* Cards */
+.report-cards {
+  display: flex;
+  gap: 20px;
+  margin-bottom: 30px;
+  flex-wrap: wrap;
+}
+
+.report-card {
+  flex: 1;
+  min-width: 200px;
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  padding: 5px;
+  border-radius: 10px;
+  color: white;
+  padding-left: 20px;
+}
+
+.report-card i {
+  font-size: 28px;
+}
+
+.revenue {
+  background: #2563eb;
+}
+
+.orders {
+  background: #10b981;
+}
+
+.avg {
+  background: #f59e0b;
+}
+
+/* Charts */
+.chart-section {
+  margin-bottom: 40px;
+}
+
+.performance-section table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 15px;
+}
+
+.performance-section th,
+.performance-section td {
+  padding: 12px;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.performance-section th {
+  background: #f9fafb;
+}
+
+.no-data-msg {
+  padding: 40px;
+  text-align: center;
+  background: #f9f9f9;
+  border-radius: 8px;
+  color: #666;
+  border: 1px dashed #ddd;
+  margin: 10px 0;
+}
+
+.report-header{
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+}

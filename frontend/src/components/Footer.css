@@ -1,0 +1,246 @@
+.footer-custom {
+  background-color: #651824f4; /* Rich maroon background */
+  color: #ffffff;
+  padding: 60px 0 40px;
+  font-family: 'Inter', sans-serif;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.footer-col {
+  margin-bottom: 30px;
+}
+
+.footer-logo-wrap {
+  display: inline-flex; /* Wraps tightly around the logo */
+  align-items: center;
+  justify-content: center;
+  /* background-color: #ffffffdc; */
+  padding: 3px; /* Tight white space around logo */
+  margin-bottom: 2px;
+  border-radius: 4px;
+  width: auto; /* Shrink to fit */
+  height: auto;
+}
+
+.footer-brand-logo {
+  width: auto;
+  max-width: 100%;
+  object-fit: contain;
+}
+
+.footer-brand-text {
+  font-family: 'Playfair Display', serif;
+  font-size: 1.8rem; /* Restored original size */
+  font-weight: 700;
+  margin: 0;
+  letter-spacing: 1px;
+}
+
+.footer-desc {
+  font-size: 0.9rem;
+  line-height: 1.6;
+  opacity: 0.9;
+  max-width: 90%;
+}
+
+.footer-heading {
+  color: #d1a551; /* Golden color as seen in the reference */
+  font-size: 1.1rem;
+  font-weight: 600;
+  margin-bottom: 25px;
+  font-family: 'Playfair Display', serif;
+  letter-spacing: 0.5px;
+}
+
+.footer-links {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.footer-links li {
+  margin-bottom: 15px;
+  font-size: 0.9rem;
+}
+
+.footer-links span {
+  cursor: pointer;
+  opacity: 0.9;
+  transition: opacity 0.2s ease, color 0.2s ease;
+}
+
+.footer-links span:hover {
+  opacity: 1;
+  color: #d1a551;
+}
+
+.footer-contact-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.footer-contact-list li {
+  margin-bottom: 15px;
+  font-size: 0.9rem;
+  line-height: 1.5;
+  opacity: 0.9;
+}
+
+.footer-contact-list strong {
+  color: #ffffff;
+  font-weight: 600;
+  margin-right: 5px;
+}
+
+.footer-social-icons {
+  display: flex;
+  gap: 12px;
+  margin-top: 25px;
+}
+
+.social-icon {
+  width: 38px;
+  height: 38px;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #ffffff;
+  font-size: 1.2rem;
+  transition: transform 0.2s ease;
+  text-decoration: none;
+}
+
+.social-icon:hover {
+  transform: translateY(-3px);
+  color: #ffffff;
+}
+
+.social-icon.wa {
+  background-color: #25D366;
+}
+
+.social-icon.ph {
+  background-color: #007bff;
+}
+
+.social-icon.ig {
+  background: linear-gradient(45deg, #f09433 0%, #e6683c 25%, #dc2743 50%, #cc2366 75%, #bc1888 100%);
+}
+
+.social-icon.loc {
+  background-color: #dc3545;
+}
+
+/* WhatsApp Enquire and Copyright */
+.footer-bottom-row {
+  margin-top: 40px;
+  display: flex;
+  justify-content: center;
+}
+
+.whatsapp-enquire-btn {
+  background-color: #eff6f2;
+  color: #353131;
+  padding: 13px 30px;
+  font-size: 1rem;
+  font-weight: 600;
+  border-radius: 10px;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 10px rgba(37, 211, 102, 0.3);
+}
+
+.whatsapp-enquire-btn:hover {
+  background-color: #5bd899;
+  transform: translateY(-3px);
+  color: #ffffff;
+  box-shadow: 0 6px 15px rgba(37, 211, 102, 0.4);
+}
+
+.whatsapp-enquire-btn i {
+  font-size: 1.2rem;
+}
+
+.footer-copyright {
+  margin-top: 40px;
+  text-align: center;
+  font-size: 0.9rem;
+  color: #eee;
+  opacity: 0.8;
+  padding-top: 20px;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  width: 100%;
+}
+
+.developer-credit {
+  margin-top: 8px;
+  font-size: 0.8rem;
+  opacity: 0.7;
+}
+
+.developer-credit a {
+  color: #d1a551;
+  text-decoration: none;
+  font-weight: 500;
+  transition: opacity 0.2s ease;
+}
+
+.developer-credit a:hover {
+  text-decoration: underline;
+  opacity: 1;
+}
+
+@media (max-width: 991px) {
+  .footer-col {
+    margin-bottom: 40px;
+    text-align: center; /* Center text on tablet/mobile */
+  }
+
+  .footer-logo-wrap {
+    margin: 0 auto 25px; /* Center logo box */
+  }
+
+  .footer-desc {
+    margin: 0 auto; /* Center description */
+  }
+
+  .footer-social-icons {
+    justify-content: center; /* Center social icons */
+  }
+
+  .footer-contact-list li {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+
+  .footer-contact-list strong {
+    margin-right: 0;
+    margin-bottom: 5px;
+  }
+}
+
+@media (max-width: 576px) {
+  .footer-custom {
+    padding: 40px 15px 30px;
+  }
+
+  .footer-brand-logo {
+    height: 197px; /* Slightly smaller logo on small phones */
+  }
+
+  .footer-heading {
+    margin-bottom: 15px;
+    font-size: 1.2rem;
+  }
+
+  .whatsapp-enquire-btn {
+    padding: 10px 25px;
+    font-size: 0.95rem;
+  }
+}

@@ -1,0 +1,98 @@
+/* ================= EXCHANGE MODAL COMPONENT STYLES ================= */
+.od-exchange-modal-overlay {
+  position: fixed;
+  top: 0; left: 0; width: 100%; height: 100%;
+  background: rgba(0,0,0,0.7);
+  backdrop-filter: blur(8px);
+  z-index: 2500;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+
+.od-exchange-modal-card {
+  background: white;
+  width: 100%;
+  max-width: 500px;
+  border-radius: 20px;
+  box-shadow: 0 15px 50px rgba(0,0,0,0.5);
+  overflow: hidden;
+  animation: slideUpComp 0.3s ease-out;
+}
+
+@keyframes slideUpComp {
+  from { transform: translateY(30px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
+.od-modal-header {
+  padding: 20px 25px;
+  border-bottom: 1px solid #eee;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: #fdfdfd;
+}
+
+.od-modal-header h3 {
+  margin: 0; font-size: 1.25rem; font-weight: 700; color: #1a1a1a;
+}
+
+.od-close-modal {
+  background: none; border: none; font-size: 28px; color: #999; cursor: pointer;
+}
+
+.od-modal-alert {
+  background: #fff8e1;
+  border-left: 5px solid #ffc107;
+  padding: 15px 25px;
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+
+.od-modal-alert i { color: #ffc107; font-size: 1.3rem; }
+.od-modal-alert span { font-size: 0.85rem; color: #6d4c41; font-weight: 600; line-height: 1.4; }
+
+.od-modal-body { padding: 25px; display: flex; flex-direction: column; gap: 20px; }
+
+.od-field label { display: block; font-size: 0.9rem; font-weight: 700; margin-bottom: 8px; color: #333; }
+
+.od-file-input-wrapper { position: relative; }
+.od-file-input-wrapper input { position: absolute; width: 0.1px; height: 0.1px; opacity: 0; z-index: -1; }
+
+.od-custom-file-label {
+  display: flex; align-items: center; justify-content: center; gap: 10px;
+  background: #fafafa; border: 2px dashed #ddd; padding: 15px; border-radius: 12px;
+  cursor: pointer; transition: 0.2s; color: #666; font-size: 0.9rem;
+}
+
+.od-custom-file-label:hover { border-color: #8E2139; color: #8E2139; background: #fff5f7; }
+
+.od-field textarea {
+  width: 100%; min-height: 100px; padding: 15px; border: 1px solid #e0e0e0;
+  border-radius: 12px; font-family: inherit; font-size: 0.9rem; outline: none;
+}
+
+.od-modal-footer { display: flex; gap: 12px; margin-top: 10px; }
+
+.od-cancel-btn, .od-submit-btn {
+  padding: 12px; border-radius: 50px; font-weight: 600; cursor: pointer;
+}
+
+.od-cancel-btn { flex: 1; border: 1px solid #ddd; background: white; }
+.od-submit-btn {
+  flex: 1.5; border: none;
+  background: #8E2139; color: white; font-weight: 700;
+  box-shadow: 0 4px 15px rgba(142,33,57,0.3);
+}
+
+.od-submit-btn:disabled { background: #ccc; box-shadow: none; cursor: not-allowed; }
+
+@media (max-width: 768px) {
+  .od-exchange-modal-card {
+    border-radius: 20px 20px 0 0; position: absolute; bottom: 0;
+    max-width: 100%;
+  }
+}

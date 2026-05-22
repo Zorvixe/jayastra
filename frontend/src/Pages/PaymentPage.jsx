@@ -1,0 +1,448 @@
+import { useLocation, useNavigate } from "react-router-dom";
+import { useState, useEffect } from "react";
+import { useCart } from "../context/CartContext";
+import axios from "axios";
+import { toast } from "react-toastify";
+import "./PaymentPage.css";
+
+const API_URL = process.env.REACT_APP_API_URL;
+
+const PaymentPage = () => {
+    const location = useLocation();
+    const navigate = useNavigate();
+    const { clearCart } = useCart();
+
+    // Data passed from checkout
+    const orderDetails = location.state?.orderDetails;
+    const [isPlacingOrder, setIsPlacingOrder] = useState(false);
+    const [paymentMethod, setPaymentMethod] = useState("COD");
+    const [showSuccessModal, setShowSuccessModal] = useState(false);
+    const [orderId, setOrderId] = useState(null);
+    const [settings, setSettings] = useState({ online_payment_discount: 0, cod_fee: 0 });
+
+    const token = localStorage.getItem("token");
+
+    useEffect(() => {
+        if (!orderDetails) {
+            navigate("/cart");
+        }
+        window.scrollTo(0, 0);
+        fetchSettings();
+    }, [orderDetails, navigate]);
+
+    const fetchSettings = async () => {
+        try {
+            const res = await axios.get(`${API_URL}/settings`);
+            if (res.data.success) {
+                setSettings({
+                    online_payment_discount: Number(res.data.settings.online_payment_discount || 0),
+                    cod_fee: Number(res.data.settings.cod_fee || 0)
+                });
+            }
+        } catch (err) {
+            console.error("Error fetching settings:", err);
+        }
+    };
+
+    // Calculate Adjusted Total
+    const getAdjustedTotal = () => {
+        let total = Number(orderDetails?.total_amount || 0);
+        if (paymentMethod === 'COD') {
+            total += settings.cod_fee;
+        } else {
+            total -= settings.online_payment_discount;
+        }
+        return Math.max(0, total);
+    };
+
+    const finalPayable = getAdjustedTotal();
+
+    // Add this function for better error handling
+    // In PaymentPage.jsx, update the order placement:
+
+    const handlePlaceOrder = async () => {
+        if (paymentMethod === "COD") {
+            setIsPlacingOrder(true);
+            try {
+                // Ensure we're using the correct total amount with coupon discount already applied
+                const finalOrderData = {
+                    ...orderDetails,
+                    total_amount: parseFloat(orderDetails.total_amount), // This already has coupon discount applied from checkout
+                    payment_method: paymentMethod
+                };
+
+                console.log("Placing COD order:", finalOrderData);
+
+                const res = await axios.post(`${API_URL}/orders`, finalOrderData, {
+                    headers: { Authorization: `Bearer ${token}` }
+                });
+
+                if (res.data.success) {
+                    setOrderId(res.data.orderId);
+                    setShowSuccessModal(true);
+                    clearCart();
+                }
+            } catch (err) {
+                console.error("Order error:", err);
+                toast.error(err.response?.data?.message || "Order placement failed");
+            } finally {
+                setIsPlacingOrder(false);
+            }
+        } else {
+            handleRazorpayPayment();
+        }
+    };
+
+    // Update Razorpay payment to use correct amount
+    const handleRazorpayPayment = async () => {
+        try {
+            setIsPlacingOrder(true);
+
+            // Use the final payable amount from orderDetails (already includes coupon discount)
+            const amountToPay = parseFloat(orderDetails.total_amount);
+
+            console.log("Razorpay payment amount:", amountToPay);
+
+            // 1. Create Razorpay Order in Backend
+            const orderRes = await axios.post(`${API_URL}/razorpay/order`, {
+                amount: amountToPay
+            }, {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+
+            if (!orderRes.data.success) {
+                throw new Error(orderRes.data.message || "Failed to create order");
+            }
+
+            const { order } = orderRes.data;
+
+            // 2. Open Razorpay Modal
+            const options = {
+                key: process.env.REACT_APP_RAZORPAY_KEY_ID,
+                amount: order.amount,
+                currency: order.currency,
+                name: "JAYASTRA",
+                description: `Purchase of Premium Products`,
+                order_id: order.id,
+                handler: async (response) => {
+                    try {
+                        toast.info("Verifying payment...");
+
+                        const verifyRes = await axios.post(`${API_URL}/razorpay/verify`, {
+                            razorpay_order_id: response.razorpay_order_id,
+                            razorpay_payment_id: response.razorpay_payment_id,
+                            razorpay_signature: response.razorpay_signature,
+                            orderDetails: {
+                                ...orderDetails,
+                                total_amount: amountToPay,
+                                payment_method: "RAZORPAY"
+                            }
+                        }, {
+                            headers: { Authorization: `Bearer ${token}` }
+                        });
+
+                        if (verifyRes.data.success) {
+                            setOrderId(verifyRes.data.orderId);
+                            setShowSuccessModal(true);
+                            clearCart();
+                            toast.success("Payment successful! Order placed.");
+                        } else {
+                            toast.error(verifyRes.data.message || "Payment verification failed");
+                        }
+                    } catch (err) {
+                        console.error("Verification error:", err);
+                        toast.error(err.response?.data?.message || "Payment verification failed");
+                    } finally {
+                        setIsPlacingOrder(false);
+                    }
+                },
+                modal: {
+                    ondismiss: () => {
+                        setIsPlacingOrder(false);
+                        toast.info("Payment cancelled");
+                    }
+                },
+                prefill: {
+                    name: orderDetails.customer_name,
+                    email: orderDetails.email,
+                    contact: orderDetails.phone
+                },
+                theme: {
+                    color: "#8E2139"
+                }
+            };
+
+            const rzp = new window.Razorpay(options);
+
+            rzp.on('payment.failed', function (response) {
+                console.error("Payment failed:", response.error);
+                toast.error(response.error.description || "Payment failed. Please try again.");
+                setIsPlacingOrder(false);
+            });
+
+            rzp.open();
+
+        } catch (err) {
+            console.error("Razorpay error:", err);
+            toast.error(err.message || "Failed to initialize payment");
+            setIsPlacingOrder(false);
+        }
+    };
+
+    if (!orderDetails) return null;
+
+    return (
+        <div className="payment-page">
+            {/* 1. Progress Stepper - SYNCED WITH CHECKOUT PAGE */}
+            <div className="checkout-stepper-outer">
+                <div className="container">
+                    <div className="checkout-stepper-new">
+                        <div className="step-new completed">
+                            <div className="circle"><i className="bi bi-check"></i></div>
+                            <span>LOGIN</span>
+                        </div>
+                        <div className="line active"></div>
+                        <div className="step-new completed">
+                            <div className="circle"><i className="bi bi-check"></i></div>
+                            <span>DELIVERY</span>
+                        </div>
+                        <div className="line active"></div>
+                        <div className={`step-new completed`}>
+                            <div className="circle"><i className="bi bi-check"></i></div>
+                            <span>SUMMARY</span>
+                        </div>
+                        <div className={`line active`}></div>
+                        <div className={`step-new active`}>
+                            <div className="circle">4</div>
+                            <span>PAYMENT</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div className="payment-layout">
+                {/* 2. Left: Payment Methods */}
+                <div className="payment-options-section">
+                    <div className="payment-section-card">
+                        <div className="section-header">
+                            <span className="num">4</span>
+                            <h5>Payment Options</h5>
+                        </div>
+
+                        <div className="payment-method-list">
+                            {/* UPI */}
+                            <div
+                                className={`method-item ${paymentMethod === 'UPI' ? 'selected' : ''}`}
+                                onClick={() => setPaymentMethod('UPI')}
+                            >
+                                <div className="radio-circle"></div>
+                                <div className="method-details">
+                                    <div className="method-title">
+                                        <i className="bi bi-phone"></i> UPI (PhonePe, Google Pay, BHIM)
+                                    </div>
+                                    <div className="method-subtitle">Powered by Razorpay</div>
+                                    {settings.online_payment_discount > 0 && (
+                                        <div className="text-success fw-bold" style={{ fontSize: '0.85rem' }}>
+                                            Applied: ₹{settings.online_payment_discount} Online Discount
+                                        </div>
+                                    )}
+                                    {paymentMethod === 'UPI' && (
+                                        <div className="payment-action-area d-none d-lg-block">
+                                            <button
+                                                className="btn-continue-checkout"
+                                                disabled={isPlacingOrder}
+                                                onClick={handlePlaceOrder}
+                                            >
+                                                {isPlacingOrder ? "PROCESSING..." : `PAY ₹${finalPayable} & PLACE ORDER`}
+                                            </button>
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+
+                            {/* Cards */}
+                            <div
+                                className={`method-item ${paymentMethod === 'CARD' ? 'selected' : ''}`}
+                                onClick={() => setPaymentMethod('CARD')}
+                            >
+                                <div className="radio-circle"></div>
+                                <div className="method-details">
+                                    <div className="method-title">
+                                        <i className="bi bi-credit-card"></i> Credit / Debit / ATM Card
+                                    </div>
+                                    <div className="method-subtitle">Visa, Mastercard, RuPay & more</div>
+                                    {settings.online_payment_discount > 0 && (
+                                        <div className="text-success fw-bold" style={{ fontSize: '0.85rem' }}>
+                                            Applied: ₹{settings.online_payment_discount} Online Discount
+                                        </div>
+                                    )}
+                                    {paymentMethod === 'CARD' && (
+                                        <div className="payment-action-area d-none d-lg-block">
+                                            <button
+                                                className="btn-continue-checkout"
+                                                disabled={isPlacingOrder}
+                                                onClick={handlePlaceOrder}
+                                            >
+                                                {isPlacingOrder ? "PROCESSING..." : `PAY ₹${finalPayable} & PLACE ORDER`}
+                                            </button>
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+
+                            {/* Net Banking */}
+                            <div
+                                className={`method-item ${paymentMethod === 'NETBANKING' ? 'selected' : ''}`}
+                                onClick={() => setPaymentMethod('NETBANKING')}
+                            >
+                                <div className="radio-circle"></div>
+                                <div className="method-details">
+                                    <div className="method-title">
+                                        <i className="bi bi-bank"></i> Net Banking
+                                    </div>
+                                    <div className="method-subtitle">All major Indian banks supported</div>
+                                    {settings.online_payment_discount > 0 && (
+                                        <div className="text-success fw-bold" style={{ fontSize: '0.85rem' }}>
+                                            Applied: ₹{settings.online_payment_discount} Online Discount
+                                        </div>
+                                    )}
+                                    {paymentMethod === 'NETBANKING' && (
+                                        <div className="payment-action-area d-none d-lg-block">
+                                            <button
+                                                className="btn-continue-checkout"
+                                                disabled={isPlacingOrder}
+                                                onClick={handlePlaceOrder}
+                                            >
+                                                {isPlacingOrder ? "PROCESSING..." : `PAY ₹${finalPayable} & PLACE ORDER`}
+                                            </button>
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+
+                            {/* COD */}
+                            <div
+                                className={`method-item ${paymentMethod === 'COD' ? 'selected' : ''}`}
+                                onClick={() => setPaymentMethod('COD')}
+                            >
+                                <div className="radio-circle"></div>
+                                <div className="method-details">
+                                    <div className="method-title">
+                                        <i className="bi bi-cash-stack"></i> Cash on Delivery
+                                    </div>
+                                    <div className="method-subtitle">Pay when you receive the package</div>
+                                    {settings.cod_fee > 0 && (
+                                        <div className="text-danger fw-bold" style={{ fontSize: '0.85rem' }}>
+                                            +₹{settings.cod_fee} COD Handling Fee
+                                        </div>
+                                    )}
+                                    {paymentMethod === 'COD' && (
+                                        <div className="payment-action-area d-none d-lg-block">
+                                            <button
+                                                className="btn-continue-checkout"
+                                                disabled={isPlacingOrder}
+                                                onClick={handlePlaceOrder}
+                                            >
+                                                {isPlacingOrder ? "PLACING ORDER..." : `CONFIRM ORDER (₹${finalPayable})`}
+                                            </button>
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                {/* 3. Right: Price Details */}
+                <div className="payment-sidebar-section">
+                    <div className="price-details-card">
+                        <div className="price-header">Price Details</div>
+                        <div className="price-body">
+                            <div className="price-row">
+                                <span>Price ({(orderDetails.items || orderDetails.cartItems)?.length || 0} items)</span>
+                                <span>₹{(Number(orderDetails.total_amount) + Number(orderDetails.discount)).toFixed(2)}</span>
+                            </div>
+                            <div className="price-row discount">
+                                <span>Coupon Discount</span>
+                                <span className="val">-₹{orderDetails.discount}</span>
+                            </div>
+
+                            {/* Payment specific adjustments */}
+                            {paymentMethod === 'COD' ? (
+                                settings.cod_fee > 0 && (
+                                    <div className="price-row">
+                                        <span>COD Fee</span>
+                                        <span className="val">+₹{settings.cod_fee}</span>
+                                    </div>
+                                )
+                            ) : (
+                                settings.online_payment_discount > 0 && (
+                                    <div className="price-row text-success fw-bold">
+                                        <span>Online Payment Discount</span>
+                                        <span className="val">-₹{settings.online_payment_discount}</span>
+                                    </div>
+                                )
+                            )}
+
+                            <div className="price-row">
+                                <span>Delivery Charges</span>
+                                <span className="text-success val">FREE</span>
+                            </div>
+                            <div className="price-total">
+                                <div className="price-row mb-0">
+                                    <strong>Amount Payable</strong>
+                                    <strong className="fs-5">₹{finalPayable}</strong>
+                                </div>
+                            </div>
+
+                            {paymentMethod !== 'COD' && settings.online_payment_discount > 0 ? (
+                                <div className="savings-hint text-success">
+                                    Applied: Online Payment Discount ₹{settings.online_payment_discount}
+                                </div>
+                            ) : (
+                                (orderDetails.discount > 0) && (
+                                    <div className="savings-hint">
+                                        Your total savings on this order ₹{orderDetails.discount}
+                                    </div>
+                                )
+                            )}
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            {/* ✅ MOBILE STICKY FOOTER FOR PAYMENT */}
+            <div className="mobile-checkout-footer d-lg-none">
+                <div className="price-info">
+                    <span className="label">Amount Payable</span>
+                    <span className="val">₹{finalPayable}</span>
+                </div>
+                <button
+                    className="btn-footer-continue"
+                    onClick={handlePlaceOrder}
+                    disabled={isPlacingOrder}
+                >
+                    {isPlacingOrder ? "PROCESSING..." : `PAY ₹${finalPayable}`}
+                </button>
+            </div>
+
+            {/* 4. Success Overlay */}
+            {showSuccessModal && (
+                <div className="success-overlay">
+                    <div className="success-container">
+                        <div className="success-tick">
+                            <i className="bi bi-check-lg"></i>
+                        </div>
+                        <h2>Order Placed Successfully!</h2>
+                        <p>Your order #{orderId} has been confirmed and will be delivered soon.</p>
+                        <button className="btn-orders-flip" onClick={() => navigate("/profile", { state: { activeTab: "orders" } })}>
+                            Go to My Orders
+                        </button>
+                    </div>
+                </div>
+            )}
+        </div>
+    );
+};
+
+export default PaymentPage;

@@ -1,0 +1,584 @@
+/* LoginModal.css - Split Layout Maintained on All Devices */
+
+.login-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.6);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 9999;
+}
+
+/* Modal Container - Split Layout */
+.login-modal-container {
+  display: flex;
+  background: #fff;
+  width: 700px;
+  max-width: 90%;
+  border-radius: 10px;
+  overflow: hidden;
+  box-shadow: 0 15px 40px rgba(0, 0, 0, 0.25);
+  position: relative;
+}
+
+/* Left Side - Image Banner */
+.login-modal-left {
+  flex: 1;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  position: relative;
+  min-height: 380px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.login-modal-left img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center;
+}
+
+.offer-text-banner {
+  padding: 20px;
+  text-align: center;
+  color: white;
+}
+
+.offer-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+}
+
+.offer-icon {
+  font-size: 36px;
+}
+
+.offer-text-banner h3 {
+  font-size: 20px;
+  margin: 0;
+  font-weight: bold;
+}
+
+.offer-text-banner p {
+  font-size: 12px;
+  margin: 0;
+  opacity: 0.9;
+}
+
+/* Right Side - Form Content */
+.login-modal-right {
+  flex: 1;
+  padding: 25px;
+  position: relative;
+  background: #fff;
+}
+
+.close-btn {
+  position: absolute;
+  top: 10px;
+  right: 12px;
+  border: none;
+  background: none;
+  font-size: 16px;
+  cursor: pointer;
+  color: #999;
+  transition: color 0.2s;
+  z-index: 1;
+}
+
+.close-btn:hover {
+  color: #000;
+}
+
+/* Coupon Offer Banner - Top Right Side */
+.coupon-offer-banner {
+  background: linear-gradient(135deg, #ff6b6b 0%, #ee5a24 100%);
+  border-radius: 8px;
+  padding: 10px 12px;
+  margin-bottom: 18px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+.coupon-icon {
+  font-size: 20px;
+  background: white;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+}
+
+.coupon-text {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.offer-label {
+  color: white;
+  font-size: 12px;
+  font-weight: bold;
+}
+
+.coupon-code {
+  color: #fff4e6;
+  font-size: 10px;
+  font-family: monospace;
+  letter-spacing: 0.5px;
+}
+
+.login-header {
+  text-align: center;
+  margin-bottom: 18px;
+}
+
+.login-header h2 {
+  font-size: 20px;
+  color: #333;
+  margin: 0 0 5px 0;
+  font-weight: 600;
+}
+
+.login-header p {
+  font-size: 11px;
+  color: #888;
+  margin: 0;
+}
+
+.auth-form {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.auth-form input {
+  padding: 8px 10px;
+  border: 1px solid #e0e0e0;
+  border-radius: 5px;
+  font-size: 12px;
+  outline: none;
+  transition: border-color 0.2s;
+  box-sizing: border-box;
+}
+
+.auth-form input:focus {
+  border-color: #2874f0;
+}
+
+/* Phone Input with Country Code */
+.phone-input-wrapper {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.country-code {
+  padding: 8px 10px;
+  border: 1px solid #e0e0e0;
+  border-radius: 5px;
+  background: #f8f8f8;
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.phone-input-wrapper input {
+  flex: 1;
+}
+
+.auth-form button {
+  padding: 8px;
+  background: #2874f0;
+  color: #fff;
+  border: none;
+  border-radius: 5px;
+  font-weight: 500;
+  cursor: pointer;
+  font-size: 12px;
+  transition: background 0.2s;
+  margin-top: 3px;
+}
+
+.auth-form button:hover {
+  background: #1f5dc4;
+}
+
+.switch-auth {
+  text-align: center;
+  margin-top: 10px;
+  font-size: 11px;
+  color: #666;
+}
+
+.switch-auth span {
+  color: #2874f0;
+  cursor: pointer;
+  font-weight: 500;
+}
+
+.switch-auth span:hover {
+  text-decoration: underline;
+}
+
+.auth-error {
+  color: #d32f2f;
+  font-size: 11px;
+  text-align: center;
+  margin-bottom: 12px;
+  background: #ffe6e6;
+  padding: 6px;
+  border-radius: 5px;
+}
+
+.divider {
+  display: flex;
+  align-items: center;
+  text-align: center;
+  margin: 10px 0;
+  color: #999;
+  font-size: 10px;
+}
+
+.divider::before,
+.divider::after {
+  content: "";
+  flex: 1;
+  border-bottom: 1px solid #e8e8e8;
+}
+
+.divider span {
+  padding: 0 8px;
+}
+
+.google-btn-container {
+  display: flex;
+  justify-content: center;
+  margin-top: 3px;
+  transform: scale(0.85);
+}
+
+.terms-text {
+  text-align: center;
+  font-size: 9px;
+  color: #aaa;
+  margin-top: 10px;
+}
+
+/* Tablet Devices - Maintain Split Layout */
+@media (max-width: 768px) {
+  .login-modal-container {
+    width: 90%;
+    max-width: 650px;
+  }
+  
+  .login-modal-left {
+    min-height: 350px;
+  }
+  
+  .offer-text-banner h3 {
+    font-size: 18px;
+  }
+  
+  .offer-icon {
+    font-size: 32px;
+  }
+  
+  .login-modal-right {
+    padding: 22px;
+  }
+  
+  .login-header h2 {
+    font-size: 18px;
+  }
+  
+  .coupon-offer-banner {
+    padding: 8px 10px;
+  }
+  
+  .coupon-icon {
+    width: 28px;
+    height: 28px;
+    font-size: 16px;
+  }
+}
+
+/* Small Tablets / Large Phones - Keep Split Layout */
+@media (max-width: 600px) {
+  .login-modal-container {
+    width: 95%;
+    max-width: 550px;
+  }
+  
+  .login-modal-left {
+    min-height: 320px;
+  }
+  
+  .offer-text-banner {
+    padding: 15px;
+  }
+  
+  .offer-text-banner h3 {
+    font-size: 16px;
+  }
+  
+  .offer-icon {
+    font-size: 28px;
+  }
+  
+  .offer-text-banner p {
+    font-size: 10px;
+  }
+  
+  .login-modal-right {
+    padding: 20px;
+  }
+  
+  .login-header h2 {
+    font-size: 17px;
+  }
+  
+  .login-header p {
+    font-size: 10px;
+  }
+  
+  .coupon-offer-banner {
+    padding: 8px;
+    margin-bottom: 15px;
+  }
+  
+  .coupon-icon {
+    width: 26px;
+    height: 26px;
+    font-size: 14px;
+  }
+  
+  .offer-label {
+    font-size: 11px;
+  }
+  
+  .coupon-code {
+    font-size: 9px;
+  }
+  
+  .auth-form input,
+  .country-code,
+  .auth-form button {
+    padding: 7px 8px;
+    font-size: 11px;
+  }
+}
+
+/* Mobile Landscape - Keep Split Layout */
+@media (max-width: 500px) {
+  .login-modal-container {
+    width: 95%;
+    max-width: 480px;
+  }
+  
+  .login-modal-left {
+    min-height: 280px;
+  }
+  
+  .offer-text-banner {
+    padding: 12px;
+  }
+  
+  .offer-text-banner h3 {
+    font-size: 15px;
+  }
+  
+  .offer-icon {
+    font-size: 26px;
+  }
+  
+  .offer-text-banner p {
+    font-size: 9px;
+  }
+  
+  .login-modal-right {
+    padding: 18px;
+  }
+  
+  .login-header h2 {
+    font-size: 16px;
+  }
+  
+  .login-header {
+    margin-bottom: 15px;
+  }
+  
+  .coupon-offer-banner {
+    padding: 7px;
+    margin-bottom: 12px;
+    gap: 8px;
+  }
+  
+  .coupon-icon {
+    width: 24px;
+    height: 24px;
+    font-size: 12px;
+  }
+  
+  .offer-label {
+    font-size: 10px;
+  }
+  
+  .coupon-code {
+    font-size: 8px;
+  }
+  
+  .auth-form {
+    gap: 8px;
+  }
+  
+  .auth-form input,
+  .country-code,
+  .auth-form button {
+    padding: 6px 8px;
+    font-size: 11px;
+  }
+  
+  .phone-input-wrapper {
+    gap: 6px;
+  }
+  
+  .country-code {
+    padding: 6px 8px;
+  }
+  
+  .switch-auth {
+    font-size: 10px;
+    margin-top: 8px;
+  }
+  
+  .divider {
+    margin: 8px 0;
+  }
+  
+  .terms-text {
+    font-size: 8px;
+    margin-top: 8px;
+  }
+  
+  .google-btn-container {
+    transform: scale(0.8);
+  }
+}
+
+/* Small Mobile Devices - Still Keep Split Layout */
+@media (max-width: 400px) {
+  .login-modal-container {
+    width: 98%;
+    max-width: 400px;
+  }
+  
+  .login-modal-left {
+    min-height: 250px;
+  }
+  
+  .offer-text-banner h3 {
+    font-size: 14px;
+  }
+  
+  .offer-icon {
+    font-size: 24px;
+  }
+  
+  .login-modal-right {
+    padding: 15px;
+  }
+  
+  .login-header h2 {
+    font-size: 15px;
+  }
+  
+  .login-header p {
+    font-size: 9px;
+  }
+  
+  .coupon-offer-banner {
+    padding: 6px;
+    margin-bottom: 10px;
+  }
+  
+  .coupon-icon {
+    width: 22px;
+    height: 22px;
+    font-size: 11px;
+  }
+  
+  .offer-label {
+    font-size: 9px;
+  }
+  
+  .coupon-code {
+    font-size: 7px;
+  }
+  
+  .auth-form input,
+  .country-code,
+  .auth-form button {
+    padding: 5px 7px;
+    font-size: 10px;
+  }
+  
+  .phone-input-wrapper {
+    gap: 5px;
+  }
+  
+  .country-code {
+    padding: 5px 7px;
+    font-size: 10px;
+  }
+}
+
+/* Extremely Small Devices - Keep Split Layout with Scroll */
+@media (max-width: 340px) {
+  .login-modal-container {
+    max-height: 95vh;
+    overflow-y: auto;
+  }
+  
+  .login-modal-left {
+    min-height: 220px;
+  }
+  
+  .offer-text-banner h3 {
+    font-size: 13px;
+  }
+  
+  .offer-icon {
+    font-size: 22px;
+  }
+  
+  .offer-text-banner p {
+    font-size: 8px;
+  }
+  
+  .login-modal-right {
+    padding: 12px;
+  }
+  
+  .login-header h2 {
+    font-size: 14px;
+  }
+  
+  .auth-form input,
+  .country-code,
+  .auth-form button {
+    padding: 5px 6px;
+    font-size: 10px;
+  }
+}

@@ -1,0 +1,408 @@
+.stock-notif-container {
+    padding: 20px;
+}
+
+.admin-header {
+    margin-bottom: 30px;
+}
+
+.admin-header h3 {
+    font-family: 'Playfair Display', serif;
+    font-size: 1.8rem;
+    color: #111;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.admin-header h3 i {
+    color: #8E2139;
+}
+
+.admin-header p {
+    color: #666;
+    margin-top: 5px;
+}
+
+.section-subtitle {
+    font-size: 1.2rem;
+    font-weight: 600;
+    color: #334155;
+    margin-bottom: 20px;
+    padding-bottom: 8px;
+    border-bottom: 2px solid #e2e8f0;
+}
+
+/* TOP REQUESTED CARDS */
+.top-requested-section {
+    margin-bottom: 40px;
+}
+
+.top-requested-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+    gap: 20px;
+}
+
+.request-card {
+    background: #fff;
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+    transition: all 0.3s ease;
+    border: 1px solid #f0f0f0;
+}
+
+.request-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+}
+
+.card-img {
+    height: 180px;
+    position: relative;
+    background: #f9f9f9;
+}
+
+.card-img img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.req-count-badge {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    background: #8E2139;
+    color: #fff;
+    padding: 5px 12px;
+    border-radius: 20px;
+    font-size: 0.8rem;
+    font-weight: 700;
+    box-shadow: 0 4px 10px rgba(142, 33, 57, 0.3);
+}
+
+.card-info {
+    padding: 15px;
+}
+
+.card-info h5 {
+    font-size: 1rem;
+    color: #111;
+    margin-bottom: 8px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.card-info .price {
+    font-weight: 700;
+    color: #8E2139;
+    margin-bottom: 10px;
+}
+
+.stock-badge {
+    font-size: 0.75rem;
+    font-weight: 600;
+    padding: 3px 8px;
+    border-radius: 4px;
+}
+
+.stock-badge.out {
+    background: #fdf2f2;
+    color: #dc2626;
+}
+
+.stock-badge.low {
+    background: #fffbeb;
+    color: #d97706;
+}
+
+/* TABLE STYLES */
+.notifications-table-section {
+    margin-top: 20px;
+}
+
+.admin-table-container {
+    background: #fff;
+    border-radius: 12px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.05);
+    overflow: hidden;
+    border: 1px solid #eee;
+}
+
+.admin-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.admin-table th {
+    background: #f8fafc;
+    padding: 15px 20px;
+    text-align: left;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: #64748b;
+    border-bottom: 1px solid #eee;
+}
+
+.admin-table td {
+    padding: 15px 20px;
+    border-bottom: 1px solid #f1f5f9;
+    vertical-align: middle;
+}
+
+.product-table-cell {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+}
+
+.table-thumb {
+    width: 50px;
+    height: 50px;
+    border-radius: 8px;
+    object-fit: cover;
+}
+
+.prod-meta .name {
+    display: block;
+    font-weight: 600;
+    color: #1e293b;
+    margin-bottom: 2px;
+}
+
+.prod-meta .sku {
+    font-size: 0.75rem;
+    color: #94a3b8;
+    background: #f1f5f9;
+    padding: 2px 6px;
+    border-radius: 4px;
+}
+
+.user-meta .uname {
+    display: block;
+    font-weight: 600;
+    color: #1e293b;
+}
+
+.user-meta .uinfo {
+    font-size: 0.8rem;
+    color: #64748b;
+}
+
+.status-pill {
+    font-size: 0.75rem;
+    font-weight: 700;
+    padding: 4px 10px;
+    border-radius: 30px;
+    text-transform: uppercase;
+}
+
+.status-pill.available {
+    background: #dcfce7;
+    color: #166534;
+}
+
+.status-pill.waiting {
+    background: #fef3c7;
+    color: #92400e;
+}
+
+.request-count-badge {
+    background: #e2e8f0;
+    color: #1e293b;
+    font-weight: 700;
+    padding: 4px 10px;
+    border-radius: 20px;
+    font-size: 0.85rem;
+}
+
+.delete-table-btn {
+    background: #fff;
+    color: #ef4444;
+    border: 1px solid #fee2e2;
+    width: 34px;
+    height: 34px;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.delete-table-btn:hover {
+    background: #ef4444;
+    color: #fff;
+}
+
+/* ================= EMPTY STATE STYLES ================= */
+.empty-state-card {
+    background: #f8fafc;
+    border-radius: 16px;
+    padding: 50px 20px;
+    text-align: center;
+    border: 1px dashed #cbd5e1;
+    margin: 20px 0;
+}
+
+.empty-state-card i {
+    font-size: 3rem;
+    color: #94a3b8;
+    margin-bottom: 15px;
+    display: block;
+}
+
+.empty-state-card p {
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: #475569;
+    margin-bottom: 8px;
+}
+
+.empty-state-card span {
+    font-size: 0.85rem;
+    color: #94a3b8;
+}
+
+.empty-state-card.table-empty {
+    margin: 0;
+}
+
+/* ================= CUSTOM CONFIRMATION MODAL ================= */
+.modal-backdrop {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.6);
+    backdrop-filter: blur(4px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 100100;
+    animation: fadeIn 0.2s ease;
+}
+
+.confirm-modal {
+    background: #fff;
+    border-radius: 20px;
+    width: 90%;
+    max-width: 400px;
+    overflow: hidden;
+    box-shadow: 0 25px 40px rgba(0,0,0,0.2);
+    animation: modalSlideUp 0.3s cubic-bezier(0.2, 0.9, 0.4, 1.1);
+}
+
+.confirm-modal-header {
+    background: #fef2f2;
+    padding: 20px;
+    text-align: center;
+    border-bottom: 1px solid #fee2e2;
+}
+
+.confirm-modal-header i {
+    font-size: 2.5rem;
+    color: #dc2626;
+    display: block;
+    margin-bottom: 8px;
+}
+
+.confirm-modal-header h4 {
+    font-size: 1.3rem;
+    font-weight: 700;
+    color: #991b1b;
+    margin: 0;
+}
+
+.confirm-modal-body {
+    padding: 25px 20px;
+    text-align: center;
+    color: #334155;
+}
+
+.confirm-modal-body p {
+    margin-bottom: 8px;
+}
+
+.confirm-modal-body strong {
+    color: #1e293b;
+    font-size: 1rem;
+    display: inline-block;
+    margin: 5px 0;
+}
+
+.confirm-modal-footer {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 0 20px 20px 20px;
+}
+
+.btn-cancel, .btn-confirm {
+    flex: 1;
+    padding: 12px;
+    border-radius: 40px;
+    font-weight: 600;
+    font-size: 0.9rem;
+    cursor: pointer;
+    transition: all 0.2s;
+    border: none;
+}
+
+.btn-cancel {
+    background: #f1f5f9;
+    color: #475569;
+}
+
+.btn-cancel:hover {
+    background: #e2e8f0;
+}
+
+.btn-confirm {
+    background: #dc2626;
+    color: #fff;
+}
+
+.btn-confirm:hover {
+    background: #b91c1c;
+}
+
+@keyframes modalSlideUp {
+    from {
+        opacity: 0;
+        transform: translateY(30px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+/* ================= RESPONSIVE ================= */
+@media (max-width: 768px) {
+    .admin-table th:nth-child(3),
+    .admin-table td:nth-child(3) {
+        display: none;
+    }
+    
+    .top-requested-grid {
+        grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    }
+
+    .empty-state-card {
+        padding: 30px 15px;
+    }
+
+    .empty-state-card i {
+        font-size: 2.5rem;
+    }
+}

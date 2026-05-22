@@ -1,0 +1,61 @@
+/* Base reset */
+* {
+  box-sizing: border-box;
+}
+
+html, body {
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  background: #f8f9fa; /* Prevents white flashes while loading */
+}
+
+.admin-layout {
+  display: flex;
+  min-height: 100vh;
+  background: #f8f9fa;
+  width: 100%;
+  position: relative;
+}
+
+.admin-main {
+  flex: 1;
+  margin-left: 250px;
+  transition: margin-left 0.3s ease;
+  display: flex;
+  flex-direction: column;
+  width: calc(100% - 250px);
+  min-height: 100vh;
+  /* IMPORTANT: Removed overflow-x: hidden to stop clipping dropdowns */
+}
+
+.admin-main.collapsed {
+  margin-left: 80px;
+  width: calc(100% - 80px);
+}
+
+.admin-content {
+  padding: 24px;
+  margin-top: 70px; /* Offset to compensate for the fixed topbar */
+  min-height: calc(100vh - 70px);
+  background: #f8f9fa;
+  width: 100%;
+  overflow-x: auto; /* Allow tables to scroll horizontally safely inside content block */
+}
+
+/* Responsive styles */
+@media (max-width: 768px) {
+  .admin-main {
+    margin-left: 0;
+    width: 100%;
+  }
+  
+  .admin-main.collapsed {
+    margin-left: 0;
+    width: 100%;
+  }
+  
+  .admin-content {
+    padding: 16px;
+  }
+}
