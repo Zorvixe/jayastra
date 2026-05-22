@@ -1,0 +1,27 @@
+{
+  "short_name": "Jayastra",
+  "name": "Jayastra",
+  "icons": [
+    {
+      "src": "./jayastra_banner.png",
+      "sizes": "64x64 32x32 24x24 16x16",
+      "type": "image/x-icon"
+    },
+    {
+      "src": "./jayastra_banner.png",
+      "type": "image/png",
+      "sizes": "192x192"
+    },
+    {
+      "src": "./jayastra_banner.png",
+      "type": "image/png",
+      "sizes": "512x512"
+    }
+  ],
+  "start_url": "./index.html",
+  "display": "standalone",
+  "theme_color": "#000000",
+  "background_color": "#ffffff",
+  "box_shadow": "0 4px 8px rgba(0, 0, 0, 0.2)"
+
+}
