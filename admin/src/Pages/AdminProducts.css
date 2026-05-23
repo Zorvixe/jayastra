@@ -524,8 +524,11 @@
   border-bottom: 1px solid #e2e8f0;
 }
 
-.form-group { margin-bottom: 20px; }
-
+.form-group { 
+  margin-bottom: 20px;
+  position: relative;
+  overflow: visible;
+}
 .form-group label {
   display: block;
   margin-bottom: 8px;
@@ -679,15 +682,47 @@
 }
 
 /* Rich Text Editor */
-.rich-text-editor { width: 100%; margin-top: 5px; overflow: visible !important; position: relative; }
+
+.rich-text-editor-wrapper {
+  width: 100%;
+  position: relative;
+  overflow: hidden;
+}
+.rich-text-editor { width: 100%; margin-top: 5px; overflow: hidden !important; position: relative; }
 .quill-editor-bubble {
   width: 100%; background: #fff; border-radius: 8px; border: 1px solid #e2e8f0;
-  transition: border-color 0.3s ease; box-sizing: border-box; overflow: visible !important;
+  transition: border-color 0.3s ease; box-sizing: border-box; overflow: hidden !important;
+}
+
+.quill-editor-bubble .ql-container {
+  font-family: inherit;
+  font-size: 14px;
+  width: 100%;
+  box-sizing: border-box;
+  overflow: auto  !important;
+  min-height: 250px;
+  max-height: 400px;
 }
 .ql-bubble .ql-tooltip { z-index: 9999 !important; }
 .quill-editor-bubble:focus-within { border-color: #8E2139; box-shadow: 0 0 0 1px #8E2139; }
-.quill-editor-bubble .ql-container, .quill-editor-bubble .ql-editor { width: 100% !important; box-sizing: border-box !important; overflow: visible !important; }
-.quill-editor-bubble .ql-editor { min-height: 250px; font-size: 15px; padding: 16px; color: #333; word-break: break-word; white-space: normal; overflow-wrap: break-word; }
+.quill-editor-bubble .ql-container, 
+.quill-editor-bubble .ql-editor { 
+  width: 100% !important; 
+  box-sizing: border-box !important; 
+  overflow: auto !important;  /* ← Changed to auto */
+}.quill-editor-bubble .ql-editor {
+  min-height: 250px;
+  max-height: 500px;
+  font-size: 15px;
+  padding: 16px;
+  color: #333;
+  word-break: break-word;
+  white-space: pre-wrap;
+  overflow-wrap: break-word;
+  overflow-y: auto;
+  line-height: 1.6;
+  box-sizing: border-box;
+}
 .quill-editor-bubble .ql-editor.ql-blank::before { color: #94a3b8; font-style: normal; left: 16px; }
 .quill-editor-bubble .ql-editor p { margin-bottom: 10px; }
 .quill-editor-bubble .ql-editor ul, .quill-editor-bubble .ql-editor ol, .quill-editor-bubble .ql-editor blockquote { margin-left: 0; padding-left: 1.5em; margin-bottom: 10px; }
