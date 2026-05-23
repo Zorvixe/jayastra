@@ -39,10 +39,10 @@ const initRazorpay = async () => {
   try {
     const keyResult = await pool.query("SELECT value FROM settings WHERE key = 'razorpay_key_id'");
     const secretResult = await pool.query("SELECT value FROM settings WHERE key = 'razorpay_key_secret'");
-    
+
     const keyId = keyResult.rows[0]?.value;
     const keySecret = secretResult.rows[0]?.value;
-    
+
     if (keyId && keySecret && keyId !== '' && keySecret !== '') {
       razorpay = new Razorpay({
         key_id: keyId,
@@ -437,6 +437,14 @@ const initDatabase = async () => {
     await pool.query(`
       ALTER TABLE sub_categories 
       ADD COLUMN IF NOT EXISTS vendor_id INTEGER REFERENCES users(id) ON DELETE CASCADE;
+    `);
+
+    // Add this inside your initDatabase() function, after creating categories table
+    await pool.query(`
+      ALTER TABLE categories 
+      ADD COLUMN IF NOT EXISTS display_order INTEGER DEFAULT 0,
+      ADD COLUMN IF NOT EXISTS show_in_navbar BOOLEAN DEFAULT true,
+      ADD COLUMN IF NOT EXISTS nav_order INTEGER DEFAULT 0
     `);
 
     // 5. products
@@ -4153,13 +4161,13 @@ app.put("/api/settings", verifyToken, verifySuperAdmin, async (req, res) => {
         [key, settings[key].toString()]
       );
     }
-    
+
     // Re-initialize Razorpay if keys were updated
     await initRazorpay();
-    
+
     res.json({ success: true, message: "Settings updated successfully" });
-  } catch (err) { 
-    res.status(500).json({ error: err.message }); 
+  } catch (err) {
+    res.status(500).json({ error: err.message });
   }
 });
 
@@ -4787,6 +4795,105 @@ app.get("/api/admin/wallet-transactions", verifyToken, verifyAdminVendorIndividu
   } catch (err) {
     console.error("Wallet transactions error:", err);
     res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+// ================= NAVBAR CATEGORY MANAGEMENT =================
+
+// Get categories for navbar (with ordering)
+app.get("/api/navbar/categories", async (req, res) => {
+  try {
+    const result = await pool.query(
+      `SELECT id, name, slug, image_url, display_order, nav_order 
+       FROM categories 
+       WHERE is_active = true AND show_in_navbar = true 
+       ORDER BY nav_order ASC, display_order ASC, created_at ASC`
+    );
+    res.json({ success: true, categories: result.rows });
+  } catch (error) {
+    res.status(500).json({ success: false, message: "Failed to fetch navbar categories" });
+  }
+});
+
+// Admin: Get all categories for navbar management
+app.get("/api/admin/navbar/categories", verifyToken, verifyAdminOrSuperAdmin, async (req, res) => {
+  try {
+    const result = await pool.query(
+      `SELECT id, name, slug, is_active, show_in_navbar, nav_order, display_order
+       FROM categories 
+       ORDER BY nav_order ASC, display_order ASC, created_at DESC`
+    );
+    res.json({ success: true, categories: result.rows });
+  } catch (error) {
+    res.status(500).json({ success: false, message: "Failed to fetch categories" });
+  }
+});
+
+// Update navbar visibility for a category
+app.put("/api/admin/navbar/categories/:id/visibility", verifyToken, verifyAdminOrSuperAdmin, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { show_in_navbar } = req.body;
+    
+    const result = await pool.query(
+      `UPDATE categories SET show_in_navbar = $1, updated_at = NOW() 
+       WHERE id = $2 RETURNING *`,
+      [show_in_navbar, id]
+    );
+    
+    res.json({ success: true, category: result.rows[0] });
+  } catch (error) {
+    res.status(500).json({ success: false, message: "Failed to update visibility" });
+  }
+});
+
+// Update navbar order for all categories (bulk update)
+app.put("/api/admin/navbar/categories/reorder", verifyToken, verifyAdminOrSuperAdmin, async (req, res) => {
+  const client = await pool.connect();
+  try {
+    const { categories } = req.body; // [{ id: 1, nav_order: 0 }, { id: 2, nav_order: 1 }]
+    
+    await client.query("BEGIN");
+    
+    for (const cat of categories) {
+      await client.query(
+        `UPDATE categories SET nav_order = $1, updated_at = NOW() WHERE id = $2`,
+        [cat.nav_order, cat.id]
+      );
+    }
+    
+    await client.query("COMMIT");
+    res.json({ success: true, message: "Navbar order updated successfully" });
+  } catch (error) {
+    await client.query("ROLLBACK");
+    res.status(500).json({ success: false, message: "Failed to update order" });
+  } finally {
+    client.release();
+  }
+});
+
+// Toggle multiple categories navbar visibility
+app.post("/api/admin/navbar/categories/bulk-visibility", verifyToken, verifyAdminOrSuperAdmin, async (req, res) => {
+  const client = await pool.connect();
+  try {
+    const { categoryIds, show_in_navbar } = req.body;
+    
+    await client.query("BEGIN");
+    
+    for (const id of categoryIds) {
+      await client.query(
+        `UPDATE categories SET show_in_navbar = $1, updated_at = NOW() WHERE id = $2`,
+        [show_in_navbar, id]
+      );
+    }
+    
+    await client.query("COMMIT");
+    res.json({ success: true, message: "Bulk visibility updated successfully" });
+  } catch (error) {
+    await client.query("ROLLBACK");
+    res.status(500).json({ success: false, message: "Failed to update visibility" });
+  } finally {
+    client.release();
   }
 });
 

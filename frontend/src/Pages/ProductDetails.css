@@ -1530,3 +1530,116 @@
     transform: translate(-50%, -50%);
   }
 }
+/* Add these new styles to your existing ProductDetails.css file */
+
+/* ================= COLLAPSIBLE PRODUCT DETAILS ================= */
+.collapsible-details {
+  background: #fff;
+  border: 1px solid #f0f0f0;
+  border-radius: 16px;
+  margin-top: 20px;
+  overflow: hidden;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.03);
+}
+
+.collapsible-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 20px 24px;
+  cursor: pointer;
+  transition: background 0.2s ease;
+  background: #fff;
+}
+
+.collapsible-header:hover {
+  background: #fafafa;
+}
+
+.collapsible-header h4 {
+  font-family: 'Playfair Display', serif;
+  font-size: 1.2rem;
+  color: var(--maroon);
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.collapsible-header h4::before {
+  content: "";
+  display: inline-block;
+  width: 4px;
+  height: 20px;
+  background: var(--maroon);
+  border-radius: 2px;
+}
+
+.collapsible-header i {
+  font-size: 1.2rem;
+  color: #666;
+  transition: transform 0.3s ease;
+}
+
+.collapsible-content {
+  max-height: 0;
+  overflow: hidden;
+  transition: max-height 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  padding: 0 24px;
+}
+
+.collapsible-content.open {
+  max-height: 2000px; /* Large enough to accommodate content */
+  padding: 0 24px 24px 24px;
+}
+
+.collapsible-content .html-desc {
+  color: #444;
+  line-height: 1.8;
+  font-size: 1rem;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+  word-break: break-word;
+}
+
+.collapsible-content .html-desc p {
+  margin-bottom: 15px;
+}
+
+.collapsible-content .html-desc p:last-child {
+  margin-bottom: 0;
+}
+
+/* Mobile styles for collapsible */
+@media (max-width: 768px) {
+  .collapsible-header {
+    padding: 16px 20px;
+  }
+  
+  .collapsible-header h4 {
+    font-size: 1rem;
+  }
+  
+  .collapsible-content.open {
+    padding: 0 20px 20px 20px;
+  }
+  
+  .collapsible-content .html-desc {
+    font-size: 0.9rem;
+    line-height: 1.6;
+  }
+}
+
+@media (max-width: 480px) {
+  .collapsible-header {
+    padding: 14px 16px;
+  }
+  
+  .collapsible-content.open {
+    padding: 0 16px 16px 16px;
+  }
+  
+  .collapsible-content .html-desc {
+    font-size: 0.85rem;
+  }
+}

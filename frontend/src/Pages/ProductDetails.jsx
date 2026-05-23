@@ -170,6 +170,9 @@ const ProductDetails = () => {
   const [isNotifySuccess, setIsNotifySuccess] = useState(false);
   const [hasRequestedNotification, setHasRequestedNotification] = useState(false);
 
+  // Product Details Collapsible State
+  const [isDetailsOpen, setIsDetailsOpen] = useState(false);
+
   const getUserDisplayName = () => {
     if (!user) return "";
     if (user.name) return user.name;
@@ -746,9 +749,15 @@ const ProductDetails = () => {
                 <div className="feature"><i className="bi bi-patch-check"></i> Quality Assured</div>
               </div>
 
-              <div className="description-box">
-                <h4>Product Details</h4>
-                <div className="html-desc" dangerouslySetInnerHTML={{ __html: product.description || "<p>No description available.</p>" }} />
+              {/* Collapsible Product Details Section */}
+              <div className="collapsible-details">
+                <div className="collapsible-header" onClick={() => setIsDetailsOpen(!isDetailsOpen)}>
+                  <h4>Product Details</h4>
+                  <i className={`bi ${isDetailsOpen ? "bi-chevron-up" : "bi-chevron-down"}`}></i>
+                </div>
+                <div className={`collapsible-content ${isDetailsOpen ? "open" : ""}`}>
+                  <div className="html-desc" dangerouslySetInnerHTML={{ __html: product.description || "<p>No description available.</p>" }} />
+                </div>
               </div>
             </div>
           </div>

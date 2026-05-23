@@ -1,274 +1,210 @@
+// components/admin/Navigation.jsx
 import React, { useState, useEffect } from "react";
-import axios from '../utils/axiosConfig'; // Adjust path as needed
+import axios from "axios";
 import { toast } from "react-toastify";
+import { DragDropContext, Droppable, Draggable } from "react-beautiful-dnd";
 import "./Navigation.css";
 
 const API_URL = process.env.REACT_APP_API_URL;
 
 const Navigation = () => {
+  const [categories, setCategories] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
   const token = localStorage.getItem("token");
-  const [menus, setMenus] = useState([]);
-  const [selectedMenu, setSelectedMenu] = useState(null);
-  const [menuItems, setMenuItems] = useState([]);
-  const [loading, setLoading] = useState(false);
-
-  // Form states
-  const [newMenu, setNewMenu] = useState({ name: "", slug: "" });
-  const [newItem, setNewItem] = useState({ title: "", link: "", position: 0 });
-  const [editingItem, setEditingItem] = useState(null);
 
   useEffect(() => {
-    fetchMenus();
+    fetchCategories();
   }, []);
 
-  useEffect(() => {
-    if (selectedMenu) {
-      fetchMenuItems(selectedMenu.id);
-    }
-  }, [selectedMenu]);
-
-  const fetchMenus = async () => {
-    try {
-      const res = await axios.get(`${API_URL}/admin/menus`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      setMenus(res.data.menus);
-      if (res.data.menus.length > 0 && !selectedMenu) {
-        setSelectedMenu(res.data.menus[0]);
-      }
-    } catch (err) {
-      toast.error("Failed to load menus");
-    }
-  };
-
-  const fetchMenuItems = async (menuId) => {
+  const fetchCategories = async () => {
     try {
       setLoading(true);
-      const res = await axios.get(`${API_URL}/admin/menus/${menuId}/items`, {
+      const res = await axios.get(`${API_URL}/admin/navbar/categories`, {
         headers: { Authorization: `Bearer ${token}` }
       });
-      setMenuItems(res.data.items);
+      setCategories(res.data.categories);
     } catch (err) {
-      toast.error("Failed to load menu items");
+      toast.error("Failed to load categories");
     } finally {
       setLoading(false);
     }
   };
 
-  const handleCreateMenu = async (e) => {
-    e.preventDefault();
+  const handleDragEnd = (result) => {
+    if (!result.destination) return;
+    
+    const items = Array.from(categories);
+    const [reorderedItem] = items.splice(result.source.index, 1);
+    items.splice(result.destination.index, 0, reorderedItem);
+    
+    // Update nav_order for all items
+    const updatedItems = items.map((item, index) => ({
+      ...item,
+      nav_order: index
+    }));
+    
+    setCategories(updatedItems);
+  };
+
+  const handleSaveOrder = async () => {
     try {
-      const res = await axios.post(`${API_URL}/admin/menus`, newMenu, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      toast.success("Menu created successfully");
-      setNewMenu({ name: "", slug: "" });
-      fetchMenus();
+      setSaving(true);
+      const orderData = categories.map((cat, index) => ({
+        id: cat.id,
+        nav_order: index
+      }));
+      
+      await axios.put(`${API_URL}/admin/navbar/categories/reorder`, 
+        { categories: orderData },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      
+      toast.success("Navbar order saved successfully!");
     } catch (err) {
-      toast.error("Failed to create menu");
+      toast.error("Failed to save order");
+    } finally {
+      setSaving(false);
     }
   };
 
-  const handleDeleteMenu = async (id) => {
-    if (!window.confirm("Are you sure? This will delete all items in this menu.")) return;
+  const toggleVisibility = async (id, currentStatus) => {
     try {
-      await axios.delete(`${API_URL}/admin/menus/${id}`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      toast.success("Menu deleted");
-      if (selectedMenu?.id === id) setSelectedMenu(null);
-      fetchMenus();
+      const res = await axios.put(
+        `${API_URL}/admin/navbar/categories/${id}/visibility`,
+        { show_in_navbar: !currentStatus },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      
+      setCategories(categories.map(cat => 
+        cat.id === id ? { ...cat, show_in_navbar: !currentStatus } : cat
+      ));
+      
+      toast.success(`Category ${!currentStatus ? "shown" : "hidden"} in navbar`);
     } catch (err) {
-      toast.error("Failed to delete menu");
+      toast.error("Failed to update visibility");
     }
   };
 
-  const handleAddItem = async (e) => {
-    e.preventDefault();
+  const handleBulkVisibility = async (show) => {
+    const visibleCategories = categories.filter(cat => cat.show_in_navbar === !show);
+    if (visibleCategories.length === 0) {
+      toast.warning("No categories to update");
+      return;
+    }
+    
     try {
-      await axios.post(`${API_URL}/admin/menus/${selectedMenu.id}/items`, newItem, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      toast.success("Item added");
-      setNewItem({ title: "", link: "", position: menuItems.length + 1 });
-      fetchMenuItems(selectedMenu.id);
+      const categoryIds = visibleCategories.map(cat => cat.id);
+      await axios.post(
+        `${API_URL}/admin/navbar/categories/bulk-visibility`,
+        { categoryIds, show_in_navbar: show },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      
+      setCategories(categories.map(cat => 
+        categoryIds.includes(cat.id) ? { ...cat, show_in_navbar: show } : cat
+      ));
+      
+      toast.success(`${visibleCategories.length} categories ${show ? "shown" : "hidden"} in navbar`);
     } catch (err) {
-      toast.error("Failed to add item");
+      toast.error("Bulk update failed");
     }
   };
 
-  const handleUpdateItem = async (e) => {
-    e.preventDefault();
-    try {
-      await axios.put(`${API_URL}/admin/menu-items/${editingItem.id}`, editingItem, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      toast.success("Item updated");
-      setEditingItem(null);
-      fetchMenuItems(selectedMenu.id);
-    } catch (err) {
-      toast.error("Update failed");
-    }
-  };
+  if (loading) {
+    return <div className="navbar-manager-loading">Loading categories...</div>;
+  }
 
-  const handleDeleteItem = async (id) => {
-    try {
-      await axios.delete(`${API_URL}/admin/menu-items/${id}`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      toast.success("Item removed");
-      fetchMenuItems(selectedMenu.id);
-    } catch (err) {
-      toast.error("Delete failed");
-    }
-  };
+  const visibleCount = categories.filter(c => c.show_in_navbar).length;
+  const hiddenCount = categories.filter(c => !c.show_in_navbar).length;
 
   return (
-    <div className="navigation-container">
-      <div className="navigation-header">
-        <h2 className="page-title">Navigation & Menus</h2>
-        <p className="subtitle">Manage your website's main, footer, and sidebar links</p>
+    <div className="navbar-category-manager">
+      <div className="manager-header">
+        <div>
+          <h2>Navigation Menu Manager</h2>
+          <p className="subtitle">Control which categories appear in your navbar and their order</p>
+        </div>
+        <div className="header-stats">
+          <span className="stat-badge visible">Visible: {visibleCount}</span>
+          <span className="stat-badge hidden">Hidden: {hiddenCount}</span>
+        </div>
       </div>
 
-      <div className="navigation-grid">
-        {/* LEFT: MENU LIST */}
-        <div className="menu-list-card">
-          <div className="card-header">
-            <h4>Menus</h4>
-          </div>
-          <div className="menus-stack">
-            {menus.map(m => (
-              <div 
-                key={m.id} 
-                className={`menu-pill ${selectedMenu?.id === m.id ? 'active' : ''}`}
-                onClick={() => setSelectedMenu(m)}
-              >
-                <div className="pill-content">
-                    <span className="m-name">{m.name}</span>
-                    <span className="m-slug">/{m.slug}</span>
-                </div>
-                <button className="del-m-btn" onClick={(e) => { e.stopPropagation(); handleDeleteMenu(m.id); }}>✕</button>
-              </div>
-            ))}
-          </div>
+      <div className="bulk-actions">
+        <button onClick={() => handleBulkVisibility(true)} className="bulk-show-btn">
+          <i className="bi bi-eye"></i> Show All
+        </button>
+        <button onClick={() => handleBulkVisibility(false)} className="bulk-hide-btn">
+          <i className="bi bi-eye-slash"></i> Hide All
+        </button>
+        <button onClick={handleSaveOrder} className="save-order-btn" disabled={saving}>
+          {saving ? <i className="bi bi-hourglass-split"></i> : <i className="bi bi-check-lg"></i>}
+          {saving ? "Saving..." : "Save Order"}
+        </button>
+      </div>
 
-          <form className="add-menu-form" onSubmit={handleCreateMenu}>
-            <h5>Create New Menu</h5>
-            <input 
-              type="text" 
-              placeholder="e.g. Main Menu" 
-              value={newMenu.name}
-              onChange={(e) => setNewMenu({...newMenu, name: e.target.value})}
-              required
-            />
-            <input 
-              type="text" 
-              placeholder="e.g. main-menu" 
-              value={newMenu.slug}
-              onChange={(e) => setNewMenu({...newMenu, slug: e.target.value})}
-              required
-            />
-            <button type="submit" className="confirm-btn">Create</button>
-          </form>
-        </div>
-
-        {/* RIGHT: MENU ITEMS */}
-        <div className="menu-items-card">
-          {selectedMenu ? (
-            <>
-              <div className="card-header items-header">
-                <h4>Items in "{selectedMenu.name}"</h4>
-                <div className="header-actions">
-                    <button className="reorder-btn" onClick={() => fetchMenuItems(selectedMenu.id)}>
-                      <i className="bi bi-arrow-repeat"></i> Refresh
-                    </button>
-                </div>
-              </div>
-
-              <div className="items-list">
-                {loading ? (
-                  <div className="loader">Loading items...</div>
-                ) : menuItems.length === 0 ? (
-                  <div className="empty-items">No items in this menu yet. Add your first link below!</div>
-                ) : (
-                  <div className="items-stack">
-                    {menuItems.map(item => (
-                      <div key={item.id} className="item-row">
-                        <div className="item-details">
-                          <span className="item-title">{item.title}</span>
-                          <code className="item-link">{item.link}</code>
-                        </div>
-                        <div className="item-actions">
-                          <button className="edit-i-btn" onClick={() => setEditingItem(item)}>✏️</button>
-                          <button className="del-i-btn" onClick={() => handleDeleteItem(item.id)}>🗑</button>
-                        </div>
+      <DragDropContext onDragEnd={handleDragEnd}>
+        <Droppable droppableId="categories">
+          {(provided) => (
+            <div
+              {...provided.droppableProps}
+              ref={provided.innerRef}
+              className="categories-list"
+            >
+              {categories.map((category, index) => (
+                <Draggable key={category.id} draggableId={String(category.id)} index={index}>
+                  {(provided, snapshot) => (
+                    <div
+                      ref={provided.innerRef}
+                      {...provided.draggableProps}
+                      className={`category-item ${snapshot.isDragging ? "dragging" : ""} ${!category.show_in_navbar ? "hidden" : ""}`}
+                    >
+                      <div className="drag-handle" {...provided.dragHandleProps}>
+                        <i className="bi bi-grip-vertical"></i>
                       </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-
-              {/* MODAL FOR EDITING */}
-              {editingItem && (
-                <div className="item-edit-overlay">
-                    <div className="edit-modal">
-                        <h3>Edit Menu Item</h3>
-                        <div className="form-group">
-                            <label>Title</label>
-                            <input 
-                                type="text" 
-                                value={editingItem.title} 
-                                onChange={(e) => setEditingItem({...editingItem, title: e.target.value})}
-                            />
-                        </div>
-                        <div className="form-group">
-                            <label>Link (URL)</label>
-                            <input 
-                                type="text" 
-                                value={editingItem.link} 
-                                onChange={(e) => setEditingItem({...editingItem, link: e.target.value})}
-                            />
-                        </div>
-                        <div className="form-group">
-                            <label>Position</label>
-                            <input 
-                                type="number" 
-                                value={editingItem.position} 
-                                onChange={(e) => setEditingItem({...editingItem, position: parseInt(e.target.value)})}
-                            />
-                        </div>
-                        <div className="modal-actions">
-                            <button className="save-m-btn" onClick={handleUpdateItem}>Save Changes</button>
-                            <button className="cancel-m-btn" onClick={() => setEditingItem(null)}>Cancel</button>
-                        </div>
+                      <div className="category-info">
+                        <div className="category-name">{category.name}</div>
+                        <div className="category-slug">/{category.slug || category.name.toLowerCase().replace(/\s+/g, '-')}</div>
+                      </div>
+                      <div className="category-actions">
+                        <button
+                          onClick={() => toggleVisibility(category.id, category.show_in_navbar)}
+                          className={`visibility-toggle ${category.show_in_navbar ? "visible" : "hidden"}`}
+                          title={category.show_in_navbar ? "Hide from navbar" : "Show in navbar"}
+                        >
+                          <i className={`bi bi-eye${category.show_in_navbar ? "" : "-slash"}`}></i>
+                        </button>
+                        <div className="order-number">#{index + 1}</div>
+                      </div>
                     </div>
-                </div>
-              )}
-
-              <form className="add-item-bar" onSubmit={handleAddItem}>
-                <h5>Add Link</h5>
-                <div className="bar-row">
-                    <input 
-                        type="text" 
-                        placeholder="Link Title (e.g. All Sarees)" 
-                        value={newItem.title}
-                        onChange={(e) => setNewItem({...newItem, title: e.target.value})}
-                        required
-                    />
-                    <input 
-                        type="text" 
-                        placeholder="URL (e.g. /shop/all)" 
-                        value={newItem.link}
-                        onChange={(e) => setNewItem({...newItem, link: e.target.value})}
-                        required
-                    />
-                    <button type="submit" className="add-btn">+ Add Item</button>
-                </div>
-              </form>
-            </>
-          ) : (
-            <div className="select-prompt">Please select or create a menu from the left to manage items.</div>
+                  )}
+                </Draggable>
+              ))}
+              {provided.placeholder}
+            </div>
           )}
+        </Droppable>
+      </DragDropContext>
+
+      <div className="manager-footer">
+        <div className="preview-section">
+          <h4>Live Preview:</h4>
+          <div className="navbar-preview">
+            {categories.filter(c => c.show_in_navbar).slice(0, 8).map((cat, idx) => (
+              <span key={cat.id} className="preview-item">
+                {cat.name}
+                {idx < categories.filter(c => c.show_in_navbar).slice(0, 8).length - 1 && " • "}
+              </span>
+            ))}
+            {categories.filter(c => c.show_in_navbar).length > 8 && (
+              <span className="preview-more">+{categories.filter(c => c.show_in_navbar).length - 8} more</span>
+            )}
+          </div>
+        </div>
+        <div className="help-text">
+          <i className="bi bi-info-circle"></i>
+          Drag and drop to reorder categories. Only visible categories will appear in the navbar.
         </div>
       </div>
     </div>
