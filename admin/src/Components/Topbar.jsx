@@ -27,6 +27,7 @@ const Topbar = ({ toggleSidebar, isSidebarCollapsed }) => {
   const [walletBalance, setWalletBalance] = useState(0);
   const [platformRevenue, setPlatformRevenue] = useState(0);
   const [loadingBalance, setLoadingBalance] = useState(true);
+  const [refreshingBalance, setRefreshingBalance] = useState(false);
   const [userRole, setUserRole] = useState(null);
   const [isMobile, setIsMobile] = useState(false);
 
@@ -54,8 +55,6 @@ const Topbar = ({ toggleSidebar, isSidebarCollapsed }) => {
     window.addEventListener('resize', checkMobile);
     return () => window.removeEventListener('resize', checkMobile);
   }, []);
-
-
 
   // Get user role from localStorage
   useEffect(() => {
@@ -94,13 +93,14 @@ const Topbar = ({ toggleSidebar, isSidebarCollapsed }) => {
   }, [token]);
 
   // Fetch wallet balance for vendor/admin
-  const fetchWalletBalance = async () => {
+  const fetchWalletBalance = async (showRefreshLoader = false) => {
     if (!checkTokenAndRedirect()) return;
-
     if (!token) return;
 
     try {
-      setLoadingBalance(true);
+      if (showRefreshLoader) {
+        setRefreshingBalance(true);
+      }
       const res = await axios.get(`${REACT_APP_API_URL}/admin/payouts`, {
         headers: { Authorization: `Bearer ${token}` }
       });
@@ -110,18 +110,22 @@ const Topbar = ({ toggleSidebar, isSidebarCollapsed }) => {
     } catch (error) {
       console.error("Failed to fetch wallet balance:", error);
     } finally {
+      if (showRefreshLoader) {
+        setRefreshingBalance(false);
+      }
       setLoadingBalance(false);
     }
   };
 
   // Fetch platform revenue for super admin
-  const fetchPlatformRevenue = async () => {
+  const fetchPlatformRevenue = async (showRefreshLoader = false) => {
     if (!checkTokenAndRedirect()) return;
-
     if (!token || userRole !== 'super_admin') return;
 
     try {
-      setLoadingBalance(true);
+      if (showRefreshLoader) {
+        setRefreshingBalance(true);
+      }
       const res = await axios.get(`${REACT_APP_API_URL}/admin/payouts`, {
         headers: { Authorization: `Bearer ${token}` }
       });
@@ -150,24 +154,23 @@ const Topbar = ({ toggleSidebar, isSidebarCollapsed }) => {
     } catch (error) {
       console.error("Failed to fetch platform revenue:", error);
     } finally {
+      if (showRefreshLoader) {
+        setRefreshingBalance(false);
+      }
       setLoadingBalance(false);
     }
   };
 
-  // Fetch balance on mount and periodically
+  // Fetch balance on mount only (no automatic periodic updates)
   useEffect(() => {
     if (userRole === 'super_admin') {
-      fetchPlatformRevenue();
-      const interval = setInterval(fetchPlatformRevenue, 30000);
-      return () => clearInterval(interval);
+      fetchPlatformRevenue(true);
     } else {
-      fetchWalletBalance();
-      const interval = setInterval(fetchWalletBalance, 30000);
-      return () => clearInterval(interval);
+      fetchWalletBalance(true);
     }
   }, [token, userRole]);
 
-  // Socket.io for new order notifications
+  // Socket.io for new order notifications (no auto balance refresh)
   useEffect(() => {
     const socket = io(SOCKET_URL);
 
@@ -188,12 +191,6 @@ const Topbar = ({ toggleSidebar, isSidebarCollapsed }) => {
 
       if (audioRef.current) {
         audioRef.current.play().catch(e => console.log("Audio play blocked", e));
-      }
-
-      if (userRole === 'super_admin') {
-        fetchPlatformRevenue();
-      } else {
-        fetchWalletBalance();
       }
     });
 
@@ -262,8 +259,21 @@ const Topbar = ({ toggleSidebar, isSidebarCollapsed }) => {
     }
   };
 
+  // Handle manual refresh with loader
+  const handleManualRefresh = (e) => {
+    e.stopPropagation();
+    if (showPlatformRevenue) {
+      fetchPlatformRevenue(true);
+    } else {
+      fetchWalletBalance(true);
+    }
+  };
+
   // Get current balance value
   const currentBalance = showPlatformRevenue ? platformRevenue : walletBalance;
+
+  // Determine if we should show the main loader (only on initial load)
+  const showMainLoader = loadingBalance && !refreshingBalance;
 
   return (
     <div className={`admin-topbar ${isSidebarCollapsed ? 'collapsed' : ''}`}>
@@ -286,7 +296,7 @@ const Topbar = ({ toggleSidebar, isSidebarCollapsed }) => {
             <div className="wallet-info">
               <span className="wallet-label">Wallet Balance</span>
               <span className="wallet-amount">
-                {loadingBalance ? (
+                {showMainLoader ? (
                   <div className="mini-loader"></div>
                 ) : (
                   formatCurrency(walletBalance)
@@ -295,10 +305,11 @@ const Topbar = ({ toggleSidebar, isSidebarCollapsed }) => {
             </div>
             <button
               className="wallet-refresh-btn"
-              onClick={(e) => { e.stopPropagation(); fetchWalletBalance(); }}
+              onClick={handleManualRefresh}
               title="Refresh balance"
+              disabled={refreshingBalance}
             >
-              <i className="bi bi-arrow-repeat"></i>
+              <i className={`bi ${refreshingBalance ? 'bi-arrow-repeat spinner' : 'bi-arrow-repeat'}`}></i>
             </button>
           </div>
         </div>
@@ -314,7 +325,7 @@ const Topbar = ({ toggleSidebar, isSidebarCollapsed }) => {
             <div className="wallet-info">
               <span className="wallet-label">Platform Revenue</span>
               <span className="wallet-amount">
-                {loadingBalance ? (
+                {showMainLoader ? (
                   <div className="mini-loader"></div>
                 ) : (
                   formatCurrency(platformRevenue)
@@ -323,10 +334,11 @@ const Topbar = ({ toggleSidebar, isSidebarCollapsed }) => {
             </div>
             <button
               className="wallet-refresh-btn"
-              onClick={(e) => { e.stopPropagation(); fetchPlatformRevenue(); }}
+              onClick={handleManualRefresh}
               title="Refresh revenue"
+              disabled={refreshingBalance}
             >
-              <i className="bi bi-arrow-repeat"></i>
+              <i className={`bi ${refreshingBalance ? 'bi-arrow-repeat spinner' : 'bi-arrow-repeat'}`}></i>
             </button>
           </div>
         </div>
@@ -451,8 +463,6 @@ const Topbar = ({ toggleSidebar, isSidebarCollapsed }) => {
                     <span>My Wallet</span>
                   </div>
                 )}
-
-               
               </div>
 
               <div className="dropdown-divider"></div>
@@ -481,7 +491,7 @@ const Topbar = ({ toggleSidebar, isSidebarCollapsed }) => {
                 <i className="bi bi-wallet2"></i>
               </div>
               <div className="mobile-wallet-amount">
-                {loadingBalance ? (
+                {refreshingBalance ? (
                   <div className="mini-loader"></div>
                 ) : (
                   formatCurrency(currentBalance)
@@ -492,15 +502,10 @@ const Topbar = ({ toggleSidebar, isSidebarCollapsed }) => {
               </div>
               <button
                 className="mobile-wallet-refresh"
-                onClick={() => {
-                  if (showPlatformRevenue) {
-                    fetchPlatformRevenue();
-                  } else {
-                    fetchWalletBalance();
-                  }
-                }}
+                onClick={handleManualRefresh}
+                disabled={refreshingBalance}
               >
-                <i className="bi bi-arrow-repeat"></i> Refresh
+                <i className={`bi ${refreshingBalance ? 'bi-arrow-repeat spinner' : 'bi-arrow-repeat'}`}></i> Refresh
               </button>
             </div>
           </div>

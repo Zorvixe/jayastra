@@ -801,3 +801,38 @@
     transform: translateY(0);
   }
 }
+
+/* Add this to your Topbar.css file */
+
+/* Spinner animation for refresh button */
+.wallet-refresh-btn .spinner,
+.mobile-wallet-refresh .spinner {
+  animation: spin 0.6s linear infinite;
+  display: inline-block;
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Disabled refresh button style */
+.wallet-refresh-btn:disabled,
+.mobile-wallet-refresh:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.wallet-refresh-btn:disabled:hover {
+  transform: none;
+  background: none;
+}
+
+/* Ensure the refresh button doesn't rotate on hover when disabled */
+.wallet-refresh-btn:disabled .bi-arrow-repeat {
+  transform: none;
+}
