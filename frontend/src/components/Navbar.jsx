@@ -70,31 +70,27 @@ const Navbar = () => {
     }, 1000);
   };
 
-  // Fetch categories
-  // Update the Navbar component to fetch categories from the new endpoint
-
-  // Replace the existing useEffect that fetches categories with this:
-
-  useEffect(() => {
-    const fetchNavbarCategories = async () => {
-      try {
-        const response = await axios.get(`${API_URL}/navbar/categories`);
-        if (response.data.success) {
-          setCategories(response.data.categories);
-        } else {
-          // Fallback to regular categories if navbar endpoint fails
-          const data = await getCategories();
-          setCategories(data || []);
-        }
-      } catch (error) {
-        console.error("Error fetching navbar categories:", error);
-        // Fallback to regular categories
+ // In Navbar.jsx, replace the categories fetch with:
+useEffect(() => {
+  const fetchNavbarCategories = async () => {
+    try {
+      // Use public endpoint for navbar display
+      const response = await axios.get(`${API_URL}/public/navbar/categories`);
+      if (response.data.success) {
+        setCategories(response.data.categories);
+      } else {
+        // Fallback
         const data = await getCategories();
         setCategories(data || []);
       }
-    };
-    fetchNavbarCategories();
-  }, []);
+    } catch (error) {
+      console.error("Error fetching navbar categories:", error);
+      const data = await getCategories();
+      setCategories(data || []);
+    }
+  };
+  fetchNavbarCategories();
+}, []);
 
   // Fetch coupons
   useEffect(() => {

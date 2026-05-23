@@ -421,6 +421,8 @@ const initDatabase = async () => {
       ADD COLUMN IF NOT EXISTS vendor_id INTEGER REFERENCES users(id) ON DELETE CASCADE;
     `);
 
+    await pool.query(`ALTER TABLE categories ADD COLUMN IF NOT EXISTS slug VARCHAR(255) UNIQUE;`);
+
     // 4. sub_categories
     await pool.query(`
       CREATE TABLE IF NOT EXISTS sub_categories (
@@ -1623,6 +1625,8 @@ app.post("/api/admin/categories", verifyToken, verifyAdminVendorIndividualAccess
   }
 });
 
+
+
 app.get("/api/categories", async (req, res) => {
   try {
     const result = await pool.query("SELECT * FROM categories WHERE is_active=true ORDER BY display_order ASC, created_at DESC");
@@ -1723,6 +1727,36 @@ app.delete("/api/admin/categories/:id", verifyToken, verifyAdminVendorIndividual
     res.json({ success: true, message: "Category deleted" });
   } catch (error) {
     res.status(500).json({ error: "Delete failed" });
+  }
+});
+
+// Add this endpoint to generate slugs for existing categories
+app.post("/api/admin/categories/generate-slugs", verifyToken, verifySuperAdmin, async (req, res) => {
+  try {
+    const categories = await pool.query("SELECT id, name FROM categories WHERE slug IS NULL");
+    
+    for (const cat of categories.rows) {
+      const slug = cat.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+      await pool.query("UPDATE categories SET slug = $1 WHERE id = $2", [slug, cat.id]);
+    }
+    
+    res.json({ success: true, message: `Updated ${categories.rows.length} categories` });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});// Public endpoint for navbar (no auth required)
+app.get("/api/public/navbar/categories", async (req, res) => {
+  try {
+    const result = await pool.query(
+      `SELECT id, name, slug, image_url 
+       FROM categories 
+       WHERE is_active = true AND show_in_navbar = true 
+       ORDER BY nav_order ASC, display_order ASC`
+    );
+    res.json({ success: true, categories: result.rows });
+  } catch (error) {
+    console.error("Error fetching public navbar categories:", error);
+    res.status(500).json({ success: false, message: "Failed to fetch categories" });
   }
 });
 
@@ -4816,6 +4850,7 @@ app.get("/api/navbar/categories", async (req, res) => {
 });
 
 // Admin: Get all categories for navbar management
+// Admin: Get all categories for navbar management
 app.get("/api/admin/navbar/categories", verifyToken, verifyAdminOrSuperAdmin, async (req, res) => {
   try {
     const result = await pool.query(
@@ -4825,6 +4860,7 @@ app.get("/api/admin/navbar/categories", verifyToken, verifyAdminOrSuperAdmin, as
     );
     res.json({ success: true, categories: result.rows });
   } catch (error) {
+    console.error("Error fetching navbar categories:", error);
     res.status(500).json({ success: false, message: "Failed to fetch categories" });
   }
 });

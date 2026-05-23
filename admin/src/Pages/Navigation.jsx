@@ -20,12 +20,36 @@ const Navigation = () => {
   const fetchCategories = async () => {
     try {
       setLoading(true);
+      const token = localStorage.getItem("token");
+
+      if (!token) {
+        toast.error("Please login to manage navigation");
+        setLoading(false);
+        return;
+      }
+
       const res = await axios.get(`${API_URL}/admin/navbar/categories`, {
-        headers: { Authorization: `Bearer ${token}` }
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
       });
-      setCategories(res.data.categories);
+
+      if (res.data.success) {
+        setCategories(res.data.categories);
+      } else {
+        toast.error(res.data.message || "Failed to load categories");
+      }
     } catch (err) {
-      toast.error("Failed to load categories");
+      console.error("Fetch categories error:", err);
+      if (err.response?.status === 401) {
+        toast.error("Session expired. Please login again.");
+        // Optionally redirect to login
+      } else if (err.response?.status === 403) {
+        toast.error("You don't have permission to manage navigation");
+      } else {
+        toast.error(err.response?.data?.message || "Failed to load categories");
+      }
     } finally {
       setLoading(false);
     }
@@ -33,17 +57,17 @@ const Navigation = () => {
 
   const handleDragEnd = (result) => {
     if (!result.destination) return;
-    
+
     const items = Array.from(categories);
     const [reorderedItem] = items.splice(result.source.index, 1);
     items.splice(result.destination.index, 0, reorderedItem);
-    
+
     // Update nav_order for all items
     const updatedItems = items.map((item, index) => ({
       ...item,
       nav_order: index
     }));
-    
+
     setCategories(updatedItems);
   };
 
@@ -54,12 +78,12 @@ const Navigation = () => {
         id: cat.id,
         nav_order: index
       }));
-      
-      await axios.put(`${API_URL}/admin/navbar/categories/reorder`, 
+
+      await axios.put(`${API_URL}/admin/navbar/categories/reorder`,
         { categories: orderData },
         { headers: { Authorization: `Bearer ${token}` } }
       );
-      
+
       toast.success("Navbar order saved successfully!");
     } catch (err) {
       toast.error("Failed to save order");
@@ -75,11 +99,11 @@ const Navigation = () => {
         { show_in_navbar: !currentStatus },
         { headers: { Authorization: `Bearer ${token}` } }
       );
-      
-      setCategories(categories.map(cat => 
+
+      setCategories(categories.map(cat =>
         cat.id === id ? { ...cat, show_in_navbar: !currentStatus } : cat
       ));
-      
+
       toast.success(`Category ${!currentStatus ? "shown" : "hidden"} in navbar`);
     } catch (err) {
       toast.error("Failed to update visibility");
@@ -92,7 +116,7 @@ const Navigation = () => {
       toast.warning("No categories to update");
       return;
     }
-    
+
     try {
       const categoryIds = visibleCategories.map(cat => cat.id);
       await axios.post(
@@ -100,11 +124,11 @@ const Navigation = () => {
         { categoryIds, show_in_navbar: show },
         { headers: { Authorization: `Bearer ${token}` } }
       );
-      
-      setCategories(categories.map(cat => 
+
+      setCategories(categories.map(cat =>
         categoryIds.includes(cat.id) ? { ...cat, show_in_navbar: show } : cat
       ));
-      
+
       toast.success(`${visibleCategories.length} categories ${show ? "shown" : "hidden"} in navbar`);
     } catch (err) {
       toast.error("Bulk update failed");
