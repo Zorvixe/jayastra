@@ -51,7 +51,6 @@ const initRazorpay = async () => {
       console.log("✅ Razorpay initialized with admin credentials");
     } else {
       razorpay = null;
-      console.warn("⚠️ Razorpay credentials not configured in admin settings");
     }
   } catch (err) {
     console.error("Failed to initialize Razorpay:", err);

@@ -15,6 +15,11 @@
   padding: 20px;
 }
 
+.logo-img-invoice{
+  width: 150px;
+  height: auto;
+}
+
 .invoice-modal-container {
   background: #f8fafc;
   border-radius: 20px;

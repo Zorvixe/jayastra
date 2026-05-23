@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import axios from '../../utils/axiosConfig'; // Adjust path as needed
+import axios from '../../utils/axiosConfig';
 import { toast } from "react-toastify";
 import WithdrawalInvoice from "./WithdrawalInvoice";
 import "./Payouts.css";
@@ -26,6 +26,8 @@ const TransactionDetailsModal = ({ transaction, onClose }) => {
       minute: '2-digit'
     });
   };
+
+ 
 
   const getTransactionIcon = (type, status) => {
     if (type === 'credit') return 'bi-arrow-down-circle-fill';
@@ -55,8 +57,8 @@ const TransactionDetailsModal = ({ transaction, onClose }) => {
       <div className="invoice-modal-container" style={{ maxWidth: '550px' }} onClick={(e) => e.stopPropagation()}>
         <div className="invoice-modal-header">
           <h3>
-            <i className={`bi ${getTransactionIcon(transaction.transaction_type, transaction.status)}`} 
-               style={{ color: getTransactionColor(transaction.transaction_type, transaction.status) }}></i>
+            <i className={`bi ${getTransactionIcon(transaction.transaction_type, transaction.status)}`}
+              style={{ color: getTransactionColor(transaction.transaction_type, transaction.status) }}></i>
             Transaction Details
           </h3>
           <div className="invoice-modal-actions">
@@ -65,7 +67,7 @@ const TransactionDetailsModal = ({ transaction, onClose }) => {
             </button>
           </div>
         </div>
-        
+
         <div className="invoice-modal-content" style={{ padding: '20px' }}>
           <div className="transaction-details-card">
             <div className={`transaction-status-banner ${transaction.status}`}>
@@ -170,13 +172,141 @@ const TransactionDetailsModal = ({ transaction, onClose }) => {
   );
 };
 
+// Confirm Modal Component
+const ConfirmModal = ({ isOpen, onClose, onConfirm, title, message, confirmText = "Confirm", cancelText = "Cancel", confirmVariant = "danger" }) => {
+  if (!isOpen) return null;
+
+  return (
+    <div className="modal-overlay" onClick={onClose}>
+      <div className="modal-container" onClick={(e) => e.stopPropagation()}>
+        <div className="modal-header">
+          <h3>{title}</h3>
+          <button className="modal-close" onClick={onClose}>✕</button>
+        </div>
+        <div className="modal-body">
+          <p style={{ marginBottom: '20px', lineHeight: '1.5' }}>{message}</p>
+          <div className="warning-note" style={{ marginTop: '0' }}>
+            <i className="bi bi-exclamation-triangle-fill"></i>
+            <span>This action cannot be undone.</span>
+          </div>
+        </div>
+        <div className="modal-footer">
+          <button type="button" className="btn-cancel" onClick={onClose}>
+            {cancelText}
+          </button>
+          <button
+            type="button"
+            className={`btn-${confirmVariant === 'danger' ? 'danger' : 'submit-payout'}`}
+            onClick={onConfirm}
+          >
+            {confirmText}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// Reject Modal Component
+const RejectModal = ({ isOpen, onClose, onConfirm, payoutId }) => {
+  const [reason, setReason] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+
+  if (!isOpen) return null;
+
+  const handleSubmit = async () => {
+    if (!reason.trim()) {
+      toast.error("Please provide a reason for rejection");
+      return;
+    }
+    setSubmitting(true);
+    await onConfirm(payoutId, reason);
+    setSubmitting(false);
+    setReason("");
+    onClose();
+  };
+
+  return (
+    <div className="modal-overlay" onClick={onClose}>
+      <div className="modal-container" onClick={(e) => e.stopPropagation()}>
+        <div className="modal-header">
+          <h3>Reject Withdrawal Request</h3>
+          <button className="modal-close" onClick={onClose}>✕</button>
+        </div>
+        <div className="modal-body">
+          <div className="form-group">
+            <label>Reason for Rejection *</label>
+            <textarea
+              value={reason}
+              onChange={e => setReason(e.target.value)}
+              placeholder="Please provide a reason for rejecting this withdrawal request..."
+              rows="4"
+              required
+            ></textarea>
+          </div>
+          <div className="warning-note" style={{ marginTop: '0' }}>
+            <i className="bi bi-exclamation-triangle-fill"></i>
+            <span>The amount will be credited back to the vendor's wallet.</span>
+          </div>
+        </div>
+        <div className="modal-footer">
+          <button type="button" className="btn-cancel" onClick={onClose}>
+            Cancel
+          </button>
+          <button type="button" className="btn-danger" onClick={handleSubmit} disabled={submitting}>
+            {submitting ? (
+              <>
+                <span className="btn-spinner"></span> Processing...
+              </>
+            ) : (
+              "Confirm Rejection"
+            )}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// Delete Bank Account Modal
+const DeleteBankModal = ({ isOpen, onClose, onConfirm, accountId }) => {
+  if (!isOpen) return null;
+
+  return (
+    <div className="modal-overlay" onClick={onClose}>
+      <div className="modal-container" onClick={(e) => e.stopPropagation()}>
+        <div className="modal-header">
+          <h3>Delete Bank Account</h3>
+          <button className="modal-close" onClick={onClose}>✕</button>
+        </div>
+        <div className="modal-body">
+          <p style={{ marginBottom: '20px', lineHeight: '1.5' }}>
+            Are you sure you want to delete this saved bank account?
+          </p>
+          <div className="warning-note" style={{ marginTop: '0' }}>
+            <i className="bi bi-exclamation-triangle-fill"></i>
+            <span>This action cannot be undone.</span>
+          </div>
+        </div>
+        <div className="modal-footer">
+          <button type="button" className="btn-cancel" onClick={onClose}>
+            Cancel
+          </button>
+          <button type="button" className="btn-danger" onClick={() => onConfirm(accountId)}>
+            Delete
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 const Payouts = () => {
   // Navigation & UI States
   const [activeMenu, setActiveMenu] = useState("settlement");
   const [walletTab, setWalletTab] = useState("all");
   const [settlementTab, setSettlementTab] = useState("all");
   const [showWithdrawModal, setShowWithdrawModal] = useState(false);
-  const [showFilters, setShowFilters] = useState(false);
   const [selectedBankAccount, setSelectedBankAccount] = useState("");
   const [showCancelModal, setShowCancelModal] = useState(false);
   const [selectedPayoutForCancel, setSelectedPayoutForCancel] = useState(null);
@@ -184,6 +314,13 @@ const Payouts = () => {
   const [selectedPayoutForInvoice, setSelectedPayoutForInvoice] = useState(null);
   const [selectedTransaction, setSelectedTransaction] = useState(null);
   const [isInitialLoad, setIsInitialLoad] = useState(true);
+
+  // Modal States
+  const [showApproveModal, setShowApproveModal] = useState(false);
+  const [showRejectModal, setShowRejectModal] = useState(false);
+  const [selectedPayoutId, setSelectedPayoutId] = useState(null);
+  const [showDeleteBankModal, setShowDeleteBankModal] = useState(false);
+  const [accountToDelete, setAccountToDelete] = useState(null);
 
   // Data States
   const [payouts, setPayouts] = useState([]);
@@ -227,6 +364,28 @@ const Payouts = () => {
     return isNaN(parsed) ? 0 : parsed;
   };
 
+  // Format date and time for display
+  const formatDateTime = (date) => {
+    if (!date) return '-';
+
+    try {
+      const parsedDate = new Date(date);
+
+      return parsedDate.toLocaleString('en-IN', {
+        timeZone: 'Asia/Kolkata',
+        day: '2-digit',
+        month: 'short',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+        hour12: true
+      });
+    } catch (err) {
+      return '-';
+    }
+  };
+
   // Fetch wallet transactions
   const fetchWalletTransactions = async () => {
     try {
@@ -247,21 +406,52 @@ const Payouts = () => {
     try {
       setLoading(true);
       const res = await axios.get(`${API_URL}/admin/payouts`, getHeaders());
-      setPayouts(res.data.payouts || []);
+
+      const mappedPayouts = (res.data.payouts || []).map(p => ({
+        ...p,
+        id: p.id,
+        amount: safeParseAmount(p.amount),
+        bank_details:
+          p.bank_details ||
+          p.bankDetails ||
+          p.bank_account ||
+          p.account_details ||
+          '',
+
+        bankDetails:
+          p.bank_details ||
+          p.bankDetails ||
+          p.bank_account ||
+          p.account_details ||
+          '',
+        status: p.status || 'Pending',
+        requested_at: p.requested_at || p.created_at,
+        processed_at: p.processed_at || p.updated_at,
+        updated_at: p.updated_at,
+        store_name: p.store_name,
+        vendor_name: p.vendor_name || p.name,
+        vendor_email: p.vendor_email || p.email,
+        vendor_phone: p.vendor_phone || p.phone,
+        rejection_reason: p.rejection_reason,
+        cancellation_reason: p.cancellation_reason
+      }));
+
+      setPayouts(mappedPayouts);
       setBalance(safeParseAmount(res.data.balance || 0));
 
-      if (userRole === "super_admin" && res.data.payouts) {
+      if (userRole === "super_admin" && mappedPayouts) {
         const vendorMap = new Map();
-        res.data.payouts.forEach(p => {
+        mappedPayouts.forEach(p => {
           const vendorId = p.vendor_id;
-          const vendorName = p.store_name || p.email || `Vendor ${vendorId}`;
+          const vendorName = p.store_name || p.vendor_name || p.email || `Vendor ${vendorId}`;
           if (!vendorMap.has(vendorId)) {
-            vendorMap.set(vendorId, { id: vendorId, name: vendorName, email: p.email });
+            vendorMap.set(vendorId, { id: vendorId, name: vendorName, email: p.vendor_email });
           }
         });
         setVendors(Array.from(vendorMap.values()));
       }
     } catch (err) {
+      console.error("Failed to load payout data:", err);
       toast.error("Failed to load payout data");
     } finally {
       setLoading(false);
@@ -440,7 +630,6 @@ const Payouts = () => {
   };
 
   const handleDeleteBankAccount = async (accountId) => {
-    if (!window.confirm("Are you sure you want to delete this saved bank account?")) return;
     try {
       await axios.delete(`${API_URL}/admin/payouts/saved-account/${accountId}`, getHeaders());
       toast.success("Bank account deleted successfully");
@@ -449,16 +638,18 @@ const Payouts = () => {
         setBankDetails("");
         setSelectedBankAccount("");
       }
+      setShowDeleteBankModal(false);
+      setAccountToDelete(null);
     } catch (err) {
       toast.error("Failed to delete bank account");
     }
   };
 
-  const handleApprove = async (id) => {
-    if (!window.confirm("Mark this settlement as Done/Paid?")) return;
+  const handleApprove = async () => {
+    if (!selectedPayoutId) return;
     try {
       setRequesting(true);
-      await axios.put(`${API_URL}/admin/payouts/${id}/approve`, {}, getHeaders());
+      await axios.put(`${API_URL}/admin/payouts/${selectedPayoutId}/approve`, {}, getHeaders());
       toast.success("Settlement Approved");
 
       await Promise.all([
@@ -468,8 +659,32 @@ const Payouts = () => {
         fetchInvoices(),
         fetchWalletTransactions()
       ]);
+      setShowApproveModal(false);
+      setSelectedPayoutId(null);
     } catch (err) {
       toast.error("Failed to approve");
+    } finally {
+      setRequesting(false);
+    }
+  };
+
+  const handleRejectRequest = async (id, reason) => {
+    try {
+      setRequesting(true);
+      await axios.put(`${API_URL}/admin/payouts/${id}/reject`,
+        { reason: reason },
+        getHeaders()
+      );
+      toast.success("Withdrawal request rejected");
+
+      await Promise.all([
+        fetchData(),
+        fetchSummary(),
+        fetchEarningStats(),
+        fetchWalletTransactions()
+      ]);
+    } catch (err) {
+      toast.error(err.response?.data?.message || "Failed to reject request");
     } finally {
       setRequesting(false);
     }
@@ -501,33 +716,6 @@ const Payouts = () => {
       ]);
     } catch (err) {
       toast.error(err.response?.data?.message || "Failed to cancel request");
-    } finally {
-      setRequesting(false);
-    }
-  };
-
-  const handleRejectRequest = async (id, reason) => {
-    if (!reason || !reason.trim()) {
-      toast.error("Please provide a reason for rejection");
-      return;
-    }
-
-    try {
-      setRequesting(true);
-      await axios.put(`${API_URL}/admin/payouts/${id}/reject`,
-        { reason: reason },
-        getHeaders()
-      );
-      toast.success("Withdrawal request rejected");
-
-      await Promise.all([
-        fetchData(),
-        fetchSummary(),
-        fetchEarningStats(),
-        fetchWalletTransactions()
-      ]);
-    } catch (err) {
-      toast.error(err.response?.data?.message || "Failed to reject request");
     } finally {
       setRequesting(false);
     }
@@ -652,8 +840,7 @@ const Payouts = () => {
 
   const getWalletTransactions = () => {
     let transactions = [];
-    
-    // Add wallet transactions (credits from orders)
+
     walletTransactionsList.forEach(t => {
       transactions.push({
         id: t.id,
@@ -672,14 +859,12 @@ const Payouts = () => {
         fullData: t
       });
     });
-    
-    // Add payouts as debit transactions if not already in wallet transactions
+
     const basePayouts = selectedVendor
       ? payouts.filter(p => p.vendor_id === parseInt(selectedVendor))
       : payouts;
-    
+
     basePayouts.forEach(p => {
-      // Check if this payout already exists in wallet transactions
       const exists = transactions.some(t => t.payout_id === p.id);
       if (!exists) {
         transactions.push({
@@ -696,15 +881,15 @@ const Payouts = () => {
         });
       }
     });
-    
+
     transactions.sort((a, b) => new Date(b.date) - new Date(a.date));
-    
+
     if (walletTab === 'credit') {
       transactions = transactions.filter(t => t.type === 'credit');
     } else if (walletTab === 'debit') {
       transactions = transactions.filter(t => t.type === 'debit');
     }
-    
+
     return transactions;
   };
 
@@ -958,18 +1143,18 @@ const Payouts = () => {
                         <td>
                           <span className={`status-dot ${t.status?.toLowerCase() || 'pending'}`}></span>
                           {t.status === 'completed' ? 'Completed' : t.status === 'pending' ? 'Pending' : t.status === 'cancelled' ? 'Cancelled' : t.status || 'Pending'}
-                         </td>
+                        </td>
                         <td className="desc-text">{t.description}</td>
                         {userRole === "super_admin" && (
                           <td>
                             {t.status === 'Pending' && t.payout_id && (
-                              <button className="table-btn-approve" onClick={(e) => { e.stopPropagation(); handleApprove(t.payout_id); }}>
+                              <button className="table-btn-approve" onClick={(e) => { e.stopPropagation(); setSelectedPayoutId(t.payout_id); setShowApproveModal(true); }}>
                                 Approve
                               </button>
                             )}
-                           </td>
+                          </td>
                         )}
-                       </tr>
+                      </tr>
                     ))
                   )}
                 </tbody>
@@ -1092,13 +1277,19 @@ const Payouts = () => {
                       <tr key={p.id}>
                         <td><input type="checkbox" /></td>
                         <td className="text-blue">STL-{String(p.id).padStart(6, '0')}</td>
-                        {userRole === "super_admin" && <td>{p.store_name || p.email}</td>}
+                        {userRole === "super_admin" && <td>{p.store_name || p.vendor_name || p.email}</td>}
                         <td>Withdrawal</td>
                         <td>{formatCurrency(p.amount)}</td>
                         <td>{p.status === 'Paid' ? formatCurrency(p.amount) : '-'}</td>
-                        <td>{formatDate(p.requested_at)}</td>
-                        <td>{p.processed_at ? formatDate(p.processed_at) : (p.updated_at ? formatDate(p.updated_at) : formatDate(p.requested_at))}</td>
-                        <td className="desc-text">{p.bank_details?.substring(0, 40)}...</td>
+                        <td>{formatDateTime(p.requested_at)}</td>
+                        <td>{p.processed_at ? formatDateTime(p.processed_at) : (p.updated_at ? formatDateTime(p.updated_at) : '-')}</td>
+                        <td className="desc-text">
+                          {p.bank_details
+                            ? p.bank_details.length > 40
+                              ? p.bank_details.substring(0, 40) + '...'
+                              : p.bank_details
+                            : 'No bank details'}
+                        </td>
                         <td>
                           <span className={`status-badge ${p.status.toLowerCase()}`}>
                             {p.status === 'Rejected' && <i className="bi bi-x-circle-fill"></i>}
@@ -1112,13 +1303,10 @@ const Payouts = () => {
                         {userRole === "super_admin" && (settlementTab === "pending" || settlementTab === "all") && p.status === 'Pending' && (
                           <td>
                             <div className="action-buttons">
-                              <button className="table-btn-approve" onClick={() => handleApprove(p.id)}>
+                              <button className="table-btn-approve" onClick={() => { setSelectedPayoutId(p.id); setShowApproveModal(true); }}>
                                 <i className="bi bi-check-lg"></i> Approve
                               </button>
-                              <button className="table-btn-reject" onClick={() => {
-                                const reason = prompt("Enter reason for rejection:");
-                                if (reason) handleRejectRequest(p.id, reason);
-                              }}>
+                              <button className="table-btn-reject" onClick={() => { setSelectedPayoutId(p.id); setShowRejectModal(true); }}>
                                 <i className="bi bi-x-lg"></i> Reject
                               </button>
                             </div>
@@ -1301,7 +1489,7 @@ const Payouts = () => {
                     <i className="bi bi-graph-up"></i>
                     <div>
                       <strong>Minimum Withdrawal</strong>
-                      <p>₹100</p>
+                      <p>₹1000</p>
                     </div>
                   </div>
                 </div>
@@ -1346,7 +1534,8 @@ const Payouts = () => {
                               className="delete-account-btn"
                               onClick={(e) => {
                                 e.stopPropagation();
-                                handleDeleteBankAccount(account.id);
+                                setAccountToDelete(account.id);
+                                setShowDeleteBankModal(true);
                               }}
                               title="Delete this account"
                             >
@@ -1461,7 +1650,7 @@ const Payouts = () => {
                 </div>
                 <div className="cancel-date">
                   <span>Requested on:</span>
-                  <strong>{formatDate(selectedPayoutForCancel.requested_at)}</strong>
+                  <strong>{formatDateTime(selectedPayoutForCancel.requested_at)}</strong>
                 </div>
               </div>
               <div className="form-group">
@@ -1474,7 +1663,7 @@ const Payouts = () => {
                   required
                 ></textarea>
               </div>
-              <div className="warning-note">
+              <div className="warning-note" style={{ marginTop: '0' }}>
                 <i className="bi bi-exclamation-triangle-fill"></i>
                 <span>This action cannot be undone. The amount will be credited back to your wallet.</span>
               </div>
@@ -1496,6 +1685,33 @@ const Payouts = () => {
           </div>
         </div>
       )}
+
+      {/* Approve Modal */}
+      <ConfirmModal
+        isOpen={showApproveModal}
+        onClose={() => { setShowApproveModal(false); setSelectedPayoutId(null); }}
+        onConfirm={handleApprove}
+        title="Approve Withdrawal Request"
+        message="Are you sure you want to approve this withdrawal request? Once approved, the amount will be marked as paid."
+        confirmText="Yes, Approve"
+        confirmVariant="success"
+      />
+
+      {/* Reject Modal */}
+      <RejectModal
+        isOpen={showRejectModal}
+        onClose={() => { setShowRejectModal(false); setSelectedPayoutId(null); }}
+        onConfirm={handleRejectRequest}
+        payoutId={selectedPayoutId}
+      />
+
+      {/* Delete Bank Account Modal */}
+      <DeleteBankModal
+        isOpen={showDeleteBankModal}
+        onClose={() => { setShowDeleteBankModal(false); setAccountToDelete(null); }}
+        onConfirm={handleDeleteBankAccount}
+        accountId={accountToDelete}
+      />
 
       {/* Withdrawal Invoice Modal */}
       {selectedPayoutForInvoice && (

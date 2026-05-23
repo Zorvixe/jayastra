@@ -1,6 +1,8 @@
 import React, { useRef } from 'react';
 import './WithdrawalInvoice.css';
 
+import logo from '../../assets/jayastra_banner.png';
+
 const WithdrawalInvoice = ({ payout, onClose }) => {
   const printRef = useRef();
 
@@ -8,7 +10,7 @@ const WithdrawalInvoice = ({ payout, onClose }) => {
     const printContent = printRef.current;
     const originalTitle = document.title;
     document.title = `Withdrawal_INV-${String(payout.id).padStart(6, '0')}`;
-    
+
     const printWindow = window.open('', '_blank');
     printWindow.document.write(`
       <html>
@@ -44,31 +46,51 @@ const WithdrawalInvoice = ({ payout, onClose }) => {
 
   const formatDate = (date) => {
     if (!date) return '-';
-    return new Date(date).toLocaleDateString('en-IN', {
-      day: '2-digit',
-      month: 'long',
-      year: 'numeric'
-    });
+
+    try {
+      const parsedDate = new Date(date);
+      return parsedDate.toLocaleString('en-IN', {
+        timeZone: 'Asia/Kolkata',
+        day: '2-digit',
+        month: 'short',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+        hour12: true
+      });
+    } catch (err) {
+      return '-';
+    }
   };
 
   const formatDateTime = (date) => {
     if (!date) return '-';
-    return new Date(date).toLocaleString('en-IN', {
-      day: '2-digit',
-      month: 'long',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    });
+
+    try {
+      const parsedDate = new Date(date);
+      return parsedDate.toLocaleString('en-IN', {
+        timeZone: 'Asia/Kolkata',
+        day: '2-digit',
+        month: 'long',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+        hour12: true
+      });
+    } catch (err) {
+      return '-';
+    }
   };
 
   const numberToWords = (num) => {
     const ones = ['', 'One', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven', 'Eight', 'Nine'];
     const tens = ['', '', 'Twenty', 'Thirty', 'Forty', 'Fifty', 'Sixty', 'Seventy', 'Eighty', 'Ninety'];
     const teens = ['Ten', 'Eleven', 'Twelve', 'Thirteen', 'Fourteen', 'Fifteen', 'Sixteen', 'Seventeen', 'Eighteen', 'Nineteen'];
-    
+
     if (num === 0) return 'Zero';
-    
+
     function convert(n) {
       if (n < 10) return ones[n];
       if (n < 20) return teens[n - 10];
@@ -78,18 +100,8 @@ const WithdrawalInvoice = ({ payout, onClose }) => {
       if (n < 10000000) return convert(Math.floor(n / 100000)) + ' Lakh' + (n % 100000 ? ' ' + convert(n % 100000) : '');
       return convert(Math.floor(n / 10000000)) + ' Crore' + (n % 10000000 ? ' ' + convert(n % 10000000) : '');
     }
-    
-    return convert(num);
-  };
 
-  const getStatusColor = (status) => {
-    switch (status?.toLowerCase()) {
-      case 'paid': return '#15803d';
-      case 'pending': return '#d97706';
-      case 'rejected': return '#dc2626';
-      case 'cancelled': return '#6b7280';
-      default: return '#6b7280';
-    }
+    return convert(num);
   };
 
   const getStatusIcon = (status) => {
@@ -102,12 +114,34 @@ const WithdrawalInvoice = ({ payout, onClose }) => {
     }
   };
 
+  // Get the bank details from payout (handles both field names)
+  const bankDetails =
+    payout.bank_details ||
+    payout.bankDetails ||
+    payout.bank_account ||
+    payout.account_details ||
+    payout.bankInfo ||
+    '';
+  const hasBankDetails = bankDetails && bankDetails !== 'Bank details not provided' && bankDetails.trim() !== '';
+
+  // Get processed date (handles both field names)
+  const processedDate = payout.processed_at || payout.updated_at;
+
+  // Get requested date
+  const requestedDate = payout.requested_at || payout.created_at;
+
+  // Get vendor details
+  const storeName = payout.store_name || payout.vendor_name || 'N/A';
+  const vendorName = payout.vendor_name || payout.name || 'N/A';
+  const vendorEmail = payout.vendor_email || payout.email || 'N/A';
+  const vendorPhone = payout.vendor_phone || payout.phone || 'N/A';
+
   return (
     <div className="invoice-modal-overlay" onClick={onClose}>
       <div className="invoice-modal-container" onClick={(e) => e.stopPropagation()}>
         <div className="invoice-modal-header">
           <h3>
-            <i className="bi bi-receipt"></i> 
+            <i className="bi bi-receipt"></i>
             Invoice
           </h3>
           <div className="invoice-modal-actions">
@@ -119,20 +153,19 @@ const WithdrawalInvoice = ({ payout, onClose }) => {
             </button>
           </div>
         </div>
-        
+
         <div className="invoice-modal-content" ref={printRef}>
           <div className="payment-invoice">
             {/* Header */}
             <div className="invoice-header">
               <div className="company-info">
                 <div className="company-logo">
-                  <h1>JAYASTRA</h1>
-                  <span>STORE</span>
+                  <img src={logo} alt="Jayastra Logo" className="logo-img-invoice" />
                 </div>
                 <div className="company-address">
-                  <p><i className="bi bi-geo-alt"></i> 123 Business Street, Tech Park</p>
-                  <p>Bangalore - 560001, Karnataka, India</p>
-                  <p><i className="bi bi-envelope"></i> accounts@jayastra.com | <i className="bi bi-telephone"></i> +91 98765 43210</p>
+                  <p><i className="bi bi-geo-alt"></i> 2-62 K Bollavaram</p>
+                  <p>Andhra Pradesh - 518508, India</p>
+                  <p><i className="bi bi-envelope"></i> jayastrastore@gmail.com </p>
                 </div>
               </div>
               <div className="invoice-title-area">
@@ -155,19 +188,19 @@ const WithdrawalInvoice = ({ payout, onClose }) => {
                 <h4><i className="bi bi-person-badge"></i> Vendor Details</h4>
                 <div className="detail-row">
                   <span>Store Name:</span>
-                  <strong>{payout.store_name || payout.vendor_name || 'N/A'}</strong>
+                  <strong>{storeName}</strong>
                 </div>
                 <div className="detail-row">
                   <span>Vendor Name:</span>
-                  <span>{payout.vendor_name || 'N/A'}</span>
+                  <span>{vendorName}</span>
                 </div>
                 <div className="detail-row">
                   <span>Email:</span>
-                  <span>{payout.vendor_email || 'N/A'}</span>
+                  <span>{vendorEmail}</span>
                 </div>
                 <div className="detail-row">
                   <span>Phone:</span>
-                  <span>{payout.vendor_phone || 'N/A'}</span>
+                  <span>{vendorPhone}</span>
                 </div>
               </div>
 
@@ -175,11 +208,11 @@ const WithdrawalInvoice = ({ payout, onClose }) => {
                 <h4><i className="bi bi-credit-card"></i> Payment Details</h4>
                 <div className="detail-row">
                   <span>Invoice Date:</span>
-                  <span>{formatDate(payout.processed_at || payout.updated_at || payout.requested_at)}</span>
+                  <span>{formatDate(processedDate || requestedDate)}</span>
                 </div>
                 <div className="detail-row">
                   <span>Payment Date:</span>
-                  <span>{formatDate(payout.processed_at || payout.updated_at)}</span>
+                  <span>{formatDate(processedDate)}</span>
                 </div>
                 <div className="detail-row">
                   <span>Transaction ID:</span>
@@ -204,17 +237,35 @@ const WithdrawalInvoice = ({ payout, onClose }) => {
             </div>
 
             {/* Bank Details */}
-            <div className="bank-details-section">
-              <h4><i className="bi bi-bank2"></i> Credited To Bank Account</h4>
-              <div className="bank-details-card">
-                {payout.bank_details ? (
-                  <div className="bank-details-content">
-                    {payout.bank_details.split('\n').map((line, idx) => (
-                      <p key={idx}>{line}</p>
-                    ))}
-                  </div>
+            <div className="invoice-section">
+              <div className="section-title">
+                <i className="bi bi-bank"></i>
+                Bank / UPI Details
+              </div>
+              <div className="bank-details-box">
+                {hasBankDetails ? (
+                  <pre
+                    style={{
+                      whiteSpace: 'pre-wrap',
+                      margin: 0,
+                      fontFamily: 'inherit',
+                      fontSize: '14px',
+                      lineHeight: '1.7'
+                    }}
+                  >
+                    {(() => {
+                      const details = bankDetails || '';
+
+                      // Hide account numbers except last 4 digits
+                      return details.replace(/\b\d{9,18}\b/g, (match) => {
+                        return 'XXXX XXXX ' + match.slice(-4);
+                      });
+                    })()}
+                  </pre>
                 ) : (
-                  <p className="no-details">Bank details not available</p>
+                  <span style={{ color: '#dc2626' }}>
+                    Bank details not available
+                  </span>
                 )}
               </div>
             </div>
@@ -223,20 +274,61 @@ const WithdrawalInvoice = ({ payout, onClose }) => {
             <div className="timeline-section">
               <h4><i className="bi bi-clock-history"></i> Payment Timeline</h4>
               <div className="timeline">
+                {/* Request Submitted - Always show */}
                 <div className="timeline-item">
                   <div className="timeline-icon">
                     <i className="bi bi-calendar-plus"></i>
                   </div>
                   <div className="timeline-content">
                     <div className="timeline-title">Request Submitted</div>
-                    <div className="timeline-date">{formatDateTime(payout.requested_at)}</div>
+                    <div className="timeline-date">{formatDateTime(requestedDate)}</div>
                   </div>
                 </div>
-                
-                {payout.processed_at && (
+
+                {/* Payment Completed - Show only for Paid status */}
+                {payout.status === 'Paid' && processedDate && (
                   <div className="timeline-item completed">
+                    <div className="timeline-line"></div>
                     <div className="timeline-icon">
                       <i className="bi bi-check-circle-fill"></i>
+                    </div>
+                    <div className="timeline-content">
+                      <div className="timeline-title">Payment Completed</div>
+                      <div className="timeline-date">{formatDateTime(processedDate)}</div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Payment Rejected - Show only for Rejected status */}
+                {payout.status === 'Rejected' && (
+                  <div className="timeline-item rejected">
+                    <div className="timeline-line"></div>
+                    <div className="timeline-icon">
+                      <i className="bi bi-x-circle-fill"></i>
+                    </div>
+                    <div className="timeline-content">
+                      <div className="timeline-title">Payment Rejected</div>
+                      <div className="timeline-date">{formatDateTime(payout.updated_at || requestedDate)}</div>
+                      {payout.rejection_reason && (
+                        <div className="timeline-reason">Reason: {payout.rejection_reason}</div>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {/* Payment Cancelled - Show only for Cancelled status */}
+                {payout.status === 'Cancelled' && (
+                  <div className="timeline-item cancelled">
+                    <div className="timeline-line"></div>
+                    <div className="timeline-icon">
+                      <i className="bi bi-ban-fill"></i>
+                    </div>
+                    <div className="timeline-content">
+                      <div className="timeline-title">Payment Cancelled</div>
+                      <div className="timeline-date">{formatDateTime(payout.updated_at || requestedDate)}</div>
+                      {payout.cancellation_reason && (
+                        <div className="timeline-reason">Reason: {payout.cancellation_reason}</div>
+                      )}
                     </div>
                   </div>
                 )}
@@ -247,7 +339,7 @@ const WithdrawalInvoice = ({ payout, onClose }) => {
             <div className="invoice-footer">
               <div className="footer-note">
                 <p><i className="bi bi-check-circle"></i> This is a system generated payment invoice and requires no signature.</p>
-                <p><i className="bi bi-envelope-paper"></i> For any queries, please contact accounts@jayastra.com</p>
+                <p><i className="bi bi-envelope-paper"></i> For any queries, please contact jayastrastore@gmail.com</p>
               </div>
               <div className="footer-generated">
                 <p>Generated on: {formatDateTime(new Date())}</p>
@@ -304,11 +396,9 @@ const getPrintStyles = () => `
     gap: 20px;
   }
   
-  .company-logo h1 {
-    color: #8E2139;
-    font-size: 28px;
-    margin: 0;
-    letter-spacing: 2px;
+  .company-logo img {
+     width: 150px;
+  height: auto;
   }
   
   .company-logo span {
@@ -483,37 +573,25 @@ const getPrintStyles = () => `
     margin-top: 5px;
   }
   
-  .bank-details-section {
+  .invoice-section {
     margin-bottom: 25px;
   }
   
-  .bank-details-section h4 {
-    color: #1e293b;
+  .section-title {
     font-size: 14px;
+    font-weight: 600;
+    color: #1e293b;
     margin-bottom: 12px;
     display: flex;
     align-items: center;
-    gap: 6px;
+    gap: 8px;
   }
   
-  .bank-details-card {
+  .bank-details-box {
     background: #f0f9ff;
     border-radius: 12px;
     padding: 16px;
     border: 1px solid #bae6fd;
-  }
-  
-  .bank-details-content p {
-    font-size: 13px;
-    margin: 5px 0;
-    color: #075985;
-    font-family: monospace;
-  }
-  
-  .no-details {
-    color: #94a3b8;
-    font-style: italic;
-    font-size: 12px;
   }
   
   .timeline-section {
@@ -537,7 +615,7 @@ const getPrintStyles = () => `
   .timeline::before {
     content: '';
     position: absolute;
-    left: 10px;
+    left: 15px;
     top: 0;
     bottom: 0;
     width: 2px;
@@ -546,7 +624,7 @@ const getPrintStyles = () => `
   
   .timeline-item {
     position: relative;
-    padding-bottom: 20px;
+    padding-bottom: 25px;
     display: flex;
     gap: 15px;
   }
@@ -558,23 +636,41 @@ const getPrintStyles = () => `
   .timeline-icon {
     position: absolute;
     left: -30px;
-    width: 24px;
-    height: 24px;
+    top: 0;
+    width: 28px;
+    height: 28px;
     background: white;
+    border: 2px solid #e2e8f0;
     border-radius: 50%;
     display: flex;
     align-items: center;
     justify-content: center;
     color: #94a3b8;
-    font-size: 12px;
+    font-size: 14px;
+    z-index: 1;
   }
   
   .timeline-item.completed .timeline-icon {
-    color: #15803d;
+    background: #15803d;
+    border-color: #15803d;
+    color: white;
+  }
+  
+  .timeline-item.rejected .timeline-icon {
+    background: #dc2626;
+    border-color: #dc2626;
+    color: white;
+  }
+  
+  .timeline-item.cancelled .timeline-icon {
+    background: #6b7280;
+    border-color: #6b7280;
+    color: white;
   }
   
   .timeline-content {
     flex: 1;
+    margin-left: 10px;
   }
   
   .timeline-title {
@@ -587,6 +683,13 @@ const getPrintStyles = () => `
   .timeline-date {
     font-size: 11px;
     color: #64748b;
+  }
+  
+  .timeline-reason {
+    font-size: 11px;
+    color: #dc2626;
+    margin-top: 4px;
+    font-style: italic;
   }
   
   .invoice-footer {

@@ -2253,3 +2253,26 @@
 .transaction-row.clickable {
   cursor: pointer;
 }
+
+/* Add these styles to Payouts.css */
+
+.invoice-section {
+  margin-bottom: 25px;
+}
+
+.section-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: #1e293b;
+  margin-bottom: 12px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.bank-details-box {
+  background: #f0f9ff;
+  border-radius: 12px;
+  padding: 16px;
+  border: 1px solid #bae6fd;
+}
