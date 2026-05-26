@@ -3,7 +3,7 @@ import { Link } from "react-router-dom";
 import "./ExploreCollection.css";
 
 import bestSellerLeft from "../assets/best-selelr-left.webp";
-import bestSellerRight from "../assets/best-selelr-right.webp";
+import bestSellerRight from "../assets/best-selelr-right.png";
 
 const ExploreCollection = () => {
   return (
