@@ -3349,26 +3349,92 @@ app.put("/api/admin/banner/:id", verifyToken, verifyAdminVendorIndividualAccess,
     let image_url = currentBanner.image_url;
     let video_url = currentBanner.video_url;
 
-    if (req.files?.image) { image_url = `/uploads/banners/${req.files.image[0].filename}`; }
-    if (req.files?.video) { video_url = `/uploads/banners/${req.files.video[0].filename}`; }
+    // Only update image if a new file was uploaded
+    if (req.files?.image && req.files.image.length > 0) {
+      image_url = `/uploads/banners/${req.files.image[0].filename}`;
+    }
+    
+    // Only update video if a new file was uploaded
+    if (req.files?.video && req.files.video.length > 0) {
+      video_url = `/uploads/banners/${req.files.video[0].filename}`;
+    }
 
     let cleanCategoryId = category_id;
-    if (category_id === 'null' || category_id === '') cleanCategoryId = null;
+    if (category_id === 'null' || category_id === '' || category_id === undefined) {
+      cleanCategoryId = null;
+    } else {
+      cleanCategoryId = parseInt(category_id);
+    }
 
-    const result = await pool.query(
-      `UPDATE banners SET 
-          title=$1, subtitle=$2, button_text=$3, link=$4, 
-          image_url=$5, video_url=$6, type=$7, 
-          category_id=$8, is_active=$9, position=$10, 
-          updated_at=NOW() 
-         WHERE id=$11 RETURNING *`,
-      [
-        title || currentBanner.title, subtitle || currentBanner.subtitle, button_text || currentBanner.button_text, link || currentBanner.link, image_url, video_url, type || currentBanner.type, cleanCategoryId !== undefined ? cleanCategoryId : currentBanner.category_id, is_active === "true" || is_active === true, position ? parseInt(position) : currentBanner.position, id
-      ]
-    );
-    res.json({ success: true, banner: result.rows[0] });
+    // Build update query dynamically to only update fields that are provided
+    const updates = [];
+    const values = [];
+    let paramCount = 1;
+
+    // Only add fields that are actually provided in the request
+    if (title !== undefined) {
+      updates.push(`title = $${paramCount++}`);
+      values.push(title || null);
+    }
+    if (subtitle !== undefined) {
+      updates.push(`subtitle = $${paramCount++}`);
+      values.push(subtitle || null);
+    }
+    if (button_text !== undefined) {
+      updates.push(`button_text = $${paramCount++}`);
+      values.push(button_text || null);
+    }
+    if (link !== undefined) {
+      updates.push(`link = $${paramCount++}`);
+      values.push(link || null);
+    }
+    if (is_active !== undefined) {
+      updates.push(`is_active = $${paramCount++}`);
+      values.push(is_active === "true" || is_active === true);
+    }
+    if (type !== undefined) {
+      updates.push(`type = $${paramCount++}`);
+      values.push(type || 'hero');
+    }
+    if (cleanCategoryId !== undefined) {
+      updates.push(`category_id = $${paramCount++}`);
+      values.push(cleanCategoryId);
+    }
+    if (position !== undefined && position !== '') {
+      updates.push(`position = $${paramCount++}`);
+      values.push(parseInt(position));
+    }
+    
+    // Always include media URLs
+    updates.push(`image_url = $${paramCount++}`);
+    values.push(image_url);
+    updates.push(`video_url = $${paramCount++}`);
+    values.push(video_url);
+    
+    updates.push(`updated_at = NOW()`);
+    values.push(id);
+
+    if (updates.length > 1) {
+      const query = `UPDATE banners SET ${updates.join(", ")} WHERE id = $${paramCount} RETURNING *`;
+      const result = await pool.query(query, values);
+      
+      // Clear any old files if new ones were uploaded (optional cleanup)
+      if (req.files?.image && currentBanner.image_url && currentBanner.image_url !== image_url) {
+        const oldPath = path.join(UPLOAD_BASE_PATH, currentBanner.image_url.replace('/uploads/', ''));
+        if (fs.existsSync(oldPath)) fs.unlinkSync(oldPath);
+      }
+      if (req.files?.video && currentBanner.video_url && currentBanner.video_url !== video_url) {
+        const oldPath = path.join(UPLOAD_BASE_PATH, currentBanner.video_url.replace('/uploads/', ''));
+        if (fs.existsSync(oldPath)) fs.unlinkSync(oldPath);
+      }
+      
+      res.json({ success: true, banner: result.rows[0] });
+    } else {
+      res.json({ success: true, banner: currentBanner, message: "No changes detected" });
+    }
   } catch (err) {
-    res.status(500).json({ message: "Banner update failed" });
+    console.error("Banner update error:", err);
+    res.status(500).json({ message: err.message || "Banner update failed" });
   }
 });
 

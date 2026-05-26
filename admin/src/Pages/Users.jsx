@@ -16,7 +16,6 @@ const Users = () => {
     allowedTabs.push("admins", "vendors", "customers");
   } else if (userRole === "admin") {
     allowedTabs.push("admins");   // admin can see admins list (but not create)
-    // could also show customers if backend permits
   } else if (userRole === "vendor") {
     allowedTabs.push("customers"); // vendor sees customers
   }
@@ -203,9 +202,9 @@ const Users = () => {
     <div className="users-container">
       {/* Global overlay (modal & delete) */}
       {loading && (
-        <div className="dash-loader-overlay">
-          <div className="dash-loader-container">
-            <div className="dash-spinner"></div>
+        <div className="users-loader-overlay">
+          <div className="users-loader-container">
+            <div className="users-spinner"></div>
           </div>
         </div>
       )}
@@ -267,8 +266,8 @@ const Users = () => {
       {/* Table */}
       <div className="users-table">
         {tabLoading ? (
-          <div className="table-loading-placeholder">
-            <div className="dash-spinner"></div>
+          <div className="users-loading-state">
+            <div className="users-spinner-small"></div>
             <p>Loading {activeTab}...</p>
           </div>
         ) : (
@@ -382,8 +381,8 @@ const Users = () => {
 
       {/* User Details Modal */}
       {selectedUser && (
-        <div className="user-modal">
-          <div className="modal-content">
+        <div className="user-modal" onClick={() => setSelectedUser(null)}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
             <div className="modal-header">
               <h5>User Details</h5>
               <button onClick={() => setSelectedUser(null)}>✕</button>
@@ -391,41 +390,41 @@ const Users = () => {
             <div className="modal-body">
               <div className="user-detail-item">
                 <span className="detail-label">Name:</span>
-                <span>{selectedUser.name}</span>
+                <span className="detail-value">{selectedUser.name}</span>
               </div>
               <div className="user-detail-item">
                 <span className="detail-label">Email:</span>
-                <span>{selectedUser.email}</span>
+                <span className="detail-value">{selectedUser.email}</span>
               </div>
               <div className="user-detail-item">
                 <span className="detail-label">Phone:</span>
-                <span>{selectedUser.phone || "-"}</span>
+                <span className="detail-value">{selectedUser.phone || "-"}</span>
               </div>
               {activeTab === "vendors" && (
                 <div className="user-detail-item">
                   <span className="detail-label">Store Name:</span>
-                  <span>{selectedUser.store_name || "-"}</span>
+                  <span className="detail-value">{selectedUser.store_name || "-"}</span>
                 </div>
               )}
               {activeTab === "customers" && (
                 <>
                   <div className="user-detail-item">
                     <span className="detail-label">Total Orders:</span>
-                    <span>{selectedUser.total_orders || 0}</span>
+                    <span className="detail-value">{selectedUser.total_orders || 0}</span>
                   </div>
                   <div className="user-detail-item">
                     <span className="detail-label">Total Purchase:</span>
-                    <span>₹{(selectedUser.total_purchase || 0).toLocaleString()}</span>
+                    <span className="detail-value">₹{(selectedUser.total_purchase || 0).toLocaleString()}</span>
                   </div>
                 </>
               )}
               <div className="user-detail-item">
                 <span className="detail-label">Role:</span>
-                <span>{selectedUser.role}</span>
+                <span className="detail-value">{selectedUser.role}</span>
               </div>
               <div className="user-detail-item">
                 <span className="detail-label">Status:</span>
-                <span>{selectedUser.status}</span>
+                <span className="detail-value">{selectedUser.status}</span>
               </div>
             </div>
           </div>
@@ -434,8 +433,8 @@ const Users = () => {
 
       {/* Add Admin/Vendor Modal (Super Admin only) */}
       {showAddModal && userRole === "super_admin" && (
-        <div className="user-modal">
-          <div className="modal-content">
+        <div className="user-modal" onClick={() => setShowAddModal(false)}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
             <div className="modal-header">
               <h5>Add {modalRole === 'admin' ? 'Admin' : 'Vendor'}</h5>
               <button onClick={() => setShowAddModal(false)}>✕</button>

@@ -306,6 +306,18 @@ const Home = () => {
 
   const scrollRef = useRef(null);
 
+  const [heroBanners, setHeroBanners] = useState([]);
+  const [mosaicBanners, setMosaicBanners] = useState([]);
+  const [currentSlide, setCurrentSlide] = useState(0);
+
+  // Helper function to get full media URL
+  const getFullMediaUrl = (mediaUrl) => {
+    if (!mediaUrl) return "";
+    if (mediaUrl.startsWith("http")) return mediaUrl;
+    const baseUrl = API_URL.replace(/\/api$/, "");
+    return `${baseUrl}${mediaUrl}`;
+  };
+
   /* ================= LOAD PRODUCTS ================= */
   useEffect(() => {
     const loadProducts = async () => {
@@ -351,43 +363,23 @@ const Home = () => {
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 
-  const images = [akshayaBanner, "/assets/hero28.jpeg"];
-
-  const [currentSlide, setCurrentSlide] = useState(0);
-
-  const prevHeroSlide = (e) => {
-    e.stopPropagation();
-    setCurrentSlide((prev) => (prev > 0 ? prev - 1 : images.length - 1));
-  };
-
-  const nextHeroSlide = (e) => {
-    e.stopPropagation();
-    setCurrentSlide((prev) => (prev + 1) % images.length);
-  };
-
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setCurrentSlide((prev) => (prev + 1) % images.length);
-    }, 5000);
-
-    return () => clearInterval(interval);
-  }, [images.length]);
-
-  /* ================= SHOP ================= */
-  const shopProducts = (products || []).slice(0, 16);
-
-  /* ================= BANNERS (DYNAMIC MOSAIC) ================= */
-  const [mosaicBanners, setMosaicBanners] = useState([]);
-
+  /* ================= BANNERS (DYNAMIC HERO & MOSAIC) ================= */
   useEffect(() => {
     const fetchBanners = async () => {
       try {
         setMosaicLoading(true);
         const res = await axios.get(`${API_URL}/banners`);
-        const mosaic = (res.data.banners || [])
+        const allBanners = res.data.banners || [];
+
+        const mosaic = allBanners
           .filter(b => b.type === 'mosaic' && b.is_active)
           .sort((a, b) => Number(a.position) - Number(b.position));
         setMosaicBanners(mosaic);
+
+        const hero = allBanners
+          .filter(b => b.type === 'hero' && b.is_active)
+          .sort((a, b) => Number(a.position) - Number(b.position));
+        setHeroBanners(hero);
       } catch (err) {
         console.error("Banner fetch error:", err);
       } finally {
@@ -396,6 +388,69 @@ const Home = () => {
     };
     fetchBanners();
   }, []);
+
+  /* ================= COMPOSE SLIDES ================= */
+  // Fallback slides in case DB has no active hero banners
+  const defaultHeroSlides = [
+    { 
+      image_url: akshayaBanner,
+      title: "NEW BEGINNINGS",
+      subtitle: "FLAT 15% OFF ON ALL SAREES",
+      button_text: "Shop Collection",
+      link: "/all-products",
+      tagline: "GRAND LAUNCH SALE",
+      description: "CELEBRATE OUR GRAND LAUNCH WITH EXCLUSIVE HANDLOOM COLLECTION",
+      align: "left",
+      isDbBanner: false
+    },
+    { 
+      image_url: "/assets/hero28.jpeg",
+      title: "LUXURY SILKS",
+      subtitle: "TRADITION FOR GENERATIONS",
+      button_text: "Shop Collection",
+      link: "/all-products",
+      tagline: "LAUNCH OFFERS",
+      description: "RARE WEAVES, FRESH DESIGNS, AND EXCLUSIVES YOU SIMPLY WON'T FIND ANYWHERE ELSE",
+      align: "right",
+      isDbBanner: false
+    }
+  ];
+
+  const displaySlides = heroBanners.length > 0 
+    ? heroBanners.map((b, index) => ({
+        image_url: getFullMediaUrl(b.image_url),
+        title: b.title || "",
+        subtitle: b.subtitle || "",
+        button_text: b.button_text || "Shop Now",
+        link: b.link || "/all-products",
+        tagline: b.subtitle || "",
+        description: b.description || "",
+        align: index % 2 === 0 ? "left" : "right",
+        isDbBanner: true
+      }))
+    : defaultHeroSlides;
+
+  const prevHeroSlide = (e) => {
+    e.stopPropagation();
+    setCurrentSlide((prev) => (prev > 0 ? prev - 1 : displaySlides.length - 1));
+  };
+
+  const nextHeroSlide = (e) => {
+    e.stopPropagation();
+    setCurrentSlide((prev) => (prev + 1) % displaySlides.length);
+  };
+
+  useEffect(() => {
+    if (displaySlides.length <= 1) return;
+    const interval = setInterval(() => {
+      setCurrentSlide((prev) => (prev + 1) % displaySlides.length);
+    }, 5000);
+
+    return () => clearInterval(interval);
+  }, [displaySlides.length]);
+
+  /* ================= SHOP ================= */
+  const shopProducts = (products || []).slice(0, 16);
 
   /* ================= DRAG ================= */
   const handleMouseDown = (e) => {
@@ -430,22 +485,9 @@ const Home = () => {
     <>
       <section className="hero-section">
         <div className="hero-carousel">
-          {images.map((img, index) => {
-            const heroTexts = [
-              { 
-                smallTop: "GRAND LAUNCH SALE",
-                title: "NEW BEGINNINGS",
-                subtitle: "FLAT 15% OFF ON ALL SAREES",
-                desc: "CELEBRATE OUR GRAND LAUNCH WITH EXCLUSIVE HANDLOOM COLLECTION"
-              },
-              { 
-                smallTop: "LAUNCH OFFERS",
-                title: "LUXURY SILKS",
-                subtitle: "TRADITION FOR GENERATIONS",
-                desc: "RARE WEAVES, FRESH DESIGNS, AND EXCLUSIVES YOU SIMPLY WON'T FIND ANYWHERE ELSE",
-                align: "right"
-              },
-            ];
+          {displaySlides.map((slide, index) => {
+            // Only overlay standard details if title is populated, or if it is the static fallback
+            const showOverlayContent = !slide.isDbBanner || slide.title;
 
             return (
               <div
@@ -454,37 +496,53 @@ const Home = () => {
                   index === currentSlide ? "active" : ""
                 }`}
                 onClick={() => {
-                   if(window.innerWidth <= 768) navigate("/all-products");
+                   navigate(slide.link || "/all-products");
                 }}
                 style={{ cursor: "pointer" }}
               >
                 <div className="hero-img-container">
-                  <img src={img} className="hero-img" alt="Luxury Saree Collection" />
+                  <img src={slide.image_url} className="hero-img" alt={slide.title || "Luxury Saree Collection"} />
                 </div>
                 <div className="hero-overlay"></div>
 
-                <div className={`hero-content ${heroTexts[index].align === 'right' ? 'align-right' : ''}`}>
-                  <span className="hero-tagline">{heroTexts[index].smallTop}</span>
-                  <h1
-                    className="hero-title"
-                    style={{ transform: `scale(${scale})` }}
-                  >
-                    {heroTexts[index].title}
-                  </h1>
-                  <h3 className="hero-subtitle">{heroTexts[index].subtitle}</h3>
-                  <p className="hero-description">
-                    {heroTexts[index].desc}
-                  </p>
-                  <div className="hero-buttons">
-                    <button className="btn-hero-primary" onClick={() => navigate("/all-products")}>
-                      Shop Collection
-                      <span className="btn-icon"><i className="bi bi-arrow-right"></i></span>
-                    </button>
-                    <button className="btn-hero-secondary" onClick={() => navigate("/about")}>
-                      Our Story
-                    </button>
+                {showOverlayContent && (
+                  <div className={`hero-content ${slide.align === 'right' ? 'align-right' : ''}`}>
+                    {slide.tagline && <span className="hero-tagline">{slide.tagline}</span>}
+                    <h1
+                      className="hero-title"
+                      style={{ transform: `scale(${scale})` }}
+                    >
+                      {slide.title}
+                    </h1>
+                    {slide.subtitle && <h3 className="hero-subtitle">{slide.subtitle}</h3>}
+                    {slide.description && <p className="hero-description">{slide.description}</p>}
+                    
+                    <div className="hero-buttons">
+                      <button 
+                        className="btn-hero-primary" 
+                        onClick={(e) => { 
+                          e.stopPropagation(); 
+                          navigate(slide.link || "/all-products"); 
+                        }}
+                      >
+                        {slide.button_text}
+                        <span className="btn-icon"><i className="bi bi-arrow-right"></i></span>
+                      </button>
+                      
+                      {!slide.isDbBanner && (
+                        <button 
+                          className="btn-hero-secondary" 
+                          onClick={(e) => { 
+                            e.stopPropagation(); 
+                            navigate("/about"); 
+                          }}
+                        >
+                          Our Story
+                        </button>
+                      )}
+                    </div>
                   </div>
-                </div>
+                )}
               </div>
             );
           })}
@@ -498,7 +556,7 @@ const Home = () => {
           </button>
 
           <div className="hero-number-indicators">
-            {images.map((_, index) => (
+            {displaySlides.map((_, index) => (
               <span
                 key={index}
                 className={`number-item ${index === currentSlide ? "active" : ""}`}
@@ -518,9 +576,6 @@ const Home = () => {
         loading={newArrivalsLoading}
       />
 
-      {/* SHOP BY PRICE */}
-      {/* <ShopByPrice /> */}
-      
       {/* EXPLORE */}
       <ExploreCollection />
 
@@ -599,7 +654,6 @@ const WeddingVideoSlider = ({ banners }) => {
   const getFullVideoUrl = (videoUrl) => {
     if (!videoUrl) return "";
     if (videoUrl.startsWith("http")) return videoUrl;
-    // Remove /api from API_URL if present and add the videoUrl
     const baseUrl = API_URL.replace(/\/api$/, "");
     return `${baseUrl}${videoUrl}`;
   };

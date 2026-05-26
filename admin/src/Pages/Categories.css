@@ -1,4 +1,4 @@
-/* =========================================================
+/* ================= ========================================
    MODERN CATEGORIES UI CSS
    Clean, SaaS-style aesthetic with soft shadows and colors.
 ========================================================= */
@@ -277,10 +277,6 @@
   }
 }
 
-.cate-modal-form {
-  width: 100%;
-}
-
 .cate-modal-backdrop {
   position: fixed;
   top: 0;
@@ -315,14 +311,26 @@
   box-shadow: var(--cate-shadow-modal);
   animation: slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1);
   overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  max-height: 90vh; /* Max height to stay contained on small viewports */
+}
+
+.cate-modal-form {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden; /* Restrains vertical expansion of the inner body */
+  flex: 1;
 }
 
 .cate-modal-header {
-  padding: 24px 24px 16px;
+  padding: 20px 24px;
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
   border-bottom: 1px solid var(--cate-border);
+  flex-shrink: 0; /* Keeps header pinned */
 }
 
 .cate-modal-title {
@@ -346,7 +354,6 @@
   color: var(--cate-text-main);
 }
 
-/* ========== MODAL LAYOUT – LEFT FIELDS + RIGHT IMAGE FULL HEIGHT ========== */
 /* ========== MODAL LAYOUT – LEFT FIELDS + RIGHT IMAGE (FIXED SIZE) ========== */
 .cate-modal-body {
   display: flex;
@@ -354,7 +361,8 @@
   gap: 24px;
   padding: 24px;
   align-items: flex-start;
-  /* Changed from stretch to flex-start */
+  overflow-y: auto; /* Scroll internally if fields exceed height */
+  flex: 1;
 }
 
 /* Left column – form fields */
@@ -366,13 +374,11 @@
 /* Right column – image upload with fixed dimensions */
 .cate-image-col {
   flex: 1.2;
-  /* Balanced width, not overshooting */
   min-width: 0;
   display: flex;
   flex-direction: column;
 }
 
-/* Remove full-height stretching */
 .cate-image-col .cate-upload-zone {
   display: block;
   height: auto;
@@ -390,7 +396,6 @@
 .cate-image-col .cate-preview-wrap {
   width: 100%;
   height: 200px;
-  /* Fixed height */
   background: #f1f5f9;
   display: flex;
   align-items: center;
@@ -403,7 +408,6 @@
   width: 100%;
   height: 100%;
   object-fit: contain;
-  /* Keeps aspect ratio, no cropping */
   background: #f8fafc;
 }
 
@@ -420,7 +424,7 @@
   align-items: center;
 }
 
-/* For large screens, keep same dimensions */
+/* For screens >= 768px, adjust image columns spacing */
 @media (min-width: 768px) {
   .cate-fields-col {
     flex: 1;
@@ -428,7 +432,6 @@
 
   .cate-image-col {
     flex: 0.8;
-    /* Slightly narrower, keeps image box compact */
   }
 
   .cate-image-col .cate-preview-wrap {
@@ -436,14 +439,58 @@
   }
 }
 
-/* Responsive: stack on mobile */
+/* Mobile responsive details styling */
 @media (max-width: 768px) {
+  .cate-modal-wrapper {
+    padding: 10px;
+    align-items: center;
+  }
+
+  .cate-modal-content {
+    max-height: 95vh; /* Larger container allowance on mobile screens */
+  }
+
+  .cate-modal-header {
+    padding: 16px;
+  }
+
   .cate-modal-body {
     flex-direction: column;
+    gap: 16px;
+    padding: 16px;
+  }
+
+  .cate-fields-col,
+  .cate-image-col {
+    width: 100%;
   }
 
   .cate-image-col .cate-preview-wrap {
-    height: 200px;
+    height: 180px; /* Conserve space on mobile */
+  }
+
+  .cate-image-col .cate-upload-empty {
+    min-height: 150px;
+    padding: 24px 16px;
+  }
+
+  .cate-form-row {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 16px;
+  }
+
+  .cate-form-group {
+    width: 100%;
+  }
+
+  .cate-toggle-box {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .cate-modal-footer {
+    padding: 12px 16px;
   }
 }
 
@@ -624,6 +671,7 @@
   display: flex;
   justify-content: flex-end;
   gap: 12px;
+  flex-shrink: 0; /* Keeps footer pinned */
 }
 
 /* Shared Buttons */
@@ -711,6 +759,16 @@
   gap: 12px;
 }
 
+@media (max-width: 480px) {
+  .cate-confirm-box {
+    padding: 24px 16px;
+  }
+  .cate-confirm-actions {
+    flex-direction: column;
+    gap: 8px;
+  }
+}
+
 /* Animations */
 @keyframes fadeIn {
   from {
@@ -746,7 +804,7 @@
   }
 }
 
-/* Responsive */
+/* Responsive Container Grid adjustments */
 @media (max-width: 768px) {
   .cate-container {
     padding: 20px;
@@ -756,16 +814,6 @@
     flex-direction: column;
     align-items: flex-start !important;
     gap: 16px;
-  }
-
-  .cate-form-row {
-    flex-direction: column;
-    gap: 16px;
-  }
-
-  .cate-form-group.flex-grow-1,
-  .cate-toggle-box {
-    width: 100%;
   }
 }
 
@@ -791,11 +839,13 @@
   left: 0;
   width: 100%;
   height: 100%;
+  background: rgba(15, 23, 42, 0.3);
+  backdrop-filter: blur(2px);
   display: flex;
   align-items: center;
   justify-content: center;
   z-index: 9999;
-  animation: cate-fadeIn 0.3s ease;
+  animation: fadeIn 0.3s ease;
 }
 
 .cate-loader-container {
@@ -805,7 +855,6 @@
   flex-direction: column;
   align-items: center;
   gap: 15px;
-  animation: cate-scaleIn 0.3s ease;
 }
 
 .cate-spinner {
@@ -824,18 +873,6 @@
 
   to {
     transform: rotate(360deg);
-  }
-}
-
-@keyframes cate-scaleIn {
-  from {
-    opacity: 0;
-    transform: scale(0.9);
-  }
-
-  to {
-    opacity: 1;
-    transform: scale(1);
   }
 }
 

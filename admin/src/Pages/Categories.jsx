@@ -229,9 +229,9 @@ const Categories = () => {
     <div className="cate-container">
       {/* Loader Overlay for actions */}
       {loading && (
-        <div className="dash-loader-overlay">
-          <div className="dash-loader-container">
-            <div className="dash-spinner"></div>
+        <div className="cate-loader-overlay">
+          <div className="cate-loader-container">
+            <div className="cate-spinner"></div>
           </div>
         </div>
       )}
@@ -284,7 +284,7 @@ const Categories = () => {
               <tr>
                 <td colSpan="6">
                   <div className="table-loader-inline py-5 text-center">
-                    <div className="dash-spinner mx-auto mb-2"></div>
+                    <div className="cate-spinner mx-auto mb-2"></div>
                     <p className="text-muted small"></p>
                   </div>
                 </td>
@@ -450,7 +450,7 @@ const Categories = () => {
                     </div>
                   </div>
 
-                  {/* RIGHT COLUMN – Category Image (fills remaining width & full height) */}
+                  {/* RIGHT COLUMN – Category Image */}
                   <div className="cate-image-col">
                     <label className="cate-form-label">Category Image</label>
                     <div className="cate-upload-zone">

@@ -941,3 +941,19 @@
   from { opacity: 0; transform: translateY(30px); }
   to { opacity: 1; transform: translateY(0); }
 }
+
+@media (max-width: 480px) {
+  .form-row {
+   display: flex;
+   flex-direction: column;
+  }
+
+  .form-header{
+    padding: 10px;
+    padding-bottom: 0px;
+}
+
+.form-actions{
+  padding: 10px;
+}
+}
