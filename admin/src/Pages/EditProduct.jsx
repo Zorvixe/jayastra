@@ -359,7 +359,7 @@ const EditProduct = ({ id, onClose }) => {
       <div className="form-header">
         <h2 className="page-title">Edit Product</h2>
         <button type="button" className="back-btn" onClick={onClose}>
-          ✕ Cancel
+          ✕
         </button>
       </div>
 

@@ -19,8 +19,6 @@ import Footer from "./components/Footer";
 import ScrollToTop from "./components/ScrollToTop";
 import LoginModal from "./components/LoginModal";
 import LoadingSpinner from "./components/LoadingSpinner"; // create this simple component
-import ServiceFeatures from "./components/ServiceFeatures/ServiceFeatures";
-import WorkWithUsMarquee from "./components/WorkWithUsMarquee/WorkWithUsMarquee";
 
 
 // Lazy load page components for faster initial load
@@ -114,9 +112,7 @@ const AppContent = () => {
           </Routes>
         </Suspense>
 
-        <WorkWithUsMarquee />
-
-        <ServiceFeatures />
+       
 
         {shouldShowFooter && <Footer />}
       </WishlistProvider>

@@ -91,7 +91,7 @@ const Products = () => {
 
       if (res.data.success) {
         toast.success(res.data.message);
-        fetchProducts(); 
+        fetchProducts();
       } else {
         toast.error(res.data.message || "Delete failed");
       }
@@ -218,7 +218,7 @@ const Products = () => {
                     <th>Product</th>
                     <th>Category</th>
                     <th>Price</th>
-                    <th>Potential Total Earnings</th>
+                    <th>Earnings</th>
                     <th>Stock</th>
                     <th>Featured</th>
                     <th>Status</th>
@@ -287,9 +287,8 @@ const Products = () => {
                         </td>
                         <td>
                           <span
-                            className={`status-badge ${
-                              product.is_active ? "active" : "inactive"
-                            }`}
+                            className={`status-badge ${product.is_active ? "active" : "inactive"
+                              }`}
                           >
                             {product.is_active ? "Active" : "Hidden"}
                           </span>
@@ -304,7 +303,7 @@ const Products = () => {
                               <i className="bi bi-pencil"></i>
                             </button>
                             <button
-                              className="delete-btn"
+                              className="delete-btn-prod"
                               onClick={() => setConfirmDeleteId(product.id)}
                               title="Delete"
                             >
@@ -319,39 +318,39 @@ const Products = () => {
               </table>
             </div>
 
-            {pagination && (
+            {pagination && pagination.totalCount > 0 && (
               <div className="pagination-wrapper">
                 <div className="pagination-info">
                   Showing{" "}
                   <b>
-                    {(pagination.currentPage - 1) * pagination.limit + 1}
+                    {((pagination.currentPage || 1) - 1) * (pagination.limit || 10) + 1}
                   </b>{" "}
                   to{" "}
                   <b>
                     {Math.min(
-                      pagination.currentPage * pagination.limit,
-                      pagination.totalCount
+                      (pagination.currentPage || 1) * (pagination.limit || 10),
+                      pagination.totalCount || 0
                     )}
                   </b>{" "}
-                  of <b>{pagination.totalCount}</b> products
+                  of <b>{pagination.totalCount || 0}</b> products
                 </div>
                 <div className="pagination-controls">
                   <button
-                    disabled={pagination.currentPage === 1}
+                    disabled={pagination.currentPage === 1 || !pagination.currentPage}
                     onClick={() =>
                       setPagination((prev) => ({
                         ...prev,
-                        currentPage: prev.currentPage - 1,
+                        currentPage: (prev.currentPage || 1) - 1,
                       }))
                     }
                   >
                     <i className="bi bi-chevron-left"></i> Previous
                   </button>
-                  {[...Array(pagination.totalPages)].map((_, i) => (
+                  {pagination.totalPages && [...Array(pagination.totalPages)].map((_, i) => (
                     <button
                       key={i + 1}
                       className={
-                        pagination.currentPage === i + 1 ? "active" : ""
+                        (pagination.currentPage || 1) === i + 1 ? "active" : ""
                       }
                       onClick={() =>
                         setPagination((prev) => ({
@@ -364,11 +363,11 @@ const Products = () => {
                     </button>
                   ))}
                   <button
-                    disabled={pagination.currentPage === pagination.totalPages}
+                    disabled={pagination.currentPage === pagination.totalPages || !pagination.totalPages}
                     onClick={() =>
                       setPagination((prev) => ({
                         ...prev,
-                        currentPage: prev.currentPage + 1,
+                        currentPage: (prev.currentPage || 1) + 1,
                       }))
                     }
                   >
@@ -457,11 +456,11 @@ const Products = () => {
       {showAddModal && (
         <div className="product-modal-overlay" onClick={() => setShowAddModal(false)}>
           <div className="product-modal-content" onClick={(e) => e.stopPropagation()}>
-            <AddProduct 
+            <AddProduct
               onClose={() => {
                 setShowAddModal(false);
                 fetchProducts();
-              }} 
+              }}
             />
           </div>
         </div>
@@ -471,12 +470,12 @@ const Products = () => {
       {editProductId && (
         <div className="product-modal-overlay" onClick={() => setEditProductId(null)}>
           <div className="product-modal-content" onClick={(e) => e.stopPropagation()}>
-            <EditProduct 
-              id={editProductId} 
+            <EditProduct
+              id={editProductId}
               onClose={() => {
                 setEditProductId(null);
                 fetchProducts();
-              }} 
+              }}
             />
           </div>
         </div>

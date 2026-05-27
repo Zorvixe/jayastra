@@ -5,6 +5,8 @@ import { motion, AnimatePresence } from "framer-motion";
 import "./Home.css";
 import akshayaBanner from "../assets/akshayaT.jpeg";
 import CategoriesScroll from "../components/CategoriesScroll/CategoriesScroll";
+import ServiceFeatures from "../components/ServiceFeatures/ServiceFeatures";
+import WorkWithUsMarquee from "../components/WorkWithUsMarquee/WorkWithUsMarquee";
 
 
 
@@ -641,6 +643,10 @@ const Home = () => {
           </div>
         </div>
       </section>
+
+       <WorkWithUsMarquee />
+
+        <ServiceFeatures />
 
       {/* 3D WEDDING COLLECTION SLIDER */}
       {mosaicLoading ? (

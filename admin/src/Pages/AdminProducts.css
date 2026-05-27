@@ -262,7 +262,7 @@
   gap: 10px;
 }
 
-.edit-btn, .delete-btn {
+.edit-btn-prod, .delete-btn-prod {
   width: 34px;
   height: 34px;
   border-radius: 8px;
@@ -274,10 +274,11 @@
   justify-content: center;
   font-size: 1rem;
   transition: all 0.2s ease;
+  color: #ef4444 !important;
 }
 
-.edit-btn:hover { background: #fdfafb; border-color: #8E2139; color: #8E2139; }
-.delete-btn:hover { background: #fef2f2; border-color: #ef4444; color: #ef4444; }
+.edit-btn-prod:hover { background: #fdfafb; border-color: #8E2139; color: #8E2139; }
+.delete-btn-prod:hover { background: #fef2f2; border-color: #ef4444; color: #ef4444 !important; }
 
 /* ==========================
    SELECTION BAR (BULK DELETE)
