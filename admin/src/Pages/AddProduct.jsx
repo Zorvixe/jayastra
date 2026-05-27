@@ -1,4 +1,4 @@
-// AddProduct.js
+// AddProduct.js - Complete with category creation modal
 import React, { useState, useEffect } from "react";
 import axios from '../utils/axiosConfig';
 import "./AdminProducts.css";
@@ -161,6 +161,7 @@ const AddProduct = ({ onClose }) => {
         headers: { Authorization: `Bearer ${token}` },
         params: { limit: 100 }
       });
+      // Show all categories (global categories)
       setCategories(res.data.categories || []);
     } catch (err) {
       toast.error("Failed to load categories");
@@ -300,6 +301,10 @@ const AddProduct = ({ onClose }) => {
     }
   };
 
+  const toggleCategoryActive = () => {
+    setCategoryForm(prev => ({ ...prev, is_active: !prev.is_active }));
+  };
+
   const handleCreateCategory = async (e) => {
     e.preventDefault();
     
@@ -326,7 +331,7 @@ const AddProduct = ({ onClose }) => {
 
       if (res.data.success || res.data.category) {
         const newCategory = res.data.category || res.data;
-        toast.success("Category created successfully!");
+        toast.success(`Category "${newCategory.name}" created successfully! This category is now available globally.`);
         
         // Refresh categories list
         await fetchCategories();
@@ -344,6 +349,62 @@ const AddProduct = ({ onClose }) => {
       toast.error(err.response?.data?.message || "Failed to create category");
     } finally {
       setCategoryLoading(false);
+    }
+  };
+
+  const checkSkuAvailability = async (skuValue) => {
+    if (!skuValue || skuValue.trim() === "") {
+      setSkuAvailable(true);
+      setSkuMessage("");
+      return;
+    }
+    setSkuChecking(true);
+    try {
+      const token = localStorage.getItem("token");
+      const res = await axios.get(`${API_URL}/admin/products/check-sku`, {
+        params: { sku: skuValue.trim() },
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (res.data.exists) {
+        setSkuAvailable(false);
+        setSkuMessage("❌ SKU already exists.");
+      } else {
+        setSkuAvailable(true);
+        setSkuMessage("✅ SKU is available.");
+      }
+    } catch (err) {
+      setSkuAvailable(false);
+      setSkuMessage("⚠️ Error checking SKU availability.");
+    } finally {
+      setSkuChecking(false);
+    }
+  };
+
+  const checkProductCodeAvailability = async (codeValue) => {
+    if (!codeValue || codeValue.trim() === "") {
+      setProductCodeAvailable(true);
+      setProductCodeMessage("");
+      return;
+    }
+    setProductCodeChecking(true);
+    try {
+      const token = localStorage.getItem("token");
+      const res = await axios.get(`${API_URL}/admin/products/check-product-code`, {
+        params: { code: codeValue.trim() },
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (res.data.exists) {
+        setProductCodeAvailable(false);
+        setProductCodeMessage("❌ Product Code already exists.");
+      } else {
+        setProductCodeAvailable(true);
+        setProductCodeMessage("✅ Product Code is available.");
+      }
+    } catch (err) {
+      setProductCodeAvailable(false);
+      setProductCodeMessage("⚠️ Error checking product code.");
+    } finally {
+      setProductCodeChecking(false);
     }
   };
 
@@ -421,62 +482,6 @@ const AddProduct = ({ onClose }) => {
       toast.error(err.response?.data?.message || "Product creation failed");
     } finally {
       setLoading(false);
-    }
-  };
-
-  const checkSkuAvailability = async (skuValue) => {
-    if (!skuValue || skuValue.trim() === "") {
-      setSkuAvailable(true);
-      setSkuMessage("");
-      return;
-    }
-    setSkuChecking(true);
-    try {
-      const token = localStorage.getItem("token");
-      const res = await axios.get(`${API_URL}/admin/products/check-sku`, {
-        params: { sku: skuValue.trim() },
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (res.data.exists) {
-        setSkuAvailable(false);
-        setSkuMessage("❌ SKU already exists.");
-      } else {
-        setSkuAvailable(true);
-        setSkuMessage("✅ SKU is available.");
-      }
-    } catch (err) {
-      setSkuAvailable(false);
-      setSkuMessage("⚠️ Error checking SKU availability.");
-    } finally {
-      setSkuChecking(false);
-    }
-  };
-
-  const checkProductCodeAvailability = async (codeValue) => {
-    if (!codeValue || codeValue.trim() === "") {
-      setProductCodeAvailable(true);
-      setProductCodeMessage("");
-      return;
-    }
-    setProductCodeChecking(true);
-    try {
-      const token = localStorage.getItem("token");
-      const res = await axios.get(`${API_URL}/admin/products/check-product-code`, {
-        params: { code: codeValue.trim() },
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (res.data.exists) {
-        setProductCodeAvailable(false);
-        setProductCodeMessage("❌ Product Code already exists.");
-      } else {
-        setProductCodeAvailable(true);
-        setProductCodeMessage("✅ Product Code is available.");
-      }
-    } catch (err) {
-      setProductCodeAvailable(false);
-      setProductCodeMessage("⚠️ Error checking product code.");
-    } finally {
-      setProductCodeChecking(false);
     }
   };
 
@@ -628,10 +633,13 @@ const AddProduct = ({ onClose }) => {
                   <option value="">Select Category</option>
                   {categories.map((cat) => (
                     <option key={cat.id} value={cat.id}>
-                      {cat.name}
+                      {cat.name} {!cat.is_active && "(Inactive)"}
                     </option>
                   ))}
                 </select>
+                <small className="text-muted" style={{ display: "block", marginTop: "5px" }}>
+                  <i className="bi bi-info-circle"></i> Categories are global and shared across all vendors.
+                </small>
               </div>
               <div className="form-group">
                 <label>Color</label>
@@ -967,7 +975,9 @@ const AddProduct = ({ onClose }) => {
               <div className="cate-modal-header">
                 <div>
                   <h5 className="cate-modal-title">Create New Category</h5>
-                  <p className="cate-modal-subtitle m-0 text-muted">Fill in the details to create a new category.</p>
+                  <p className="cate-modal-subtitle m-0 text-muted">
+                    Create a new global category. This will be available to all vendors.
+                  </p>
                 </div>
                 <button type="button" className="cate-modal-close" onClick={handleCloseCategoryModal}>
                   <i className="bi bi-x-lg"></i>
@@ -994,7 +1004,7 @@ const AddProduct = ({ onClose }) => {
 
                       <div className="cate-form-group">
                         <label className="cate-form-label">Visibility Status</label>
-                        <div className="cate-toggle-box" onClick={!categoryLoading ? () => setCategoryForm(prev => ({ ...prev, is_active: !prev.is_active })) : undefined}>
+                        <div className="cate-toggle-box" onClick={!categoryLoading ? toggleCategoryActive : undefined}>
                           <div className={`cate-toggle-switch ${categoryForm.is_active ? 'active' : ''}`}>
                             <div className="cate-toggle-knob"></div>
                           </div>

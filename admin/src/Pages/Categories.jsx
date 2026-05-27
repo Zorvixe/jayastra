@@ -1,5 +1,6 @@
+// Categories.js - Updated version with global categories
 import React, { useState, useEffect } from "react";
-import axios from '../utils/axiosConfig'; // Adjust path as needed
+import axios from '../utils/axiosConfig';
 import "./Categories.css";
 import { toast } from "react-toastify";
 
@@ -27,6 +28,7 @@ const Categories = () => {
   const [confirmDeleteId, setConfirmDeleteId] = useState(null);
   const [loading, setLoading] = useState(false);
   const [initialLoading, setInitialLoading] = useState(true);
+  const [userRole, setUserRole] = useState(null);
 
   const [pagination, setPagination] = useState({
     totalCount: 0,
@@ -42,6 +44,19 @@ const Categories = () => {
     description: "",
     is_active: true
   });
+
+  // Get user role from token
+  useEffect(() => {
+    const token = localStorage.getItem("token");
+    if (token) {
+      try {
+        const payload = JSON.parse(atob(token.split('.')[1]));
+        setUserRole(payload.role);
+      } catch (e) {
+        console.error("Error parsing token", e);
+      }
+    }
+  }, []);
 
   const fetchCategories = async (pageOverride) => {
     try {
@@ -60,7 +75,7 @@ const Categories = () => {
       setCategories(
         (res.data.categories || []).map(c => ({
           ...c,
-          is_active: c.is_active !== false // defaults to true
+          is_active: c.is_active !== false
         }))
       );
       if (res.data.pagination) {
@@ -90,14 +105,19 @@ const Categories = () => {
   }, [search]);
 
   const handleDragStart = (e, index) => {
+    // Only super_admin can reorder
+    if (userRole !== 'super_admin') {
+      e.preventDefault();
+      return;
+    }
     setDraggedItem(categories[index]);
     e.dataTransfer.effectAllowed = "move";
     e.dataTransfer.setData("text/html", e.target.parentNode);
-    // Hide the default drag image slightly
     e.dataTransfer.setDragImage(e.target, 20, 20);
   };
 
   const handleDragOver = (index) => {
+    if (userRole !== 'super_admin') return;
     const draggedOverItem = categories[index];
     if (draggedItem === draggedOverItem) return;
     let items = categories.filter(item => item !== draggedItem);
@@ -106,6 +126,10 @@ const Categories = () => {
   };
 
   const handleDragEnd = async () => {
+    if (userRole !== 'super_admin') {
+      setDraggedItem(null);
+      return;
+    }
     setDraggedItem(null);
     try {
       setLoading(true);
@@ -203,7 +227,7 @@ const Categories = () => {
       fetchCategories();
       setConfirmDeleteId(null);
     } catch (err) {
-      toast.error("Delete failed");
+      toast.error(err.response?.data?.message || "Delete failed");
       setConfirmDeleteId(null);
     } finally {
       setLoading(false);
@@ -225,9 +249,10 @@ const Categories = () => {
     setShowModal(true);
   };
 
+  const isSuperAdmin = userRole === 'super_admin';
+
   return (
     <div className="cate-container">
-      {/* Loader Overlay for actions */}
       {loading && (
         <div className="cate-loader-overlay">
           <div className="cate-loader-container">
@@ -236,15 +261,17 @@ const Categories = () => {
         </div>
       )}
 
-      {/* HEADER & TOP ACTIONS */}
       <div className="cate-top d-flex justify-content-between align-items-center flex-wrap gap-3">
         <div>
           <h2 className="cate-page-title">Categories</h2>
-          <p className="cate-page-subtitle text-muted mb-0">Manage and organize your product categories.</p>
+          <p className="cate-page-subtitle text-muted mb-0">
+            {isSuperAdmin 
+              ? "Manage and organize your product categories. Drag to reorder."
+              : "View all global categories. Create new categories that will be available to all vendors."}
+          </p>
         </div>
 
         <div className="d-flex align-items-center gap-3 flex-wrap">
-          {/* Search Box */}
           <div className="admin-search-box" style={{ minWidth: '250px' }}>
             <i className="bi bi-search me-2 text-muted"></i>
             <input
@@ -257,21 +284,22 @@ const Categories = () => {
             />
           </div>
 
-          <div className="cate-drag-hint no-print">
-            <i className="bi bi-arrows-move me-2"></i>Drag to reorder
-          </div>
+          {isSuperAdmin && (
+            <div className="cate-drag-hint no-print">
+              <i className="bi bi-arrows-move me-2"></i>Drag to reorder
+            </div>
+          )}
           <button className="cate-add-main-btn" onClick={handleOpenAddModal}>
             <i className="bi bi-plus-lg me-1"></i> Add Category
           </button>
         </div>
       </div>
 
-      {/* TABLE SECTION */}
       <div className="cate-table-wrapper">
         <table className="cate-table">
           <thead>
             <tr>
-              <th style={{ width: '50px' }} className="text-center"></th>
+              {isSuperAdmin && <th style={{ width: '50px' }} className="text-center"></th>}
               <th style={{ width: '80px' }}>Image</th>
               <th>Name</th>
               <th>Description</th>
@@ -282,16 +310,15 @@ const Categories = () => {
           <tbody>
             {initialLoading ? (
               <tr>
-                <td colSpan="6">
+                <td colSpan={isSuperAdmin ? "6" : "5"}>
                   <div className="table-loader-inline py-5 text-center">
                     <div className="cate-spinner mx-auto mb-2"></div>
-                    <p className="text-muted small"></p>
                   </div>
                 </td>
               </tr>
             ) : categories.length === 0 ? (
               <tr className="cate-empty-row">
-                <td colSpan="6">
+                <td colSpan={isSuperAdmin ? "6" : "5"}>
                   <div className="cate-empty-state">
                     <i className="bi bi-folder-x mb-2 d-block"></i>
                     <p className="m-0">No categories found.</p>
@@ -303,14 +330,16 @@ const Categories = () => {
                 <tr
                   key={main.id}
                   className={`cate-main-row ${draggedItem === main ? 'dragging' : ''}`}
-                  draggable={!search && pagination.totalPages === 1}
+                  draggable={isSuperAdmin && !search && pagination.totalPages === 1}
                   onDragStart={(e) => handleDragStart(e, index)}
                   onDragOver={(e) => { e.preventDefault(); handleDragOver(index); }}
                   onDragEnd={handleDragEnd}
                 >
-                  <td className="cate-drag-handle text-center">
-                    {(!search && pagination.totalPages === 1) && <i className="bi bi-grid-3x2-gap-fill"></i>}
-                  </td>
+                  {isSuperAdmin && (
+                    <td className="cate-drag-handle text-center">
+                      {(!search && pagination.totalPages === 1) && <i className="bi bi-grid-3x2-gap-fill"></i>}
+                    </td>
+                  )}
                   <td className="cate-image-cell">
                     {main.image_url ? (
                       <img
@@ -353,7 +382,6 @@ const Categories = () => {
           </tbody>
         </table>
 
-        {/* Pagination Controls */}
         {!initialLoading && pagination && pagination.totalPages > 0 && (
           <div className="pagination-wrapper mt-4">
             <div className="pagination-info">
@@ -397,7 +425,11 @@ const Categories = () => {
               <div className="cate-modal-header">
                 <div>
                   <h5 className="cate-modal-title">{editId ? "Edit Category" : "New Category"}</h5>
-                  <p className="cate-modal-subtitle m-0 text-muted">{editId ? "Update the details of your category." : "Fill in the details to create a new category."}</p>
+                  <p className="cate-modal-subtitle m-0 text-muted">
+                    {editId 
+                      ? "Update the details of your category." 
+                      : "Create a new global category. This will be available to all vendors."}
+                  </p>
                 </div>
                 <button type="button" className="cate-modal-close" onClick={handleCloseModal}>
                   <i className="bi bi-x-lg"></i>
@@ -406,7 +438,6 @@ const Categories = () => {
 
               <form onSubmit={handleSubmit} className="cate-modal-form">
                 <div className="cate-modal-body">
-                  {/* LEFT COLUMN – Form Fields */}
                   <div className="cate-fields-col">
                     <div className="cate-form-row">
                       <div className="cate-form-group flex-grow-1">
@@ -450,7 +481,6 @@ const Categories = () => {
                     </div>
                   </div>
 
-                  {/* RIGHT COLUMN – Category Image */}
                   <div className="cate-image-col">
                     <label className="cate-form-label">Category Image</label>
                     <div className="cate-upload-zone">
@@ -516,7 +546,7 @@ const Categories = () => {
                 </div>
               </div>
               <h4 className="cate-confirm-title">Delete Category?</h4>
-              <p className="cate-confirm-desc">This action cannot be undone. All data associated with this category might be affected.</p>
+              <p className="cate-confirm-desc">This action cannot be undone. Products using this category will be affected.</p>
               <div className="cate-confirm-actions">
                 <button className="cate-btn cate-btn-light w-100" onClick={() => setConfirmDeleteId(null)} disabled={loading}>
                   Cancel

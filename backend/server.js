@@ -418,7 +418,6 @@ const initDatabase = async () => {
       ALTER TABLE categories 
       ADD COLUMN IF NOT EXISTS image_url VARCHAR(500),
       ADD COLUMN IF NOT EXISTS display_order INTEGER DEFAULT 0,
-      ADD COLUMN IF NOT EXISTS vendor_id INTEGER REFERENCES users(id) ON DELETE CASCADE;
     `);
 
     await pool.query(`ALTER TABLE categories ADD COLUMN IF NOT EXISTS slug VARCHAR(255) UNIQUE;`);
@@ -1606,54 +1605,51 @@ app.delete("/api/admin/reviews/:id", verifyToken, verifyAdminVendorIndividualAcc
 });
 
 // ================= CATEGORIES =================
+// ================= CATEGORIES (GLOBAL) =================
+
+// Create category - Any authenticated admin/vendor can create
 app.post("/api/admin/categories", verifyToken, verifyAdminVendorIndividualAccess, upload.single("image"), async (req, res) => {
   try {
-    const { name, description } = req.body;
-    const vendor_id = req.user.role === 'super_admin' ? null : req.user.id;
-
-    if (!name) return res.status(400).json({ message: "Category name is required" });
-    const existing = await pool.query("SELECT * FROM categories WHERE name=$1", [name]);
-    if (existing.rows.length > 0) return res.status(400).json({ message: "Category already exists" });
-    const image_url = req.file ? `/uploads/${req.file.filename}` : null;
-    const result = await pool.query(
-      `INSERT INTO categories (name, description, image_url, vendor_id) VALUES ($1,$2,$3,$4) RETURNING *`,
-      [name, description, image_url, vendor_id]
+    const { name, description, is_active } = req.body;
+    
+    if (!name || name.trim() === "") {
+      return res.status(400).json({ message: "Category name is required" });
+    }
+    
+    // Check for duplicate category name (global check)
+    const existing = await pool.query(
+      "SELECT * FROM categories WHERE LOWER(name) = LOWER($1)",
+      [name.trim()]
     );
-    res.json({ success: true, message: "Category created successfully", category: result.rows[0] });
+    
+    if (existing.rows.length > 0) {
+      return res.status(400).json({ 
+        message: "A category with this name already exists. Please use a different name." 
+      });
+    }
+    
+    const image_url = req.file ? `/uploads/${req.file.filename}` : null;
+    
+    const result = await pool.query(
+      `INSERT INTO categories (name, description, image_url, is_active, display_order) 
+       VALUES ($1, $2, $3, $4, 
+         (SELECT COALESCE(MAX(display_order), -1) + 1 FROM categories)
+       ) RETURNING *`,
+      [name.trim(), description || null, image_url, is_active === "true" || is_active === true || is_active === undefined]
+    );
+    
+    res.json({ 
+      success: true, 
+      message: "Category created successfully and is now available globally.", 
+      category: result.rows[0] 
+    });
   } catch (error) {
+    console.error("Category creation error:", error);
     res.status(500).json({ error: "Category creation failed" });
   }
 });
 
-
-
-app.get("/api/categories", async (req, res) => {
-  try {
-    const result = await pool.query("SELECT * FROM categories WHERE is_active=true ORDER BY display_order ASC, created_at DESC");
-    res.json({ success: true, categories: result.rows });
-  } catch (error) {
-    res.status(500).json({ error: "Failed to fetch categories" });
-  }
-});
-
-app.put("/api/admin/categories/reorder", verifyToken, verifyAdminOrSuperAdmin, async (req, res) => {
-  const client = await pool.connect();
-  try {
-    const { order } = req.body;
-    await client.query("BEGIN");
-    for (const item of order) {
-      await client.query("UPDATE categories SET display_order = $1 WHERE id = $2", [item.display_order, item.id]);
-    }
-    await client.query("COMMIT");
-    res.json({ success: true, message: "Categories reordered" });
-  } catch (error) {
-    await client.query("ROLLBACK");
-    res.status(500).json({ error: "Reorder failed" });
-  } finally {
-    client.release();
-  }
-});
-
+// Get categories for admin panel - ALL categories (global view)
 app.get("/api/admin/categories", verifyToken, verifyAdminVendorIndividualAccess, async (req, res) => {
   try {
     const page = parseInt(req.query.page) || 1;
@@ -1666,12 +1662,8 @@ app.get("/api/admin/categories", verifyToken, verifyAdminVendorIndividualAccess,
     let params = [];
     let paramIdx = 1;
 
-    if (req.user.role !== 'super_admin') {
-      query += ` AND (vendor_id = $${paramIdx} OR vendor_id IS NULL)`;
-      countQuery += ` AND (vendor_id = $${paramIdx} OR vendor_id IS NULL)`;
-      params.push(req.user.id);
-      paramIdx++;
-    }
+    // No vendor filtering - ALL categories are visible to everyone
+    // Categories are global
 
     if (search) {
       query += ` AND name ILIKE $${paramIdx}`;
@@ -1679,6 +1671,7 @@ app.get("/api/admin/categories", verifyToken, verifyAdminVendorIndividualAccess,
       params.push(`%${search}%`);
       paramIdx++;
     }
+    
     query += ` ORDER BY display_order ASC, created_at DESC LIMIT $${paramIdx} OFFSET $${paramIdx + 1}`;
 
     const countResult = await pool.query(countQuery, params.slice(0, paramIdx - 1));
@@ -1686,47 +1679,153 @@ app.get("/api/admin/categories", verifyToken, verifyAdminVendorIndividualAccess,
     params.push(limit, offset);
 
     const result = await pool.query(query, params);
-    res.json({ success: true, categories: result.rows, pagination: { totalCount, totalPages: Math.ceil(totalCount / limit), currentPage: page, limit } });
+    res.json({ 
+      success: true, 
+      categories: result.rows, 
+      pagination: { 
+        totalCount, 
+        totalPages: Math.ceil(totalCount / limit), 
+        currentPage: page, 
+        limit 
+      } 
+    });
   } catch (error) {
+    console.error("Fetch categories error:", error);
     res.status(500).json({ error: "Failed to fetch categories" });
   }
 });
 
-app.put("/api/admin/categories/:id", verifyToken, verifyAdminVendorIndividualAccess, upload.single("image"), async (req, res) => {
+// Update category - Any admin can update (global)
+app.put("/api/admin/categories/:id", verifyToken, verifyAdminOrSuperAdmin, upload.single("image"), async (req, res) => {
   try {
     const { id } = req.params;
-    if (req.user.role !== 'super_admin') {
-      const check = await pool.query("SELECT vendor_id FROM categories WHERE id=$1", [id]);
-      if (check.rows.length === 0 || check.rows[0].vendor_id !== req.user.id) {
-        return res.status(403).json({ error: "Unauthorized to edit this category" });
+    const { name, description, is_active } = req.body;
+    
+    // Check if category exists
+    const checkResult = await pool.query("SELECT * FROM categories WHERE id = $1", [id]);
+    if (checkResult.rows.length === 0) {
+      return res.status(404).json({ error: "Category not found" });
+    }
+    
+    // If name is being changed, check for duplicates
+    if (name && name.trim() !== checkResult.rows[0].name) {
+      const duplicateCheck = await pool.query(
+        "SELECT * FROM categories WHERE LOWER(name) = LOWER($1) AND id != $2",
+        [name.trim(), id]
+      );
+      if (duplicateCheck.rows.length > 0) {
+        return res.status(400).json({ 
+          message: "A category with this name already exists. Please use a different name." 
+        });
       }
     }
-
-    const { name, description, is_active } = req.body;
-    let image_url = null;
-    if (req.file) image_url = `/uploads/${req.file.filename}`;
+    
+    let image_url = checkResult.rows[0].image_url;
+    if (req.file) {
+      // Delete old image if exists
+      if (image_url) {
+        const oldPath = path.join(UPLOAD_BASE_PATH, image_url.replace('/uploads/', ''));
+        if (fs.existsSync(oldPath)) fs.unlinkSync(oldPath);
+      }
+      image_url = `/uploads/${req.file.filename}`;
+    }
+    
     const result = await pool.query(
-      `UPDATE categories SET name=$1, description=$2, is_active=$3, ${image_url ? "image_url=$4," : ""} updated_at=NOW() WHERE id=${image_url ? "$5" : "$4"} RETURNING *`,
-      image_url ? [name, description, is_active, image_url, id] : [name, description, is_active, id]
+      `UPDATE categories 
+       SET name = COALESCE($1, name),
+           description = COALESCE($2, description),
+           image_url = COALESCE($3, image_url),
+           is_active = COALESCE($4, is_active),
+           updated_at = NOW()
+       WHERE id = $5 
+       RETURNING *`,
+      [
+        name ? name.trim() : null,
+        description || null,
+        image_url,
+        is_active !== undefined ? (is_active === "true" || is_active === true) : null,
+        id
+      ]
     );
+    
     res.json({ success: true, category: result.rows[0] });
   } catch (error) {
+    console.error("Category update error:", error);
     res.status(500).json({ error: "Category update failed" });
   }
 });
 
-app.delete("/api/admin/categories/:id", verifyToken, verifyAdminVendorIndividualAccess, async (req, res) => {
+// Delete category - Only Super Admin can delete globally
+app.delete("/api/admin/categories/:id", verifyToken, verifySuperAdmin, async (req, res) => {
   try {
-    if (req.user.role !== 'super_admin') {
-      const check = await pool.query("SELECT vendor_id FROM categories WHERE id=$1", [req.params.id]);
-      if (check.rows.length === 0 || check.rows[0].vendor_id !== req.user.id) {
-        return res.status(403).json({ error: "Unauthorized to delete this category" });
-      }
+    const { id } = req.params;
+    
+    // Check if category is being used by any products
+    const productCheck = await pool.query(
+      "SELECT COUNT(*) as count FROM products WHERE category_id = $1",
+      [id]
+    );
+    
+    if (parseInt(productCheck.rows[0].count) > 0) {
+      // Instead of deleting, mark as inactive
+      await pool.query(
+        "UPDATE categories SET is_active = false WHERE id = $1",
+        [id]
+      );
+      return res.json({ 
+        success: true, 
+        message: "Category is being used by products. It has been marked as inactive instead." 
+      });
     }
-    await pool.query("DELETE FROM categories WHERE id=$1", [req.params.id]);
-    res.json({ success: true, message: "Category deleted" });
+    
+    // Get image URL to delete file
+    const catResult = await pool.query("SELECT image_url FROM categories WHERE id = $1", [id]);
+    if (catResult.rows.length > 0 && catResult.rows[0].image_url) {
+      const imagePath = path.join(UPLOAD_BASE_PATH, catResult.rows[0].image_url.replace('/uploads/', ''));
+      if (fs.existsSync(imagePath)) fs.unlinkSync(imagePath);
+    }
+    
+    await pool.query("DELETE FROM categories WHERE id = $1", [id]);
+    res.json({ success: true, message: "Category deleted successfully" });
   } catch (error) {
+    console.error("Category delete error:", error);
     res.status(500).json({ error: "Delete failed" });
+  }
+});
+
+// Reorder categories - Only Super Admin can reorder
+app.put("/api/admin/categories/reorder", verifyToken, verifySuperAdmin, async (req, res) => {
+  const client = await pool.connect();
+  try {
+    const { order } = req.body;
+    await client.query("BEGIN");
+    for (const item of order) {
+      await client.query(
+        "UPDATE categories SET display_order = $1 WHERE id = $2",
+        [item.display_order, item.id]
+      );
+    }
+    await client.query("COMMIT");
+    res.json({ success: true, message: "Categories reordered successfully" });
+  } catch (error) {
+    await client.query("ROLLBACK");
+    console.error("Reorder error:", error);
+    res.status(500).json({ error: "Reorder failed" });
+  } finally {
+    client.release();
+  }
+});
+
+// Public endpoint to get active categories
+app.get("/api/categories", async (req, res) => {
+  try {
+    const result = await pool.query(
+      "SELECT * FROM categories WHERE is_active = true ORDER BY display_order ASC, created_at DESC"
+    );
+    res.json({ success: true, categories: result.rows });
+  } catch (error) {
+    console.error("Fetch public categories error:", error);
+    res.status(500).json({ error: "Failed to fetch categories" });
   }
 });
 
