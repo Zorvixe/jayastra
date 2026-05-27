@@ -1,17 +1,17 @@
-import React from "react";
-import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
+// App.js - Updated
+import React, { useState, useEffect } from "react";
+import { BrowserRouter as Router, Routes, Route, Navigate, useNavigate } from "react-router-dom";
 import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 
-import AdminLayout from "./Components/AdminLayout"; // Make sure this path is correct
+import AdminLayout from "./Components/AdminLayout";
 import AdminLogin from "./Pages/AdminLogin";
-
 import Dashboard from "./Pages/Dashboard";
 import Products from "./Pages/Products";
 import AddProduct from "./Pages/AddProduct";
 import Categories from "./Pages/Categories";
 import Orders from "./Pages/Orders";
-import Payouts from "./Pages/Payouts/Payouts"; // <--- ADDED PAYOUTS ROUTE
+import Payouts from "./Pages/Payouts/Payouts";
 import Users from "./Pages/Users";
 import Banners from "./Pages/Banners";
 import Inventory from "./Pages/Inventory";
@@ -27,8 +27,8 @@ import Wishlist from "./Pages/Wishlist";
 import VendorPickupAddresses from "./Pages/VendorPickupSettings/VendorPickupAddresses";
 import PlatformFeeSettings from "./Pages/PlatformFeeSettings/PlatformFeeSettings";
 import Profile from "./Pages/Profile/Profile";
-
-
+import SessionExpiredModal from "./utils/SessionExpiredModal";
+import { setSessionExpiredModal } from "./utils/axiosConfig";
 
 // Protected Route Component
 const ProtectedRoute = ({ children }) => {
@@ -42,10 +42,33 @@ const ProtectedRoute = ({ children }) => {
   return children;
 };
 
-function App() {
+function AppContent() {
+  const navigate = useNavigate();
+  const [showSessionModal, setShowSessionModal] = useState(false);
+  const [sessionModalMessage, setSessionModalMessage] = useState("");
+
+  // Register modal callback with axiosConfig
+  useEffect(() => {
+    setSessionExpiredModal((message) => {
+      setSessionModalMessage(message);
+      setShowSessionModal(true);
+    });
+  }, []);
+
+  const handleSessionExpiredConfirm = () => {
+    setShowSessionModal(false);
+    navigate("/admin/login", { replace: true });
+    window.location.reload(); // Optional: Force reload to clear state
+  };
+
   return (
-    <Router>
+    <>
       <ToastContainer position="top-right" autoClose={2000} />
+      <SessionExpiredModal 
+        isOpen={showSessionModal}
+        message={sessionModalMessage}
+        onConfirm={handleSessionExpiredConfirm}
+      />
       <Routes>
         <Route path="/admin/login" element={<AdminLogin />} />
         <Route
@@ -61,7 +84,7 @@ function App() {
           <Route path="add-product" element={<AddProduct />} />
           <Route path="categories" element={<Categories />} />
           <Route path="orders" element={<Orders />} />
-          <Route path="payouts" element={<Payouts />} /> {/* <--- ADDED PAYOUTS ROUTE HERE */}
+          <Route path="payouts" element={<Payouts />} />
           <Route path="users" element={<Users />} />
           <Route path="banners" element={<Banners />} />
           <Route path="stock-notifications" element={<StockNotifications />} />
@@ -76,13 +99,20 @@ function App() {
           <Route path="edit-product/:id" element={<EditProduct />} />
           <Route path="vendor-pickup" element={<VendorPickupAddresses />} />
           <Route path="platform-fee" element={<PlatformFeeSettings />} />
-          <Route path="/admin/profile" element={<Profile />} />
-
+          <Route path="profile" element={<Profile />} />
         </Route>
 
         {/* Default redirect */}
         <Route path="/" element={<Navigate to="/admin/login" />} />
       </Routes>
+    </>
+  );
+}
+
+function App() {
+  return (
+    <Router>
+      <AppContent />
     </Router>
   );
 }

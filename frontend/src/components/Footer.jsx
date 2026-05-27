@@ -14,7 +14,7 @@ const Footer = () => {
               <img src="/assets/jayastra_banner.png" alt="Logo" className="footer-brand-logo" onError={(e) => { e.target.style.display = 'none'; }} />
             </div>
             <p className="footer-desc">
-              <strong>JAYASTRA</strong> — Bengaluru's premier destination for premium ethnic & contemporary fashion. Every piece tells a story of style, comfort, and elegance, crafted to celebrate your unique personality. <br /><br />
+              <strong>JAYASTRA</strong> — India's premier destination for premium ethnic & contemporary fashion. Every piece tells a story of style, comfort, and elegance, crafted to celebrate your unique personality. <br /><br />
               <em>Redefining fashion. Redefining you.</em>
             </p>
           </div>
@@ -46,11 +46,11 @@ const Footer = () => {
             <ul className="footer-contact-list">
               <li><strong>Phone:</strong> +91 8328590444  / +91 9652896180</li>
               <li><strong>Email:</strong> jayastrastore@gmail.com</li>
-              <li><strong>Address:</strong> 165/1, Priya Swaroop, 11th cross, beside RAINEO STUDIO, Modi Hospital Rd, Model LIC Colony, Basaveshwar Nagar, Bengaluru, Karnataka 560079</li>
+              <li><strong>Address:</strong> 2-62 K.Bollavaram, Andhra Pradesh, Gadiwemula, Nandyal </li>
             </ul>
 
             <div className="footer-social-icons">
-              <a href="tel:+919019397278" aria-label="Phone" className="social-icon ph"><i className="bi bi-telephone"></i></a>
+              <a href="tel:+918328590444" aria-label="Phone" className="social-icon ph"><i className="bi bi-telephone"></i></a>
               <a href="https://www.instagram.com/jayastrastore?igsh=b293OXJ0aXh6Y24=" target="_blank" rel="noopener noreferrer" aria-label="Instagram" className="social-icon ig"><i className="bi bi-instagram"></i></a>
               <a href="https://maps.google.com/?q=165/1,+Priya+Swaroop,+11th+cross,+beside+RAINEO+STUDIO,+Modi+Hospital+Rd,+Model+LIC+Colony,+Basaveshwar+Nagar,+Bengaluru,+Karnataka+560079" target="_blank" rel="noopener noreferrer" aria-label="Location" className="social-icon loc"><i className="bi bi-geo-alt"></i></a>
             </div>

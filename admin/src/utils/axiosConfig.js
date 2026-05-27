@@ -6,6 +6,21 @@ const API_URL = process.env.REACT_APP_API_URL;
 // Flag to prevent multiple redirects
 let isRedirecting = false;
 
+// Store modal callback for later use
+let sessionExpiredModalCallback = null;
+
+// Function to set modal callback from React component
+export const setSessionExpiredModal = (callback) => {
+  sessionExpiredModalCallback = callback;
+};
+
+// Function to trigger session expired modal
+export const showSessionExpiredModal = (message = 'Session expired. Please login again.') => {
+  if (sessionExpiredModalCallback) {
+    sessionExpiredModalCallback(message);
+  }
+};
+
 // Create axios instance
 const axiosInstance = axios.create({
   baseURL: API_URL,
@@ -46,25 +61,11 @@ axiosInstance.interceptors.response.use(
       localStorage.removeItem('userId');
       sessionStorage.removeItem('admin_notifications');
       
-      // Redirect to login if not already redirecting
-      if (!isRedirecting && window.location.pathname !== '/admin/login') {
-        isRedirecting = true;
-        
-        // Show toast message if available
-        if (window.toast) {
-          window.toast.error('Session expired. Please login again.');
-        } else {
-          alert('Session expired. Please login again.');
-        }
-        
-        // Redirect to login page
-        window.location.href = '/admin/login';
-        
-        // Reset flag after redirect
-        setTimeout(() => {
-          isRedirecting = false;
-        }, 1000);
-      }
+      // Show modal instead of alert
+      showSessionExpiredModal('Session expired. Please login again.');
+      
+      // Don't redirect immediately - wait for modal action
+      // The modal will handle the redirect when user clicks OK
     }
     
     return Promise.reject(error);

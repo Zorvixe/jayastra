@@ -264,11 +264,7 @@ const Categories = () => {
       <div className="cate-top d-flex justify-content-between align-items-center flex-wrap gap-3">
         <div>
           <h2 className="cate-page-title">Categories</h2>
-          <p className="cate-page-subtitle text-muted mb-0">
-            {isSuperAdmin 
-              ? "Manage and organize your product categories. Drag to reorder."
-              : "View all global categories. Create new categories that will be available to all vendors."}
-          </p>
+          
         </div>
 
         <div className="d-flex align-items-center gap-3 flex-wrap">
@@ -284,11 +280,7 @@ const Categories = () => {
             />
           </div>
 
-          {isSuperAdmin && (
-            <div className="cate-drag-hint no-print">
-              <i className="bi bi-arrows-move me-2"></i>Drag to reorder
-            </div>
-          )}
+          
           <button className="cate-add-main-btn" onClick={handleOpenAddModal}>
             <i className="bi bi-plus-lg me-1"></i> Add Category
           </button>

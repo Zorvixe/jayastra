@@ -4,6 +4,9 @@ import axios from "axios";
 import { motion, AnimatePresence } from "framer-motion";
 import "./Home.css";
 import akshayaBanner from "../assets/akshayaT.jpeg";
+import CategoriesScroll from "../components/CategoriesScroll/CategoriesScroll";
+
+
 
 const API_URL = process.env.REACT_APP_API_URL;
 
@@ -568,6 +571,9 @@ const Home = () => {
           </div>
         </div>
       </section>
+
+      {/* ADD THIS NEW COMPONENT HERE - Categories Section */}
+      <CategoriesScroll />
 
       {/* NEW ARRIVALS */}
       <NewArrivals 

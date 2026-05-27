@@ -417,7 +417,7 @@ const initDatabase = async () => {
     await pool.query(`
       ALTER TABLE categories 
       ADD COLUMN IF NOT EXISTS image_url VARCHAR(500),
-      ADD COLUMN IF NOT EXISTS display_order INTEGER DEFAULT 0,
+      ADD COLUMN IF NOT EXISTS display_order INTEGER DEFAULT 0;
     `);
 
     await pool.query(`ALTER TABLE categories ADD COLUMN IF NOT EXISTS slug VARCHAR(255) UNIQUE;`);
@@ -443,7 +443,6 @@ const initDatabase = async () => {
     // Add this inside your initDatabase() function, after creating categories table
     await pool.query(`
       ALTER TABLE categories 
-      ADD COLUMN IF NOT EXISTS display_order INTEGER DEFAULT 0,
       ADD COLUMN IF NOT EXISTS show_in_navbar BOOLEAN DEFAULT true,
       ADD COLUMN IF NOT EXISTS nav_order INTEGER DEFAULT 0
     `);
