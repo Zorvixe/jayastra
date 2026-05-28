@@ -51,8 +51,8 @@ const Footer = () => {
 
             <div className="footer-social-icons">
               <a href="tel:+918328590444" aria-label="Phone" className="social-icon ph"><i className="bi bi-telephone"></i></a>
-              <a href="https://www.instagram.com/jayastrastore?igsh=b293OXJ0aXh6Y24=" target="_blank" rel="noopener noreferrer" aria-label="Instagram" className="social-icon ig"><i className="bi bi-instagram"></i></a>
-              <a href="https://maps.google.com/?q=165/1,+Priya+Swaroop,+11th+cross,+beside+RAINEO+STUDIO,+Modi+Hospital+Rd,+Model+LIC+Colony,+Basaveshwar+Nagar,+Bengaluru,+Karnataka+560079" target="_blank" rel="noopener noreferrer" aria-label="Location" className="social-icon loc"><i className="bi bi-geo-alt"></i></a>
+              <a href="https://www.instagram.com/jayastra.in" target="_blank" rel="noopener noreferrer" aria-label="Instagram" className="social-icon ig"><i className="bi bi-instagram"></i></a>
+              <a href="https://maps.app.goo.gl/2ZMKquxJ3HGTVXhA9" target="_blank" rel="noopener noreferrer" aria-label="Location" className="social-icon loc"><i className="bi bi-geo-alt"></i></a>
             </div>
           </div>
         </div>

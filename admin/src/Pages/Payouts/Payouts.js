@@ -1226,14 +1226,14 @@ const Payouts = () => {
 
             <div className="table-toolbar">
               <h3>
-                {settlementTab === 'all' ? 'All Settlements' :
+                {settlementTab === 'all' ? 'Settlements' :
                   settlementTab === 'paid' ? 'Completed Settlements' :
                     settlementTab === 'pending' ? 'Pending Settlements' :
                       settlementTab === 'rejected' ? 'Rejected Requests' : 'Cancelled Requests'}
               </h3>
               <div className="toolbar-actions">
                 <button className="btn-blue-outline" onClick={handleDownloadSettlementReport}>
-                  <i className="bi bi-download"></i> Download Report
+                  <i className="bi bi-download"></i> Report
                 </button>
                 <i className="bi bi-arrow-clockwise action-icon" onClick={() => { fetchData(); fetchSummary(); }}></i>
                 <button className="btn-clear-filters" onClick={() => { setDateFrom(""); setDateTo(""); setSearchTerm(""); setSettlementTab("all"); }}>

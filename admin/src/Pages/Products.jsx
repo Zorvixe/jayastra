@@ -287,11 +287,12 @@ const Products = () => {
                         </td>
                         <td>
                           <span
-                            className={`status-badge ${product.is_active ? "active" : "inactive"
-                              }`}
+                            style={{ color: "white" }}
+                            className={`status-badge ${product.is_active ? "active" : "inactive"}`}
                           >
-                            {product.is_active ? "Active" : "Hidden"}
+                            {product.is_active ? "Active" : "Inactive"}
                           </span>
+
                         </td>
                         <td>
                           <div className="actions">
@@ -381,106 +382,114 @@ const Products = () => {
       </div>
 
       {/* Lightbox for Images */}
-      {previewImage && (
-        <div
-          className="admin-lightbox-overlay"
-          onClick={() => setPreviewImage(null)}
-        >
-          <div className="lightbox-content">
-            <img
-              src={previewImage}
-              alt="Product Preview"
-              onClick={(e) => e.stopPropagation()}
-              onError={(e) => (e.target.src = "/assets/placeholder-product.jpg")}
-            />
-            <button
-              className="close-lightbox"
-              onClick={() => setPreviewImage(null)}
-            >
-              ✕
-            </button>
+      {
+        previewImage && (
+          <div
+            className="admin-lightbox-overlay"
+            onClick={() => setPreviewImage(null)}
+          >
+            <div className="lightbox-content">
+              <img
+                src={previewImage}
+                alt="Product Preview"
+                onClick={(e) => e.stopPropagation()}
+                onError={(e) => (e.target.src = "/assets/placeholder-product.jpg")}
+              />
+              <button
+                className="close-lightbox"
+                onClick={() => setPreviewImage(null)}
+              >
+                ✕
+              </button>
+            </div>
           </div>
-        </div>
-      )}
+        )
+      }
 
       {/* Delete Confirmation Modal */}
-      {(confirmDeleteId || confirmBulkDelete) && (
-        <div
-          className="custom-confirm-overlay"
-          onClick={() => {
-            setConfirmDeleteId(null);
-            setConfirmBulkDelete(false);
-          }}
-        >
+      {
+        (confirmDeleteId || confirmBulkDelete) && (
           <div
-            className="custom-confirm-box"
-            onClick={(e) => e.stopPropagation()}
+            className="custom-confirm-overlay"
+            onClick={() => {
+              setConfirmDeleteId(null);
+              setConfirmBulkDelete(false);
+            }}
           >
             <div
-              className="confirm-icon"
-              style={{ color: "#b91c1c", background: "#fee2e2" }}
+              className="custom-confirm-box"
+              onClick={(e) => e.stopPropagation()}
             >
-              ⚠️
-            </div>
-            <h5>Confirm Deletion</h5>
-            <p>
-              {confirmBulkDelete
-                ? `Are you sure you want to delete ${selected.length} products? This action cannot be undone.`
-                : `Are you sure you want to delete this product? This action cannot be undone.`}
-            </p>
-            <div className="confirm-actions">
-              <button
-                className="confirm-cancel-btn"
-                onClick={() => {
-                  setConfirmDeleteId(null);
-                  setConfirmBulkDelete(false);
-                }}
+              <div
+                className="confirm-icon"
+                style={{ color: "#b91c1c", background: "#fee2e2" }}
               >
-                Cancel
-              </button>
-              <button
-                className="confirm-execute-btn"
-                style={{ background: "#b91c1c" }}
-                onClick={
-                  confirmBulkDelete ? executeBulkDelete : executeDeleteProduct
-                }
-              >
-                Yes, Delete
-              </button>
+                ⚠️
+              </div>
+              <h5>Confirm Deletion</h5>
+              <p>
+                {confirmBulkDelete
+                  ? `Are you sure you want to delete ${selected.length} products? This action cannot be undone.`
+                  : `Are you sure you want to delete this product? This action cannot be undone.`}
+              </p>
+              <div className="confirm-actions">
+                <button
+                  className="confirm-cancel-btn"
+                  onClick={() => {
+                    setConfirmDeleteId(null);
+                    setConfirmBulkDelete(false);
+                  }}
+                >
+                  Cancel
+                </button>
+                <button
+                  className="confirm-execute-btn"
+                  style={{ background: "#b91c1c" }}
+                  onClick={
+                    confirmBulkDelete ? executeBulkDelete : executeDeleteProduct
+                  }
+                >
+                  Yes, Delete
+                </button>
+              </div>
             </div>
           </div>
-        </div>
-      )}
+        )
+      }
 
       {/* Add Product Modal Component Overlay */}
-      {showAddModal && (
-        <div className="product-modal-overlay" onClick={() => setShowAddModal(false)}>
-          <div className="product-modal-content" onClick={(e) => e.stopPropagation()}>
-            <AddProduct
-              onClose={() => {
-                setShowAddModal(false);
-                fetchProducts();
-              }}
-            />
+      {
+        showAddModal && (
+          <div className="product-modal-overlay" onClick={() => setShowAddModal(false)}>
+            <div className="product-modal-content" onClick={(e) => e.stopPropagation()}>
+              <AddProduct
+                onClose={() => {
+                  setShowAddModal(false);
+                  fetchProducts();
+                }}
+              />
+            </div>
           </div>
-        </div>
-      )}
+        )
+      }
 
       {/* Edit Product Modal Component Overlay */}
-      {editProductId && (
-        <div className="product-modal-overlay" onClick={() => setEditProductId(null)}>
-          <div className="product-modal-content" onClick={(e) => e.stopPropagation()}>
-            <EditProduct
-              id={editProductId}
-              onClose={() => {
-                setEditProductId(null);
-                fetchProducts();
-              }}
-            />
+      {
+        editProductId && (
+          <div className="product-modal-overlay" onClick={() => setEditProductId(null)}>
+            <div className="product-modal-content" onClick={(e) => e.stopPropagation()}>
+              <EditProduct
+                id={editProductId}
+                onClose={() => {
+                  setEditProductId(null);
+                  fetchProducts();
+                }}
+              />
+            </div>
           </div>
-        </div>
-      )}
-    </div>
+        )
+      }
+    </div >
   );
 };
 

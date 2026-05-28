@@ -3917,6 +3917,50 @@ app.get("/api/admin/dashboard/stats", verifyToken, verifyAnyAdmin, async (req, r
   }
 });
 
+// Add this endpoint after your existing dashboard stats endpoint
+
+// ================= TODAY'S STATS ENDPOINT =================
+app.get("/api/admin/dashboard/today-stats", verifyToken, verifyAnyAdmin, async (req, res) => {
+  try {
+    const userRole = req.user.role?.toLowerCase();
+    const vendorId = req.user.id;
+    
+    // Get today's date range (start of today to now)
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const todayStr = today.toISOString();
+    const nowStr = new Date().toISOString();
+    
+    let orderQuery = `
+      SELECT COUNT(DISTINCT o.id) as order_count, 
+             SUM(CASE WHEN o.order_status = 'Delivered' THEN o.total_amount ELSE 0 END) as earnings
+      FROM orders o
+      LEFT JOIN order_items oi ON o.id = oi.order_id
+      WHERE o.created_at BETWEEN $1 AND $2
+    `;
+    
+    let params = [todayStr, nowStr];
+    
+    // For vendors, filter orders that contain their products
+    if (userRole !== 'super_admin') {
+      orderQuery += ` AND oi.vendor_id = $3`;
+      params.push(vendorId);
+    }
+    
+    const result = await pool.query(orderQuery, params);
+    
+    res.json({
+      success: true,
+      todayOrders: parseInt(result.rows[0]?.order_count || 0),
+      todayEarnings: parseFloat(result.rows[0]?.earnings || 0)
+    });
+    
+  } catch (error) {
+    console.error("Today stats error:", error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
 // ================= SHIPROCKET INTEGRATION =================
 let shiprocketToken = null;
 let tokenExpiry = null;

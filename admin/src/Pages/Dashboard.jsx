@@ -35,6 +35,12 @@ const Dashboard = () => {
   const [recentOrders, setRecentOrders] = useState([]);
   const [dailySales, setDailySales] = useState([]);
   const [loading, setLoading] = useState(true);
+  
+  // New state for today's stats
+  const [todayStats, setTodayStats] = useState({
+    todayOrders: 0,
+    todayEarnings: 0,
+  });
 
   // Date filter state
   const [startDate, setStartDate] = useState("");
@@ -65,16 +71,29 @@ const Dashboard = () => {
     try {
       setLoading(true);
       const token = localStorage.getItem("token");
+      
+      // Fetch main dashboard stats
       const res = await axios.get(`${API_URL}/admin/dashboard/stats`, {
         params: { startDate: start, endDate: end },
         headers: { Authorization: `Bearer ${token}` },
       });
 
+      // Fetch today's stats separately
+      const todayRes = await axios.get(`${API_URL}/admin/dashboard/today-stats`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
       if (res.data.success) {
-        // FALLBACKS ADDED HERE TO PREVENT UNDEFINED ARRAYS
         setStats(res.data.stats || {});
         setRecentOrders(res.data.recentOrders || []);
         setDailySales(res.data.dailySales || []);
+      }
+      
+      if (todayRes.data.success) {
+        setTodayStats({
+          todayOrders: todayRes.data.todayOrders || 0,
+          todayEarnings: todayRes.data.todayEarnings || 0,
+        });
       }
     } catch (error) {
       console.error("Dashboard Data Fetch Error:", error);
@@ -179,7 +198,42 @@ const Dashboard = () => {
         </div>
       </div>
 
-      {/* ================= SUMMARY CARDS ================= */}
+      {/* ================= LARGE TODAY CARDS (ROW 1) ================= */}
+      <div className="dash-large-cards">
+        <div className="dash-large-card dash-large-card-orders">
+          <div className="dash-large-card-icon">
+            <i className="bi bi-calendar-check"></i>
+          </div>
+          <div className="dash-large-card-content">
+            <p>Today's Orders</p>
+            <h2>{todayStats.todayOrders}</h2>
+            <span className="dash-large-card-subtitle">Orders placed today</span>
+          </div>
+          <div className="dash-large-card-trend">
+            <i className="bi bi-arrow-up-short"></i>
+            <span>+{todayStats.todayOrders > 0 ? Math.round((todayStats.todayOrders / (stats.totalOrders || 1)) * 100) : 0}%</span>
+          </div>
+        </div>
+
+        <div className="dash-large-card dash-large-card-earnings">
+          <div className="dash-large-card-icon">
+            <i className="bi bi-wallet2"></i>
+          </div>
+          <div className="dash-large-card-content">
+            <p>Today's Earnings</p>
+            <h2>₹{todayStats.todayEarnings.toLocaleString()}</h2>
+            <span className="dash-large-card-subtitle">
+              {userRole === 'vendor' ? 'Your earnings today' : 'Store earnings today'}
+            </span>
+          </div>
+          <div className="dash-large-card-trend">
+            <i className="bi bi-arrow-up-short"></i>
+            <span>+{todayStats.todayEarnings > 0 ? Math.round((todayStats.todayEarnings / (stats.totalRevenue || 1)) * 100) : 0}%</span>
+          </div>
+        </div>
+      </div>
+
+      {/* ================= SUMMARY CARDS (ROW 2) ================= */}
       <div className="dash-cards">
         <div className="dash-card dash-card-products">
           <div className="dash-card-icon">
@@ -217,8 +271,7 @@ const Dashboard = () => {
             <i className="bi bi-currency-rupee"></i>
           </div>
           <div className="dash-card-content">
-           <p>{userRole === 'vendor' ? 'Your Earnings' : 'Total Revenue'}</p>
-            {/* Safe fallback in case totalRevenue is undefined */}
+           <p>{userRole === 'vendor' ? 'Total Earnings' : 'Total Revenue'}</p>
             <h4>₹{(stats.totalRevenue ?? 0).toLocaleString()}</h4>
           </div>
         </div>
@@ -247,7 +300,7 @@ const Dashboard = () => {
 
       {/* ================= RECENT ORDERS ================= */}
       <div className="dash-table">
-        <h5>Orders ({startDate} to {endDate})</h5>
+        <h5>Recent Orders ({startDate} to {endDate})</h5>
         <div className="dash-table-responsive">
           <table>
             <thead>

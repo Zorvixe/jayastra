@@ -234,7 +234,7 @@ useEffect(() => {
           <div className="social-icons">
             <a href="https://wa.me/8328590444" target="_blank" rel="noopener noreferrer" style={{ color: 'inherit', textDecoration: 'none' }}><i className="bi bi-whatsapp"></i></a>
             <a href="tel:+918328590444" style={{ color: 'inherit', textDecoration: 'none' }}><i className="bi bi-telephone"></i></a>
-            <a href="https://www.instagram.com/jayastra?igsh=b293OXJ0aXh6Y24=" target="_blank" rel="noopener noreferrer" style={{ color: 'inherit', textDecoration: 'none' }}><i className="bi bi-instagram"></i></a>
+            <a href="https://www.instagram.com/jayastra.in" target="_blank" rel="noopener noreferrer" style={{ color: 'inherit', textDecoration: 'none' }}><i className="bi bi-instagram"></i></a>
           </div>
           <div className="announcement-text-wrapper">
             {coupons.length > 0 ? (
@@ -246,8 +246,9 @@ useEffect(() => {
               <div className="announcement-text">Welcome to our premium store</div>
             )}
           </div>
+
           <div className="store-locator-text">
-            <a href="https://maps.google.com/?q=165/1,+Priya+Swaroop,+11th+cross,+beside+RAINEO+STUDIO,+Modi+Hospital+Rd,+Model+LIC+Colony,+Basaveshwar+Nagar,+Bengaluru,+Karnataka+560079" target="_blank" rel="noopener noreferrer" style={{ color: 'inherit', textDecoration: 'none' }}>
+            <a href="https://maps.app.goo.gl/2ZMKquxJ3HGTVXhA9" target="_blank" rel="noopener noreferrer" style={{ color: 'inherit', textDecoration: 'none' }}>
               <i className="bi bi-geo-alt"></i> Location
             </a>
           </div>

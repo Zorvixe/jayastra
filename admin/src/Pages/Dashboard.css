@@ -146,11 +146,25 @@
   min-height: 50px;
 }
 
-.dash-card-products .dash-card-icon { background: #3b82f6; }
-.dash-card-orders .dash-card-icon { background: #10b981; }
-.dash-card-users .dash-card-icon { background: #f59e0b; }
-.dash-card-revenue .dash-card-icon { background: #ef4444; }
-.dash-card-notifications .dash-card-icon { background: #8E2139; }
+.dash-card-products .dash-card-icon {
+  background: #3b82f6;
+}
+
+.dash-card-orders .dash-card-icon {
+  background: #10b981;
+}
+
+.dash-card-users .dash-card-icon {
+  background: #f59e0b;
+}
+
+.dash-card-revenue .dash-card-icon {
+  background: #ef4444;
+}
+
+.dash-card-notifications .dash-card-icon {
+  background: #8E2139;
+}
 
 .dash-card-content {
   display: flex;
@@ -162,7 +176,8 @@
   font-weight: 700;
   margin: 0;
   color: #1e293b;
-  word-break: break-word; /* Prevents long numbers from overflowing */
+  word-break: break-word;
+  /* Prevents long numbers from overflowing */
 }
 
 .dash-card p {
@@ -234,7 +249,8 @@
 .dash-table table {
   width: 100%;
   border-collapse: collapse;
-  min-width: 600px; /* Forces table to be scrollable if screen is too small */
+  min-width: 600px;
+  /* Forces table to be scrollable if screen is too small */
 }
 
 .dash-table th,
@@ -242,7 +258,8 @@
   padding: 14px 12px;
   text-align: left;
   border-bottom: 1px solid #e5e7eb;
-  white-space: nowrap; /* Prevents text from stacking weirdly in small columns */
+  white-space: nowrap;
+  /* Prevents text from stacking weirdly in small columns */
 }
 
 .dash-table th {
@@ -268,20 +285,47 @@
   display: inline-block;
 }
 
-.dash-status-delivered, .dash-status-completed { background: #10b981; }
-.dash-status-pending { background: #f59e0b; }
-.dash-status-processing, .dash-status-shipped { background: #3b82f6; }
-.dash-status-cancelled, .dash-status-failed { background: #ef4444; }
-.dash-status-refunded { background: #6b7280; }
-.dash-status-returned { background: #9ca3af; }
-.dash-status-on-hold { background: #d1d5db; color: #333; }
+.dash-status-delivered,
+.dash-status-completed {
+  background: #10b981;
+}
+
+.dash-status-pending {
+  background: #f59e0b;
+}
+
+.dash-status-processing,
+.dash-status-shipped {
+  background: #3b82f6;
+}
+
+.dash-status-cancelled,
+.dash-status-failed {
+  background: #ef4444;
+}
+
+.dash-status-refunded {
+  background: #6b7280;
+}
+
+.dash-status-returned {
+  background: #9ca3af;
+}
+
+.dash-status-on-hold {
+  background: #d1d5db;
+  color: #333;
+}
 
 /* ==========================
    LOADER
 ========================== */
 .dash-loader-overlay {
   position: fixed;
-  top: 0; left: 0; right: 0; bottom: 0;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -298,11 +342,18 @@
 }
 
 @keyframes dash-spin {
-  0% { transform: rotate(0deg); }
-  100% { transform: rotate(360deg); }
+  0% {
+    transform: rotate(0deg);
+  }
+
+  100% {
+    transform: rotate(360deg);
+  }
 }
 
-.dash-text-center { text-align: center; }
+.dash-text-center {
+  text-align: center;
+}
 
 /* ==========================
    RESPONSIVENESS (MEDIA QUERIES)
@@ -314,9 +365,11 @@
     flex-direction: column;
     align-items: stretch;
   }
+
   .dash-today-date {
     justify-content: center;
   }
+
   .dash-date-range-controls {
     justify-content: center;
   }
@@ -327,13 +380,17 @@
   .dash-container {
     padding: 10px;
   }
+
   .dash-chart-canvas-wrap {
     height: 300px;
   }
+
   .dash-card h4 {
     font-size: 1.3rem;
   }
-  .dash-table, .dash-chart {
+
+  .dash-table,
+  .dash-chart {
     padding: 15px;
   }
 }
@@ -344,26 +401,183 @@
     flex-direction: column;
     align-items: stretch;
   }
+
   .dash-date-input-group {
     justify-content: space-between;
     width: 100%;
   }
+
   .dash-reset-btn {
     justify-content: center;
     width: 100%;
   }
-  
+
   .dash-cards {
-    grid-template-columns: 1fr; /* 1 column on very small phones */
+    grid-template-columns: 1fr;
+    /* 1 column on very small phones */
   }
 
   .dash-chart-canvas-wrap {
-    height: 250px; /* Reduce chart height for tiny screens */
+    height: 250px;
+    /* Reduce chart height for tiny screens */
   }
 
   .dash-chart-header h5 {
     display: flex;
     flex-direction: column;
     gap: 5px;
+  }
+}
+
+/* ==========================
+   LARGE CARDS (TODAY'S STATS)
+========================== */
+.dash-large-cards {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 24px;
+  margin-bottom: 30px;
+}
+
+.dash-large-card {
+  background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
+  border-radius: 24px;
+  padding: 14px 12px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.08), 0 8px 10px -6px rgba(0, 0, 0, 0.02);
+  transition: all 0.3s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+.dash-large-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 4px;
+}
+
+.dash-large-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 20px 30px -12px rgba(0, 0, 0, 0.15);
+}
+
+
+.dash-large-card-icon {
+  width: 70px;
+  height: 70px;
+  border-radius: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 32px;
+  background: rgba(142, 33, 57, 0.1);
+  color: #8E2139;
+}
+
+.dash-large-card-orders .dash-large-card-icon {
+  background: rgba(59, 130, 246, 0.1);
+  color: #3b82f6;
+}
+
+.dash-large-card-earnings .dash-large-card-icon {
+  background: rgba(16, 185, 129, 0.1);
+  color: #10b981;
+}
+
+.dash-large-card-content {
+  flex: 1;
+  margin-left: 20px;
+}
+
+.dash-large-card-content p {
+  margin: 0;
+  font-size: 0.9rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: #64748b;
+  margin-bottom: 8px;
+}
+
+.dash-large-card-content h2 {
+  margin: 0;
+  font-size: 2.2rem;
+  font-weight: 800;
+  color: #1e293b;
+  line-height: 1.2;
+}
+
+.dash-large-card-subtitle {
+  font-size: 0.75rem;
+  color: #94a3b8;
+  margin-top: 8px;
+  display: inline-block;
+}
+
+.dash-large-card-trend {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  background: #f1f5f9;
+  padding: 6px 12px;
+  border-radius: 40px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #10b981;
+}
+
+.dash-large-card-trend i {
+  font-size: 1rem;
+}
+
+.dash-large-card-trend span {
+  font-size: 0.75rem;
+}
+
+/* Responsive for large cards */
+@media (max-width: 768px) {
+  .dash-large-cards {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+
+  .dash-large-card {
+    padding: 20px 16px;
+  }
+
+  .dash-large-card-content h2 {
+    font-size: 1.6rem;
+  }
+
+  .dash-large-card-icon {
+    width: 55px;
+    height: 55px;
+    font-size: 26px;
+  }
+}
+
+@media (max-width: 480px) {
+
+  .dash-large-card-icon {
+    margin-right: 10px;
+  }
+
+  .dash-large-card {
+    flex-wrap: wrap;
+  }
+
+  .dash-large-card-content {
+    margin-left: 0;
+    margin-top: 12px;
+    width: 100%;
+  }
+
+  .dash-large-card-trend {
+    margin-left: auto;
   }
 }
