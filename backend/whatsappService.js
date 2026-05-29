@@ -1,5 +1,4 @@
 import axios from 'axios';
-import pool from './db.js';
 
 // Evolution API configuration - SINGLE INSTANCE for all vendors
 const EVOLUTION_API_URL = process.env.EVOLUTION_API_URL || 'http://localhost:8080';
