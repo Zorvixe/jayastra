@@ -1,5 +1,5 @@
 /* src/components/SessionExpiredModal.css */
-.modal-overlay {
+.expire-modal-overlay {
   position: fixed;
   top: 0;
   left: 0;
@@ -10,60 +10,60 @@
   justify-content: center;
   align-items: center;
   z-index: 9999;
-  animation: fadeIn 0.2s ease-out;
+  animation: expire-fadeIn 0.2s ease-out;
 }
 
-.modal-container {
+.expire-modal-container {
   background: white;
   border-radius: 12px;
   width: 90%;
   max-width: 400px;
   box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
-  animation: slideIn 0.3s ease-out;
+  animation: expire-slideIn 0.3s ease-out;
   overflow: hidden;
 }
 
-.modal-header {
+.expire-modal-header {
   padding: 20px 24px 0 24px;
   text-align: center;
 }
 
-.modal-icon {
+.expire-modal-icon {
   display: flex;
   justify-content: center;
   margin-bottom: 16px;
 }
 
-.modal-icon svg {
-  animation: shake 0.5s ease-in-out;
+.expire-modal-icon svg {
+  animation: expire-shake 0.5s ease-in-out;
 }
 
-.modal-header h2 {
+.expire-modal-title {
   margin: 0;
   font-size: 20px;
   font-weight: 600;
   color: #1F2937;
 }
 
-.modal-body {
+.expire-modal-body {
   padding: 16px 24px;
   text-align: center;
 }
 
-.modal-body p {
+.expire-modal-message {
   margin: 0;
   font-size: 14px;
   color: #6B7280;
   line-height: 1.5;
 }
 
-.modal-footer {
+.expire-modal-footer {
   padding: 16px 24px 24px 24px;
   display: flex;
   justify-content: center;
 }
 
-.modal-btn {
+.expire-modal-btn {
   padding: 10px 24px;
   border-radius: 8px;
   font-size: 14px;
@@ -73,22 +73,23 @@
   border: none;
 }
 
-.confirm-btn {
+.expire-confirm-btn {
   background-color: #DC2626;
   color: white;
   width: 100%;
 }
 
-.confirm-btn:hover {
+.expire-confirm-btn:hover {
   background-color: #B91C1C;
   transform: translateY(-1px);
 }
 
-.confirm-btn:active {
+.expire-confirm-btn:active {
   transform: translateY(0);
 }
 
-@keyframes fadeIn {
+/* Keyframe Animations */
+@keyframes expire-fadeIn {
   from {
     opacity: 0;
   }
@@ -97,7 +98,7 @@
   }
 }
 
-@keyframes slideIn {
+@keyframes expire-slideIn {
   from {
     transform: translateY(-20px);
     opacity: 0;
@@ -108,7 +109,7 @@
   }
 }
 
-@keyframes shake {
+@keyframes expire-shake {
   0%, 100% {
     transform: translateX(0);
   }
