@@ -29,6 +29,7 @@ import PlatformFeeSettings from "./Pages/PlatformFeeSettings/PlatformFeeSettings
 import Profile from "./Pages/Profile/Profile";
 import SessionExpiredModal from "./utils/SessionExpiredModal";
 import { setSessionExpiredModal } from "./utils/axiosConfig";
+import VendorWhatsAppSettings from "./Pages/VendorWhatsAppSettings/VendorWhatsAppSettings";
 
 // Protected Route Component
 const ProtectedRoute = ({ children }) => {
@@ -100,6 +101,7 @@ function AppContent() {
           <Route path="vendor-pickup" element={<VendorPickupAddresses />} />
           <Route path="platform-fee" element={<PlatformFeeSettings />} />
           <Route path="profile" element={<Profile />} />
+          <Route path="whatsapp-settings" element={<VendorWhatsAppSettings />} />
         </Route>
 
         {/* Default redirect */}
