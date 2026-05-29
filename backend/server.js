@@ -16,8 +16,7 @@ import Razorpay from 'razorpay';
 import crypto from 'crypto';
 import PDFDocument from 'pdfkit';
 
-import { sendOrderNotificationsToVendors } from './whatsappService.js';
-
+import { sendOrderNotificationsToVendors, sendWhatsAppNotification, checkWhatsAppConnection } from './whatsappService.js';
 
 // ================= APP CONFIG =================
 const app = express();
@@ -2633,7 +2632,7 @@ app.put("/api/admin/orders/:id/status", verifyToken, verifyAdminVendorIndividual
       }
     }
 
-    // Send WhatsApp notifications to vendors on status update (only for specific statuses)
+    // Send WhatsApp notifications to vendors on status update
     if (['Delivered', 'Shipped', 'Processing', 'Out for Delivery'].includes(status)) {
       try {
         // Get all unique vendors for this order
@@ -2664,63 +2663,9 @@ app.put("/api/admin/orders/:id/status", verifyToken, verifyAdminVendorIndividual
               // Calculate vendor's order amount
               const vendorOrderAmount = orderDetails.rows.reduce((sum, item) => sum + (parseFloat(item.price) * parseInt(item.quantity)), 0);
 
-              // Create status-specific message
-              let statusMessage = '';
-              let statusIcon = '';
-
-              switch (status) {
-                case 'Processing':
-                  statusIcon = '⚙️';
-                  statusMessage = 'Your order is being processed. We will update you once it is shipped.';
-                  break;
-                case 'Shipped':
-                  statusIcon = '🚚';
-                  statusMessage = 'Great news! Your order has been shipped and is on its way to the customer.';
-                  break;
-                case 'Out for Delivery':
-                  statusIcon = '🚛';
-                  statusMessage = 'The order is out for delivery and will reach the customer soon.';
-                  break;
-                case 'Delivered':
-                  statusIcon = '✅';
-                  statusMessage = 'The order has been successfully delivered to the customer. Earnings have been added to your wallet.';
-                  break;
-                default:
-                  statusIcon = '📦';
-                  statusMessage = `Order status updated to: ${status}`;
-              }
-
-              // Build detailed WhatsApp message
-              const itemsList = orderDetails.rows.map(item =>
-                `• ${item.product_name}${item.product_code ? ` (${item.product_code})` : ''} x ${item.quantity} = ₹${(parseFloat(item.price) * parseInt(item.quantity)).toFixed(2)}`
-              ).join('\n');
-
-              const message = `${statusIcon} *ORDER STATUS UPDATE* ${statusIcon}
-
-Dear *${vendorInfo.rows[0].store_name || vendorInfo.rows[0].name}*,
-
-Order #${req.params.id} status has been updated to: *${status}*
-
-${statusMessage}
-
-📋 *Order Details:*
-${itemsList}
-
-💰 *Order Total:* ₹${vendorOrderAmount.toFixed(2)}
-👤 *Customer:* ${orderDetails.rows[0]?.customer_name || 'N/A'}
-📞 *Customer Contact:* ${orderDetails.rows[0]?.customer_phone || 'N/A'}
-
-${status === 'Delivered' ? '💵 *Earnings have been credited to your wallet balance.*' : ''}
-
-Thank you for being a valued seller on JAYASTRA!
-
----
-JAYASTRA Store Support
-`;
-
-              // Send WhatsApp notification (import the function at the top of file)
-              const { sendVendorOrderNotification } = await import('../services/whatsappService.js');
-              await sendVendorOrderNotification(req.params.id, vendor.vendor_id, {
+              // Send WhatsApp notification using the imported function
+              const { sendVendorOrderNotification } = await import('./whatsappService.js');
+              await sendVendorOrderNotification(pool, req.params.id, vendor.vendor_id, {
                 items: orderDetails.rows,
                 vendor_order_amount: vendorOrderAmount,
                 status: status,
@@ -2733,7 +2678,6 @@ JAYASTRA Store Support
           }
         }
       } catch (whatsappError) {
-        // Don't fail the order update if WhatsApp fails
         console.error("WhatsApp notification error:", whatsappError);
       }
     }
@@ -2748,7 +2692,6 @@ JAYASTRA Store Support
     client.release();
   }
 });
-
 
 app.get("/api/orders", verifyToken, async (req, res) => {
   try {
@@ -2766,7 +2709,6 @@ app.get("/api/orders", verifyToken, async (req, res) => {
 });
 
 // ================= ORDERS - FIXED COUPON DISCOUNT FOR VENDOR EARNINGS =================
-
 app.post("/api/orders", verifyToken, async (req, res) => {
   const client = await pool.connect();
   try {
@@ -2880,9 +2822,8 @@ app.post("/api/orders", verifyToken, async (req, res) => {
     const fullOrderResult = await pool.query(`SELECT * FROM orders WHERE id = $1`, [orderId]);
     sendAdminNotification(fullOrderResult.rows[0]);
 
-    // SEND WHATSAPP NOTIFICATIONS TO VENDORS (in background, don't wait for response)
-    // This runs asynchronously so it doesn't block the order response
-    sendOrderNotificationsToVendors(orderId, orderItems).then(results => {
+    // ✅ UPDATED: SEND WHATSAPP NOTIFICATIONS TO VENDORS (pass pool as first parameter)
+    sendOrderNotificationsToVendors(pool, orderId, orderItems).then(results => {
       console.log(`WhatsApp notifications sent for order ${orderId}:`, results);
     }).catch(err => {
       console.error(`Failed to send WhatsApp notifications for order ${orderId}:`, err);
@@ -5294,6 +5235,7 @@ app.post("/api/admin/navbar/categories/bulk-visibility", verifyToken, verifyAdmi
 
 
 // Get vendor WhatsApp settings
+// Get vendor WhatsApp settings
 app.get("/api/vendor/whatsapp-settings", verifyToken, verifyAnyAdmin, async (req, res) => {
   try {
     const result = await pool.query(
@@ -5343,7 +5285,7 @@ app.put("/api/vendor/whatsapp-settings", verifyToken, verifyAnyAdmin, async (req
   }
 });
 
-// Test WhatsApp connection
+// Test WhatsApp connection - UPDATED to use imported function
 app.post("/api/vendor/whatsapp-test", verifyToken, verifyAnyAdmin, async (req, res) => {
   try {
     const { phone_number, test_message } = req.body;
@@ -5368,7 +5310,7 @@ app.post("/api/vendor/whatsapp-test", verifyToken, verifyAnyAdmin, async (req, r
   }
 });
 
-// Test WhatsApp endpoint (remove after testing)
+// Test WhatsApp endpoint (admin only) - UPDATED
 app.post("/api/test-whatsapp", verifyToken, verifyAnyAdmin, async (req, res) => {
   try {
     const { phone, message } = req.body;
@@ -5389,7 +5331,7 @@ app.post("/api/test-whatsapp", verifyToken, verifyAnyAdmin, async (req, res) => 
   }
 });
 
-// Get WhatsApp notification logs
+// Get WhatsApp notification logs - UPDATED
 app.get("/api/admin/whatsapp-logs", verifyToken, verifySuperAdmin, async (req, res) => {
   try {
     const result = await pool.query(`
@@ -5401,6 +5343,16 @@ app.get("/api/admin/whatsapp-logs", verifyToken, verifySuperAdmin, async (req, r
       LIMIT 50
     `);
     res.json({ success: true, logs: result.rows });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// Check WhatsApp connection status - NEW ENDPOINT
+app.get("/api/admin/whatsapp-status", verifyToken, verifySuperAdmin, async (req, res) => {
+  try {
+    const status = await checkWhatsAppConnection();
+    res.json({ success: true, status });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }

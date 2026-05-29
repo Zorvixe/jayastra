@@ -12,7 +12,7 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
     ports:
-      - "5433:5432"  # Changed to port 5433 to avoid conflict
+      - "5433:5432"
     networks:
       - evolution_network
 
@@ -40,21 +40,10 @@ services:
       - CACHE_REDIS_URI=redis://redis:6379
       - AUTHENTICATION_API_KEY=JAYASTRA_SECRET_KEY_2026
       - GLOBAL_SEND_IDLE=true
-      - STORE_CACHE=false
-      - DEL_INSTANCE=false
     volumes:
       - evolution_instances:/evolution/instances
     networks:
       - evolution_network
-    command: >
-      sh -c "
-        while ! nc -z postgres 5432; do
-          echo 'Waiting for PostgreSQL...';
-          sleep 2;
-        done;
-        echo 'PostgreSQL is up!';
-        ./docker-entrypoint.sh
-      "
 
 networks:
   evolution_network:

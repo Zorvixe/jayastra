@@ -74,9 +74,14 @@ export const checkWhatsAppConnection = async () => {
   }
 };
 
-// Send order notification to vendor - NO INSTANCE CREATION NEEDED
-export const sendVendorOrderNotification = async (orderId, vendorId, orderDetails) => {
+// Send order notification to vendor - Accepts pool as first parameter
+export const sendVendorOrderNotification = async (pool, orderId, vendorId, orderDetails) => {
   try {
+    if (!pool) {
+      console.error('Database pool not available');
+      return { success: false, error: 'Database not available' };
+    }
+    
     console.log(`Processing WhatsApp notification for Vendor ${vendorId}, Order #${orderId}`);
     
     // Check if vendor has WhatsApp notifications enabled
@@ -217,12 +222,16 @@ JAYASTRA Team`;
     // Send WhatsApp message - USING SINGLE BUSINESS NUMBER TO SEND TO VENDOR
     const result = await sendWhatsAppNotification(vendorPhone, message);
     
-    // Log notification
-    await pool.query(
-      `INSERT INTO whatsapp_notifications (order_id, vendor_id, phone_number, message, status, sent_at, error)
-       VALUES ($1, $2, $3, $4, $5, NOW(), $6)`,
-      [orderId, vendorId, vendorPhone, message, result.success ? 'sent' : 'failed', result.error || null]
-    );
+    // Log notification (if table exists)
+    try {
+      await pool.query(
+        `INSERT INTO whatsapp_notifications (order_id, vendor_id, phone_number, message, status, sent_at, error)
+         VALUES ($1, $2, $3, $4, $5, NOW(), $6)`,
+        [orderId, vendorId, vendorPhone, message, result.success ? 'sent' : 'failed', result.error || null]
+      );
+    } catch (logError) {
+      console.error('Failed to log notification:', logError.message);
+    }
 
     console.log(`WhatsApp notification result for vendor ${vendorId}: ${result.success ? 'SUCCESS' : 'FAILED - ' + result.error}`);
     return result;
@@ -232,9 +241,14 @@ JAYASTRA Team`;
   }
 };
 
-// Send order notification to all vendors in an order
-export const sendOrderNotificationsToVendors = async (orderId, orderItems) => {
+// Send order notification to all vendors in an order - Accepts pool as first parameter
+export const sendOrderNotificationsToVendors = async (pool, orderId, orderItems) => {
   console.log(`Starting WhatsApp notifications for order #${orderId} with ${orderItems.length} items`);
+  
+  if (!pool) {
+    console.error('Database pool not available for notifications');
+    return [];
+  }
   
   // Group items by vendor
   const vendorItemsMap = new Map();
@@ -255,7 +269,7 @@ export const sendOrderNotificationsToVendors = async (orderId, orderItems) => {
   for (const [vendorId, items] of vendorItemsMap) {
     const vendorOrderAmount = items.reduce((sum, item) => sum + (parseFloat(item.price) * parseInt(item.quantity)), 0);
     
-    const result = await sendVendorOrderNotification(orderId, vendorId, {
+    const result = await sendVendorOrderNotification(pool, orderId, vendorId, {
       items,
       vendor_order_amount: vendorOrderAmount,
       customer_name: items[0]?.customer_name,
