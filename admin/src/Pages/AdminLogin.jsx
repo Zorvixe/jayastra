@@ -10,7 +10,7 @@ const API_URL = process.env.REACT_APP_API_URL;
 
 function AdminLogin() {
   const navigate = useNavigate();
-  const [email, setEmail] = useState("");
+  const [identifier, setIdentifier] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -18,10 +18,10 @@ function AdminLogin() {
   const handleLogin = async (e) => {
     e.preventDefault();
     setLoading(true);
-    
+
     try {
       const res = await axios.post(`${API_URL}/auth/login`, {
-        email: email.trim().toLowerCase(),
+        identifier: identifier.trim(),
         password
       });
 
@@ -40,14 +40,14 @@ function AdminLogin() {
       if (res.data.user.id) localStorage.setItem("userId", res.data.user.id);
 
       toast.success("Login successful!");
-      
+
       // Small delay to ensure storage is complete before navigation
       setTimeout(() => {
         navigate("/admin/dashboard", { replace: true });
       }, 500);
 
     } catch (err) {
-      toast.error(err.response?.data?.message || "Invalid email or password");
+      toast.error(err.response?.data?.message || "Invalid email/phone or password");
       setLoading(false);
     }
   };
@@ -59,25 +59,25 @@ function AdminLogin() {
           <img src={sarry_logo} className="sidebar-logo-login" alt="Logo" />
         </div>
         <form onSubmit={handleLogin}>
-          <input 
-            type="email" 
-            placeholder="Email" 
-            onChange={(e) => setEmail(e.target.value)} 
-            required 
+          <input
+            type="text"
+            placeholder="Email or phone"
+            onChange={(e) => setIdentifier(e.target.value)}
+            required
             disabled={loading}
           />
           <div style={{ position: 'relative', width: '100%' }}>
-            <input 
-              type={showPassword ? "text" : "password"} 
-              placeholder="Password" 
-              onChange={(e) => setPassword(e.target.value)} 
-              required 
+            <input
+              type={showPassword ? "text" : "password"}
+              placeholder="Password"
+              onChange={(e) => setPassword(e.target.value)}
+              required
               style={{ paddingRight: '40px', marginBottom: '15px' }}
               disabled={loading}
             />
-            <i 
-              className={`bi ${showPassword ? "bi-eye-slash" : "bi-eye"}`} 
-              onClick={() => setShowPassword(!showPassword)} 
+            <i
+              className={`bi ${showPassword ? "bi-eye-slash" : "bi-eye"}`}
+              onClick={() => setShowPassword(!showPassword)}
               style={{ position: 'absolute', right: '12px', top: '21px', transform: 'translateY(-50%)', cursor: 'pointer', color: '#666', fontSize: '18px' }}
             />
           </div>

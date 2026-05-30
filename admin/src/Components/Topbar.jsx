@@ -418,7 +418,7 @@ const Topbar = ({ toggleSidebar, isSidebarCollapsed }) => {
             </div>
             <div className="profile-info">
               <span className="profile-name">{displayName}</span>
-              <span className="profile-role">{adminPhone || "Admin"}</span>
+              <span className="profile-role">{adminPhone}</span>
             </div>
             <i className={`bi bi-chevron-down dropdown-icon ${openProfile ? 'rotated' : ''}`}></i>
           </div>
@@ -430,7 +430,7 @@ const Topbar = ({ toggleSidebar, isSidebarCollapsed }) => {
                   <i className="bi bi-person-circle"></i>
                 </div>
                 <div className="dropdown-user-info">
-                  <div className="dropdown-user-name">{adminName || "Admin"}</div>
+                  <div className="dropdown-user-name">{adminName}</div>
                   <div className="dropdown-user-email">{adminEmail}</div>
                 </div>
               </div>

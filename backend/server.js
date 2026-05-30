@@ -865,17 +865,23 @@ app.post("/api/auth/simple-login", async (req, res) => {
 
 app.post("/api/auth/login", async (req, res) => {
   try {
-    let { email, password } = req.body;
-    if (!email || !password) return res.status(400).json({ message: "Email and password are required" });
-    email = email.trim().toLowerCase();
-    if (!validator.isEmail(email)) return res.status(400).json({ message: "Invalid email" });
+    let { identifier, password } = req.body;
+    if (!identifier || !password) return res.status(400).json({ message: "Email or phone and password are required" });
+    identifier = identifier.trim();
 
-    const userResult = await pool.query("SELECT * FROM users WHERE LOWER(email) = $1", [email]);
-    if (userResult.rows.length === 0) return res.status(400).json({ message: "Invalid email or password" });
+    let userResult;
+    if (validator.isEmail(identifier)) {
+      userResult = await pool.query("SELECT * FROM users WHERE LOWER(email) = $1", [identifier.toLowerCase()]);
+    } else {
+      const phone = identifier.replace(/\s+/g, "");
+      userResult = await pool.query("SELECT * FROM users WHERE phone = $1", [phone]);
+    }
+
+    if (userResult.rows.length === 0) return res.status(400).json({ message: "Invalid email/phone or password" });
 
     const user = userResult.rows[0];
     const isMatch = await bcrypt.compare(password, user.password);
-    if (!isMatch) return res.status(400).json({ message: "Invalid email or password" });
+    if (!isMatch) return res.status(400).json({ message: "Invalid email/phone or password" });
 
     const role = user.role ? user.role.toLowerCase() : "user";
     const token = jwt.sign({ id: user.id, role }, JWT_SECRET, { expiresIn: "7d" });
@@ -1610,25 +1616,25 @@ app.delete("/api/admin/reviews/:id", verifyToken, verifyAdminVendorIndividualAcc
 app.post("/api/admin/categories", verifyToken, verifyAdminVendorIndividualAccess, upload.single("image"), async (req, res) => {
   try {
     const { name, description, is_active } = req.body;
-    
+
     if (!name || name.trim() === "") {
       return res.status(400).json({ message: "Category name is required" });
     }
-    
+
     // Check for duplicate category name (global check)
     const existing = await pool.query(
       "SELECT * FROM categories WHERE LOWER(name) = LOWER($1)",
       [name.trim()]
     );
-    
+
     if (existing.rows.length > 0) {
-      return res.status(400).json({ 
-        message: "A category with this name already exists. Please use a different name." 
+      return res.status(400).json({
+        message: "A category with this name already exists. Please use a different name."
       });
     }
-    
+
     const image_url = req.file ? `/uploads/${req.file.filename}` : null;
-    
+
     const result = await pool.query(
       `INSERT INTO categories (name, description, image_url, is_active, display_order) 
        VALUES ($1, $2, $3, $4, 
@@ -1636,11 +1642,11 @@ app.post("/api/admin/categories", verifyToken, verifyAdminVendorIndividualAccess
        ) RETURNING *`,
       [name.trim(), description || null, image_url, is_active === "true" || is_active === true || is_active === undefined]
     );
-    
-    res.json({ 
-      success: true, 
-      message: "Category created successfully and is now available globally.", 
-      category: result.rows[0] 
+
+    res.json({
+      success: true,
+      message: "Category created successfully and is now available globally.",
+      category: result.rows[0]
     });
   } catch (error) {
     console.error("Category creation error:", error);
@@ -1670,7 +1676,7 @@ app.get("/api/admin/categories", verifyToken, verifyAdminVendorIndividualAccess,
       params.push(`%${search}%`);
       paramIdx++;
     }
-    
+
     query += ` ORDER BY display_order ASC, created_at DESC LIMIT $${paramIdx} OFFSET $${paramIdx + 1}`;
 
     const countResult = await pool.query(countQuery, params.slice(0, paramIdx - 1));
@@ -1678,15 +1684,15 @@ app.get("/api/admin/categories", verifyToken, verifyAdminVendorIndividualAccess,
     params.push(limit, offset);
 
     const result = await pool.query(query, params);
-    res.json({ 
-      success: true, 
-      categories: result.rows, 
-      pagination: { 
-        totalCount, 
-        totalPages: Math.ceil(totalCount / limit), 
-        currentPage: page, 
-        limit 
-      } 
+    res.json({
+      success: true,
+      categories: result.rows,
+      pagination: {
+        totalCount,
+        totalPages: Math.ceil(totalCount / limit),
+        currentPage: page,
+        limit
+      }
     });
   } catch (error) {
     console.error("Fetch categories error:", error);
@@ -1699,13 +1705,13 @@ app.put("/api/admin/categories/:id", verifyToken, verifyAdminOrSuperAdmin, uploa
   try {
     const { id } = req.params;
     const { name, description, is_active } = req.body;
-    
+
     // Check if category exists
     const checkResult = await pool.query("SELECT * FROM categories WHERE id = $1", [id]);
     if (checkResult.rows.length === 0) {
       return res.status(404).json({ error: "Category not found" });
     }
-    
+
     // If name is being changed, check for duplicates
     if (name && name.trim() !== checkResult.rows[0].name) {
       const duplicateCheck = await pool.query(
@@ -1713,12 +1719,12 @@ app.put("/api/admin/categories/:id", verifyToken, verifyAdminOrSuperAdmin, uploa
         [name.trim(), id]
       );
       if (duplicateCheck.rows.length > 0) {
-        return res.status(400).json({ 
-          message: "A category with this name already exists. Please use a different name." 
+        return res.status(400).json({
+          message: "A category with this name already exists. Please use a different name."
         });
       }
     }
-    
+
     let image_url = checkResult.rows[0].image_url;
     if (req.file) {
       // Delete old image if exists
@@ -1728,7 +1734,7 @@ app.put("/api/admin/categories/:id", verifyToken, verifyAdminOrSuperAdmin, uploa
       }
       image_url = `/uploads/${req.file.filename}`;
     }
-    
+
     const result = await pool.query(
       `UPDATE categories 
        SET name = COALESCE($1, name),
@@ -1746,7 +1752,7 @@ app.put("/api/admin/categories/:id", verifyToken, verifyAdminOrSuperAdmin, uploa
         id
       ]
     );
-    
+
     res.json({ success: true, category: result.rows[0] });
   } catch (error) {
     console.error("Category update error:", error);
@@ -1758,32 +1764,32 @@ app.put("/api/admin/categories/:id", verifyToken, verifyAdminOrSuperAdmin, uploa
 app.delete("/api/admin/categories/:id", verifyToken, verifySuperAdmin, async (req, res) => {
   try {
     const { id } = req.params;
-    
+
     // Check if category is being used by any products
     const productCheck = await pool.query(
       "SELECT COUNT(*) as count FROM products WHERE category_id = $1",
       [id]
     );
-    
+
     if (parseInt(productCheck.rows[0].count) > 0) {
       // Instead of deleting, mark as inactive
       await pool.query(
         "UPDATE categories SET is_active = false WHERE id = $1",
         [id]
       );
-      return res.json({ 
-        success: true, 
-        message: "Category is being used by products. It has been marked as inactive instead." 
+      return res.json({
+        success: true,
+        message: "Category is being used by products. It has been marked as inactive instead."
       });
     }
-    
+
     // Get image URL to delete file
     const catResult = await pool.query("SELECT image_url FROM categories WHERE id = $1", [id]);
     if (catResult.rows.length > 0 && catResult.rows[0].image_url) {
       const imagePath = path.join(UPLOAD_BASE_PATH, catResult.rows[0].image_url.replace('/uploads/', ''));
       if (fs.existsSync(imagePath)) fs.unlinkSync(imagePath);
     }
-    
+
     await pool.query("DELETE FROM categories WHERE id = $1", [id]);
     res.json({ success: true, message: "Category deleted successfully" });
   } catch (error) {
@@ -1832,12 +1838,12 @@ app.get("/api/categories", async (req, res) => {
 app.post("/api/admin/categories/generate-slugs", verifyToken, verifySuperAdmin, async (req, res) => {
   try {
     const categories = await pool.query("SELECT id, name FROM categories WHERE slug IS NULL");
-    
+
     for (const cat of categories.rows) {
       const slug = cat.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
       await pool.query("UPDATE categories SET slug = $1 WHERE id = $2", [slug, cat.id]);
     }
-    
+
     res.json({ success: true, message: `Updated ${categories.rows.length} categories` });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
@@ -3451,7 +3457,7 @@ app.put("/api/admin/banner/:id", verifyToken, verifyAdminVendorIndividualAccess,
     if (req.files?.image && req.files.image.length > 0) {
       image_url = `/uploads/banners/${req.files.image[0].filename}`;
     }
-    
+
     // Only update video if a new file was uploaded
     if (req.files?.video && req.files.video.length > 0) {
       video_url = `/uploads/banners/${req.files.video[0].filename}`;
@@ -3502,20 +3508,20 @@ app.put("/api/admin/banner/:id", verifyToken, verifyAdminVendorIndividualAccess,
       updates.push(`position = $${paramCount++}`);
       values.push(parseInt(position));
     }
-    
+
     // Always include media URLs
     updates.push(`image_url = $${paramCount++}`);
     values.push(image_url);
     updates.push(`video_url = $${paramCount++}`);
     values.push(video_url);
-    
+
     updates.push(`updated_at = NOW()`);
     values.push(id);
 
     if (updates.length > 1) {
       const query = `UPDATE banners SET ${updates.join(", ")} WHERE id = $${paramCount} RETURNING *`;
       const result = await pool.query(query, values);
-      
+
       // Clear any old files if new ones were uploaded (optional cleanup)
       if (req.files?.image && currentBanner.image_url && currentBanner.image_url !== image_url) {
         const oldPath = path.join(UPLOAD_BASE_PATH, currentBanner.image_url.replace('/uploads/', ''));
@@ -3525,7 +3531,7 @@ app.put("/api/admin/banner/:id", verifyToken, verifyAdminVendorIndividualAccess,
         const oldPath = path.join(UPLOAD_BASE_PATH, currentBanner.video_url.replace('/uploads/', ''));
         if (fs.existsSync(oldPath)) fs.unlinkSync(oldPath);
       }
-      
+
       res.json({ success: true, banner: result.rows[0] });
     } else {
       res.json({ success: true, banner: currentBanner, message: "No changes detected" });
@@ -3924,13 +3930,13 @@ app.get("/api/admin/dashboard/today-stats", verifyToken, verifyAnyAdmin, async (
   try {
     const userRole = req.user.role?.toLowerCase();
     const vendorId = req.user.id;
-    
+
     // Get today's date range (start of today to now)
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     const todayStr = today.toISOString();
     const nowStr = new Date().toISOString();
-    
+
     let orderQuery = `
       SELECT COUNT(DISTINCT o.id) as order_count, 
              SUM(CASE WHEN o.order_status = 'Delivered' THEN o.total_amount ELSE 0 END) as earnings
@@ -3938,23 +3944,23 @@ app.get("/api/admin/dashboard/today-stats", verifyToken, verifyAnyAdmin, async (
       LEFT JOIN order_items oi ON o.id = oi.order_id
       WHERE o.created_at BETWEEN $1 AND $2
     `;
-    
+
     let params = [todayStr, nowStr];
-    
+
     // For vendors, filter orders that contain their products
     if (userRole !== 'super_admin') {
       orderQuery += ` AND oi.vendor_id = $3`;
       params.push(vendorId);
     }
-    
+
     const result = await pool.query(orderQuery, params);
-    
+
     res.json({
       success: true,
       todayOrders: parseInt(result.rows[0]?.order_count || 0),
       todayEarnings: parseFloat(result.rows[0]?.earnings || 0)
     });
-    
+
   } catch (error) {
     console.error("Today stats error:", error);
     res.status(500).json({ success: false, message: error.message });
@@ -5078,13 +5084,13 @@ app.put("/api/admin/navbar/categories/:id/visibility", verifyToken, verifyAdminO
   try {
     const { id } = req.params;
     const { show_in_navbar } = req.body;
-    
+
     const result = await pool.query(
       `UPDATE categories SET show_in_navbar = $1, updated_at = NOW() 
        WHERE id = $2 RETURNING *`,
       [show_in_navbar, id]
     );
-    
+
     res.json({ success: true, category: result.rows[0] });
   } catch (error) {
     res.status(500).json({ success: false, message: "Failed to update visibility" });
@@ -5096,16 +5102,16 @@ app.put("/api/admin/navbar/categories/reorder", verifyToken, verifyAdminOrSuperA
   const client = await pool.connect();
   try {
     const { categories } = req.body; // [{ id: 1, nav_order: 0 }, { id: 2, nav_order: 1 }]
-    
+
     await client.query("BEGIN");
-    
+
     for (const cat of categories) {
       await client.query(
         `UPDATE categories SET nav_order = $1, updated_at = NOW() WHERE id = $2`,
         [cat.nav_order, cat.id]
       );
     }
-    
+
     await client.query("COMMIT");
     res.json({ success: true, message: "Navbar order updated successfully" });
   } catch (error) {
@@ -5121,16 +5127,16 @@ app.post("/api/admin/navbar/categories/bulk-visibility", verifyToken, verifyAdmi
   const client = await pool.connect();
   try {
     const { categoryIds, show_in_navbar } = req.body;
-    
+
     await client.query("BEGIN");
-    
+
     for (const id of categoryIds) {
       await client.query(
         `UPDATE categories SET show_in_navbar = $1, updated_at = NOW() WHERE id = $2`,
         [show_in_navbar, id]
       );
     }
-    
+
     await client.query("COMMIT");
     res.json({ success: true, message: "Bulk visibility updated successfully" });
   } catch (error) {
