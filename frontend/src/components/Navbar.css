@@ -651,3 +651,219 @@
     width: 300px;
   }
 }
+
+/* Add these styles at the end of your Navbar.css file */
+
+/* Mobile bottom navigation bar */
+.mobile-bottom-nav {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: #FAF8F5;
+  display: none;
+  justify-content: space-around;
+  align-items: center;
+  padding: 10px 20px;
+  box-shadow: 0 -2px 15px rgba(0,0,0,0.1);
+  z-index: 1000;
+  border-top: 1px solid #e0e0e0;
+}
+
+.mobile-bottom-nav-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px;
+  cursor: pointer;
+  flex: 1;
+  transition: all 0.3s ease;
+  padding: 5px 0;
+  border-radius: 8px;
+}
+
+.mobile-bottom-nav-item i {
+  font-size: 22px;
+  color: #666;
+  transition: color 0.3s;
+}
+
+.mobile-bottom-nav-item span {
+  font-size: 11px;
+  color: #666;
+  font-weight: 500;
+}
+
+.mobile-bottom-nav-item:hover i,
+.mobile-bottom-nav-item.active i {
+  color: #8E2139;
+}
+
+.mobile-bottom-nav-item:hover span,
+.mobile-bottom-nav-item.active span {
+  color: #8E2139;
+}
+
+/* Cart badge for mobile bottom nav */
+.mobile-bottom-nav-item .cart-badge-wrapper {
+  position: relative;
+}
+
+.mobile-bottom-nav-item .mobile-cart-badge {
+  position: absolute;
+  top: -8px;
+  right: -12px;
+  background: #8E2139;
+  color: white;
+  font-size: 10px;
+  padding: 2px 5px;
+  border-radius: 50%;
+  font-weight: bold;
+  min-width: 18px;
+  text-align: center;
+}
+
+/* Show mobile bottom nav only on mobile */
+@media (max-width: 768px) {
+  .mobile-bottom-nav {
+    display: flex;
+  }
+  
+  /* Add padding to body to account for bottom nav */
+  body {
+    padding-bottom: 60px;
+  }
+  
+  /* Adjust spacer for mobile */
+  .navbar-spacer {
+    height: 105px;
+  }
+}
+
+/* Bottom nav item specific colors when active */
+.mobile-bottom-nav-item[data-active="true"] i,
+.mobile-bottom-nav-item[data-active="true"] span {
+  color: #8E2139;
+}
+
+/* Add these styles to your existing Navbar.css file */
+
+/* Mobile user initials styling */
+.mobile-user-initials {
+  width: 28px;
+  height: 28px;
+  background: #8E2139;
+  color: white;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: 600;
+  margin: 0 auto;
+}
+
+/* Mobile bottom navigation adjustments */
+.mobile-bottom-nav {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: #FAF8F5;
+  display: none;
+  justify-content: space-around;
+  align-items: center;
+  padding: 8px 20px;
+  box-shadow: 0 -2px 15px rgba(0,0,0,0.1);
+  z-index: 1000;
+  border-top: 1px solid #e0e0e0;
+}
+
+.mobile-bottom-nav-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  cursor: pointer;
+  flex: 1;
+  transition: all 0.3s ease;
+  padding: 5px 0;
+  border-radius: 8px;
+}
+
+.mobile-bottom-nav-item i {
+  font-size: 22px;
+  color: #666;
+  transition: color 0.3s;
+}
+
+.mobile-bottom-nav-item span {
+  font-size: 11px;
+  color: #666;
+  font-weight: 500;
+}
+
+.mobile-bottom-nav-item:hover i,
+.mobile-bottom-nav-item.active i {
+  color: #8E2139;
+}
+
+.mobile-bottom-nav-item:hover span,
+.mobile-bottom-nav-item.active span {
+  color: #8E2139;
+}
+
+/* Hover effect for user initials */
+.mobile-bottom-nav-item:hover .mobile-user-initials {
+  background: #671c07;
+  transform: scale(1.05);
+  transition: all 0.3s ease;
+}
+
+.mobile-user-initials {
+  transition: all 0.3s ease;
+}
+
+/* Cart badge for mobile bottom nav */
+.mobile-bottom-nav-item .cart-badge-wrapper {
+  position: relative;
+  display: flex;
+  justify-content: center;
+}
+
+.mobile-bottom-nav-item .mobile-cart-badge {
+  position: absolute;
+  top: -8px;
+  right: -12px;
+  background: #8E2139;
+  color: white;
+  font-size: 10px;
+  padding: 2px 5px;
+  border-radius: 50%;
+  font-weight: bold;
+  min-width: 18px;
+  text-align: center;
+}
+
+/* Show mobile bottom nav only on mobile */
+@media (max-width: 768px) {
+  .mobile-bottom-nav {
+    display: flex;
+  }
+  
+  /* Add padding to body to account for bottom nav */
+  body {
+    padding-bottom: 65px;
+  }
+  
+  /* Adjust spacer for mobile */
+  .navbar-spacer {
+    height: 105px;
+  }
+}
+
+/* Bottom nav item specific colors when active */
+.mobile-bottom-nav-item[data-active="true"] i,
+.mobile-bottom-nav-item[data-active="true"] span {
+  color: #8E2139;
+}

@@ -31,7 +31,7 @@ const Navbar = () => {
   const [profileOpen, setProfileOpen] = useState(false);
   const [categories, setCategories] = useState([]);
   const [searchTerm, setSearchTerm] = useState("");
-  const [suggestions, setSuggestions] = useState([]); // kept for any fallback
+  const [suggestions, setSuggestions] = useState([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [showMobileSearch, setShowMobileSearch] = useState(false);
   const { user, setShowLogin } = useUser();
@@ -70,27 +70,27 @@ const Navbar = () => {
     }, 1000);
   };
 
- // In Navbar.jsx, replace the categories fetch with:
-useEffect(() => {
-  const fetchNavbarCategories = async () => {
-    try {
-      // Use public endpoint for navbar display
-      const response = await axios.get(`${API_URL}/public/navbar/categories`);
-      if (response.data.success) {
-        setCategories(response.data.categories);
-      } else {
-        // Fallback
+  // In Navbar.jsx, replace the categories fetch with:
+  useEffect(() => {
+    const fetchNavbarCategories = async () => {
+      try {
+        // Use public endpoint for navbar display
+        const response = await axios.get(`${API_URL}/public/navbar/categories`);
+        if (response.data.success) {
+          setCategories(response.data.categories);
+        } else {
+          // Fallback
+          const data = await getCategories();
+          setCategories(data || []);
+        }
+      } catch (error) {
+        console.error("Error fetching navbar categories:", error);
         const data = await getCategories();
         setCategories(data || []);
       }
-    } catch (error) {
-      console.error("Error fetching navbar categories:", error);
-      const data = await getCategories();
-      setCategories(data || []);
-    }
-  };
-  fetchNavbarCategories();
-}, []);
+    };
+    fetchNavbarCategories();
+  }, []);
 
   // Fetch coupons
   useEffect(() => {
@@ -226,10 +226,21 @@ useEffect(() => {
     }
   }, [showMobileSearch, menuOpen]);
 
+  // Check if mobile view
+  const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
+  
+  useEffect(() => {
+    const handleResize = () => {
+      setIsMobile(window.innerWidth <= 768);
+    };
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
   return (
     <>
       <nav className={`custom-navbar ${showNav ? "nav-visible" : "nav-hidden"}`}>
-        {/* TOP BAR (unchanged) */}
+        {/* TOP BAR */}
         <div className="navbar-top-announcement">
           <div className="social-icons">
             <a href="https://wa.me/8328590444" target="_blank" rel="noopener noreferrer" style={{ color: 'inherit', textDecoration: 'none' }}><i className="bi bi-whatsapp"></i></a>
@@ -321,17 +332,21 @@ useEffect(() => {
               <img src="/assets/jayastra_banner.png" alt="Logo" className="jayastra-banner-nav" />
             </div>
 
-            {/* Right Icons */}
+            {/* Right Icons - Only show cart on mobile, all icons on desktop */}
             <div className="nav-middle-right">
               <div className="nav-icons-right">
-                <div className="icon-box" onClick={() => {
-                  if (!token) { setShowLogin(true); return; }
-                  navigate("/wishlist");
-                }}>
-                  <i className="bi bi-heart"></i>
-                  {wishlistItems.length > 0 && <span className="badge-icon">{wishlistItems.length}</span>}
-                </div>
+                {/* Wishlist - Hide on mobile */}
+                {!isMobile && (
+                  <div className="icon-box" onClick={() => {
+                    if (!token) { setShowLogin(true); return; }
+                    navigate("/wishlist");
+                  }}>
+                    <i className="bi bi-heart"></i>
+                    {wishlistItems.length > 0 && <span className="badge-icon">{wishlistItems.length}</span>}
+                  </div>
+                )}
 
+                {/* Cart Icon - Always visible */}
                 <div className="icon-box cart-icon-box" onClick={() => {
                   if (!token) { setShowLogin(true); return; }
                   setIsCartOpen(true);
@@ -342,44 +357,49 @@ useEffect(() => {
                   </div>
                 </div>
 
-                <div className="icon-box profile-box" onClick={handleProfileClick}>
-                  {token && user ? (
-                    <div className="user-initials">
-                      {user.first_name?.[0]?.toUpperCase() || user.name?.[0]?.toUpperCase() || "U"}
-                    </div>
-                  ) : (
-                    <i className="bi bi-person"></i>
-                  )}
-                  {profileOpen && token && (
-                    <div className="profile-dropdown">
-                      <div className="dropdown-user-info">
-                        <strong>Hi, {user?.first_name || user?.name || "User"}{user?.last_name && ` ${user.last_name}`}</strong>
-                        <p>{user?.phone}</p>
+                {/* Profile - Hide on mobile */}
+                {!isMobile && (
+                  <div className="icon-box profile-box" onClick={handleProfileClick}>
+                    {token && user ? (
+                      <div className="user-initials">
+                        {user.first_name?.[0]?.toUpperCase() || user.name?.[0]?.toUpperCase()}
                       </div>
-                      <div onClick={() => navigate("/profile")} className="dropdown-item">
-                        <i className="bi bi-person-circle"></i> Profile
+                    ) : (
+                      <i className="bi bi-person"></i>
+                    )}
+                    {profileOpen && token && (
+                      <div className="profile-dropdown">
+                        <div className="dropdown-user-info">
+                          <strong>Hi, {user?.first_name || user?.name || "User"}{user?.last_name && ` ${user.last_name}`}</strong>
+                          <p>{user?.phone}</p>
+                        </div>
+                        <div onClick={() => navigate("/profile")} className="dropdown-item">
+                          <i className="bi bi-person-circle"></i> Profile
+                        </div>
+                        <div onClick={handleLogout} className="dropdown-item logout">
+                          <i className="bi bi-box-arrow-right"></i> Logout
+                        </div>
                       </div>
-                      <div onClick={handleLogout} className="dropdown-item logout">
-                        <i className="bi bi-box-arrow-right"></i> Logout
-                      </div>
-                    </div>
-                  )}
-                </div>
+                    )}
+                  </div>
+                )}
               </div>
             </div>
           </div>
 
-          {/* Bottom Categories */}
-          <div className="navbar-bottom-menu">
-            <div className="bottom-menu-links">
-              <span className={`nav-link-item ${location.pathname === "/" ? "active" : ""}`} onClick={() => navigate("/")}>Home</span>
-              {categories.map((cat) => (
-                <span key={cat.id} className={`nav-link-item has-dropdown ${isActiveCategory(cat.name) ? "active" : ""}`} onClick={() => navigate(`/all-products?category=${encodeURIComponent(cat.name)}`)}>
-                  {cat.name}
-                </span>
-              ))}
+          {/* Bottom Categories - Hide on mobile */}
+          {!isMobile && (
+            <div className="navbar-bottom-menu">
+              <div className="bottom-menu-links">
+                <span className={`nav-link-item ${location.pathname === "/" ? "active" : ""}`} onClick={() => navigate("/")}>Home</span>
+                {categories.map((cat) => (
+                  <span key={cat.id} className={`nav-link-item has-dropdown ${isActiveCategory(cat.name) ? "active" : ""}`} onClick={() => navigate(`/all-products?category=${encodeURIComponent(cat.name)}`)}>
+                    {cat.name}
+                  </span>
+                ))}
+              </div>
             </div>
-          </div>
+          )}
         </div>
 
         {/* MOBILE SEARCH (overlay) */}

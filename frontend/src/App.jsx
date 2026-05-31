@@ -18,8 +18,8 @@ import Navbar from "./components/Navbar";
 import Footer from "./components/Footer";
 import ScrollToTop from "./components/ScrollToTop";
 import LoginModal from "./components/LoginModal";
-import LoadingSpinner from "./components/LoadingSpinner"; // create this simple component
-
+import LoadingSpinner from "./components/LoadingSpinner";
+import MobileBottomNav from "./components/MobileBottomNav";
 
 // Lazy load page components for faster initial load
 const Home = lazy(() => import("./Pages/Home"));
@@ -112,9 +112,10 @@ const AppContent = () => {
           </Routes>
         </Suspense>
 
-       
-
         {shouldShowFooter && <Footer />}
+        
+        {/* Mobile Bottom Navigation */}
+        <MobileBottomNav />
       </WishlistProvider>
     </CartProvider>
   );
