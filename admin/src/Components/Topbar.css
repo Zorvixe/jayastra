@@ -629,8 +629,7 @@
 
 @media (max-width: 480px) {
   .notification-dropdown {
-    width: calc(100vw - 32px);
-    right: -16px;
+    width: calc(100vw - 70px);
   }
   
   .profile-dropdown {
@@ -835,4 +834,34 @@
 /* Ensure the refresh button doesn't rotate on hover when disabled */
 .wallet-refresh-btn:disabled .bi-arrow-repeat {
   transform: none;
+}
+
+/* Add to Topbar.css - ensure toggle button works on all devices */
+
+/* Keep toggle button visible on all devices */
+.toggle-btn {
+  background: none;
+  border: none;
+  font-size: 22px;
+  cursor: pointer;
+  color: #6b7280;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 8px;
+  border-radius: 8px;
+  transition: all 0.2s ease;
+}
+
+/* Toggle button should be visible on mobile too */
+@media (max-width: 768px) {
+  .toggle-btn {
+    display: flex !important;
+  }
+}
+
+@media (max-width: 480px) {
+  .wallet-refresh-btn {
+    display: none;
+  }
 }

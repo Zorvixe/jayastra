@@ -1,4 +1,4 @@
-/* Add or update these styles in your Sidebar.css */
+/* Sidebar.css - Updated to ensure sidebar works on all devices */
 
 /* Sidebar Container */
 .admin-sidebar {
@@ -39,7 +39,6 @@
   max-width: 180px;
   height: auto;
   transition: all 0.3s ease;
-  
 }
 
 /* Favicon Styles (when collapsed) */
@@ -190,30 +189,9 @@
   background: rgba(255, 255, 255, 0.5);
 }
 
-/* Responsive styles */
-@media (max-width: 768px) {
-  .admin-sidebar {
-    transform: translateX(-100%);
-    position: fixed;
-    z-index: 1050;
-  }
-  
-  .admin-sidebar.collapsed {
-    transform: translateX(-100%);
-  }
-  
-  .admin-sidebar:not(.collapsed) {
-    transform: translateX(0);
-  }
-  
-  .sidebar-tooltip {
-    display: none;
-  }
-}
-
 /* ================= MOBILE CLOSE BUTTON ================= */
 .sidebar-mobile-close {
-  display: none !important; /* hidden by default */
+  display: none !important;
   background: none;
   border: none;
   color: #ffffff;
@@ -222,7 +200,7 @@
   padding: 8px;
   border-radius: 50%;
   transition: all 0.2s ease;
-  margin-left: auto; /* push to the right */
+  margin-left: auto;
   width: 36px;
   height: 36px;
   display: flex;
@@ -252,10 +230,41 @@
   .sidebar-logo {
     max-width: 140px;
   }
+  
+  /* Sidebar on mobile - hidden by default, can be opened via toggle button */
+  .admin-sidebar {
+    transform: translateX(-100%);
+    position: fixed;
+    z-index: 1050;
+  }
+  
+  .admin-sidebar:not(.collapsed) {
+    transform: translateX(0);
+  }
+  
+  /* Overlay when sidebar is open on mobile */
+  body.sidebar-open::before {
+    content: '';
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.5);
+    z-index: 1040;
+  }
+  
+  .sidebar-tooltip {
+    display: none;
+  }
 }
 
 @media (max-width: 480px) {
+
+  .admin-sidebar {
+    padding-bottom: 75px;
+  }
   .sidebar-mobile-close {
-    display: flex !important; /* Show close button on very small screens */
+    display: flex !important;
   }
 }

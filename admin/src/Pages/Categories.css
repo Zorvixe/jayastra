@@ -970,3 +970,9 @@
     flex-wrap: wrap;
   }
 }
+
+@media (max-width: 480px) {
+  .cate-add-main-btn {
+    display: none !important;
+  }
+}

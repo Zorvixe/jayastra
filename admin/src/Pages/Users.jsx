@@ -321,7 +321,7 @@ const Users = () => {
                       </span>
                     </td>
                     <td>
-                      <span className={`status-badge ${user.status === "Active" ? "active" : "blocked"}`}>
+                      <span style={{color:"white"}} className={`status-badge ${user.status === "Active" ? "active" : "blocked"}`}>
                         {user.status}
                       </span>
                     </td>

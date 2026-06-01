@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import axios from '../utils/axiosConfig'; // Adjust path as needed
+import axios from '../utils/axiosConfig';
 import { toast } from "react-toastify";
 import "./Coupons.css";
 
@@ -38,6 +38,19 @@ const Coupons = () => {
   };
 
   useEffect(() => { fetchCoupons(); }, []);
+
+  // Listen for mobile FAB event to open add coupon modal
+  useEffect(() => {
+    const handleOpenAddCouponModal = () => {
+      openAddModal();
+    };
+    
+    window.addEventListener("openAddCouponModal", handleOpenAddCouponModal);
+    
+    return () => {
+      window.removeEventListener("openAddCouponModal", handleOpenAddCouponModal);
+    };
+  }, []);
 
   const openAddModal = () => {
     setForm({
@@ -142,50 +155,58 @@ const Coupons = () => {
   return (
     <div className="coupon-container">
       <div className="coupon-header">
-        <h2>🎟️ Coupon Management</h2>
-        <button className="add-product-btn" onClick={openAddModal}>
+        <h2 className="coupon-title">🎟️ Coupon Management</h2>
+        <button className="coupon-add-btn" onClick={openAddModal}>
           + Add Coupon
         </button>
       </div>
 
       {loading ? (
-        <div className="dash-loader-overlay">
-          <div className="dash-loader-container">
-            <div className="dash-spinner"></div>
+        <div className="coupon-loader-overlay">
+          <div className="coupon-loader-container">
+            <div className="coupon-spinner"></div>
           </div>
         </div>
       ) : (
-        <div className="coupon-table">
-          <table>
+        <div className="coupon-table-wrapper">
+          <table className="coupon-table">
             <thead>
               <tr>
-                <th>Code</th><th>Type</th><th>Value</th><th>Min Order</th><th>Visibility</th><th>Status</th><th>Actions</th>
+                <th className="coupon-th">Code</th>
+                <th className="coupon-th">Type</th>
+                <th className="coupon-th">Value</th>
+                <th className="coupon-th">Min Order</th>
+                <th className="coupon-th">Visibility</th>
+                <th className="coupon-th">Status</th>
+                <th className="coupon-th">Actions</th>
               </tr>
             </thead>
             <tbody>
               {coupons.length === 0 ? (
-                <tr><td colSpan="7" style={{ textAlign: "center" }}>No coupons found</td></tr>
+                <tr className="coupon-empty-row">
+                  <td className="coupon-empty-cell" colSpan="7">No coupons found</td>
+                </tr>
               ) : (
                 coupons.map((c) => (
-                  <tr key={c.id}>
-                    <td><strong>{c.code}</strong></td>
-                    <td>{c.discount_type === "percentage" ? "Percentage (%)" : "Flat (₹)"}</td>
-                    <td>{c.discount_type === "percentage" ? `${c.discount_value}%` : `₹${c.discount_value}`}</td>
-                    <td>{c.min_order_amount ? `₹${c.min_order_amount}` : "None"}</td>
-                    <td>
-                      <button className={c.is_hidden ? "inactive-btn" : "active-btn"} onClick={() => toggleHide(c)}>
+                  <tr key={c.id} className="coupon-row">
+                    <td className="coupon-cell"><strong>{c.code}</strong></td>
+                    <td className="coupon-cell">{c.discount_type === "percentage" ? "Percentage (%)" : "Flat (₹)"}</td>
+                    <td className="coupon-cell">{c.discount_type === "percentage" ? `${c.discount_value}%` : `₹${c.discount_value}`}</td>
+                    <td className="coupon-cell">{c.min_order_amount ? `₹${c.min_order_amount}` : "None"}</td>
+                    <td className="coupon-cell">
+                      <button className={c.is_hidden ? "coupon-btn-inactive" : "coupon-btn-active"} onClick={() => toggleHide(c)}>
                         {c.is_hidden ? "Hidden" : "Visible"}
                       </button>
                     </td>
-                    <td>
-                      <button className={c.is_active ? "active-btn" : "inactive-btn"} onClick={() => toggleStatus(c)}>
+                    <td className="coupon-cell">
+                      <button className={c.is_active ? "coupon-btn-active" : "coupon-btn-inactive"} onClick={() => toggleStatus(c)}>
                         {c.is_active ? "Active" : "Disabled"}
                       </button>
                     </td>
-                    <td>
-                      <div className="action-buttons">
-                        <button className="edit-btn" onClick={() => openEditModal(c)}><i className="bi bi-pencil"></i></button>
-                        <button className="delete-btn" onClick={() => setConfirmDeleteId(c.id)}><i className="bi bi-trash"></i></button>
+                    <td className="coupon-cell">
+                      <div className="coupon-action-buttons">
+                        <button className="coupon-edit-btn" onClick={() => openEditModal(c)}><i className="bi bi-pencil"></i></button>
+                        <button className="coupon-delete-btn" onClick={() => setConfirmDeleteId(c.id)}><i className="bi bi-trash"></i></button>
                       </div>
                     </td>
                   </tr>
@@ -196,62 +217,71 @@ const Coupons = () => {
         </div>
       )}
 
-      {/* Add/Edit Modal - same as before */}
+      {/* Add/Edit Modal - Mobile Friendly */}
       {showFormModal && (
-        <div className="custom-overlay" onClick={closeFormModal}>
-          <div className="custom-modal-box" onClick={(e) => e.stopPropagation()}>
-            <h3>{editingId ? "Edit Coupon" : "Add New Coupon"}</h3>
-            <form onSubmit={handleSubmit} className="modal-form">
-              <div className="form-group">
-                <label>Coupon Code *</label>
-                <input type="text" name="code" placeholder="SUMMER50" value={form.code} onChange={handleChange} required />
-              </div>
-              <div className="form-row">
-                <div className="form-group">
-                  <label>Discount Type</label>
-                  <select name="discount_type" value={form.discount_type} onChange={handleChange}>
-                    <option value="percentage">Percentage (%)</option>
-                    <option value="flat">Flat ₹</option>
-                  </select>
+        <div className="coupon-modal-overlay" onClick={closeFormModal}>
+          <div className="coupon-modal-container" onClick={(e) => e.stopPropagation()}>
+            <div className="coupon-modal-header">
+              <h3 className="coupon-modal-title">{editingId ? "Edit Coupon" : "Add New Coupon"}</h3>
+              <button className="coupon-modal-close" onClick={closeFormModal}>
+                <i className="bi bi-x-lg"></i>
+              </button>
+            </div>
+            <div className="coupon-modal-body">
+              <form onSubmit={handleSubmit} className="coupon-form">
+                <div className="coupon-form-group">
+                  <label className="coupon-label">Coupon Code *</label>
+                  <input type="text" name="code" className="coupon-input" placeholder="SUMMER50" value={form.code} onChange={handleChange} required />
                 </div>
-                <div className="form-group">
-                  <label>Discount Value *</label>
-                  <input placeholder="10.00%" type="number" name="discount_value" value={form.discount_value} onChange={handleChange} required />
+                <div className="coupon-form-row">
+                  <div className="coupon-form-group">
+                    <label className="coupon-label">Discount Type</label>
+                    <select name="discount_type" className="coupon-select" value={form.discount_type} onChange={handleChange}>
+                      <option value="percentage">Percentage (%)</option>
+                      <option value="flat">Flat ₹</option>
+                    </select>
+                  </div>
+                  <div className="coupon-form-group">
+                    <label className="coupon-label">Discount Value *</label>
+                    <input placeholder="10.00" type="number" step="0.01" name="discount_value" className="coupon-input" value={form.discount_value} onChange={handleChange} required />
+                  </div>
                 </div>
-              </div>
-              <div className="form-row">
-                <div className="form-group">
-                  <label>Min Order Amount</label>
-                  <input placeholder="Rs. 1000" type="number" name="min_order_amount" value={form.min_order_amount} onChange={handleChange} />
+                <div className="coupon-form-row">
+                  <div className="coupon-form-group">
+                    <label className="coupon-label">Min Order Amount (₹)</label>
+                    <input placeholder="1000" type="number" step="0.01" name="min_order_amount" className="coupon-input" value={form.min_order_amount} onChange={handleChange} />
+                    <small className="coupon-hint">Leave empty for no minimum</small>
+                  </div>
+                  <div className="coupon-form-group">
+                    <label className="coupon-label">Max Discount Cap (₹)</label>
+                    <input placeholder="500" type="number" step="0.01" name="max_discount" className="coupon-input" value={form.max_discount} onChange={handleChange} />
+                    <small className="coupon-hint">Leave empty for no cap</small>
+                  </div>
                 </div>
-                <div className="form-group">
-                  <label>Max Discount Cap</label>
-                  <input placeholder="Place 0 for empty" type="number" name="max_discount" value={form.max_discount} onChange={handleChange} />
+                <div className="coupon-checkbox-wrap">
+                  <input type="checkbox" name="is_hidden" id="coupon_is_hidden" checked={form.is_hidden} onChange={handleChange} />
+                  <label htmlFor="coupon_is_hidden" className="coupon-checkbox-label">Hidden (Promo Code Only - Won't show in cart page)</label>
                 </div>
-              </div>
-              <div className="form-group checkbox-wrap">
-                <input type="checkbox" name="is_hidden" id="is_hidden" checked={form.is_hidden} onChange={handleChange} />
-                <label htmlFor="is_hidden">Hidden (Promo Code Only)</label>
-              </div>
-              <div className="modal-actions">
-                <button type="button" className="cancel-btn" onClick={closeFormModal}>Cancel</button>
-                <button type="submit" className="add-product-btn">{editingId ? "Update Coupon" : "Save Coupon"}</button>
-              </div>
-            </form>
+                <div className="coupon-modal-actions">
+                  <button type="button" className="coupon-cancel-btn" onClick={closeFormModal}>Cancel</button>
+                  <button type="submit" className="coupon-submit-btn">{editingId ? "Update Coupon" : "Save Coupon"}</button>
+                </div>
+              </form>
+            </div>
           </div>
         </div>
       )}
 
       {/* Delete Confirmation Modal */}
       {confirmDeleteId && (
-        <div className="custom-overlay" onClick={() => setConfirmDeleteId(null)}>
-          <div className="custom-confirm-box" onClick={(e) => e.stopPropagation()}>
-            <div className="confirm-icon">⚠️</div>
-            <h5>Confirm Deletion</h5>
-            <p>Are you sure you want to delete this coupon? This action cannot be undone.</p>
-            <div className="confirm-actions">
-              <button className="confirm-cancel-btn" onClick={() => setConfirmDeleteId(null)}>Cancel</button>
-              <button className="confirm-execute-btn" onClick={executeDeleteCoupon}>Yes, Delete</button>
+        <div className="coupon-modal-overlay" onClick={() => setConfirmDeleteId(null)}>
+          <div className="coupon-confirm-container" onClick={(e) => e.stopPropagation()}>
+            <div className="coupon-confirm-icon">⚠️</div>
+            <h5 className="coupon-confirm-title">Confirm Deletion</h5>
+            <p className="coupon-confirm-message">Are you sure you want to delete this coupon? This action cannot be undone.</p>
+            <div className="coupon-confirm-actions">
+              <button className="coupon-confirm-cancel" onClick={() => setConfirmDeleteId(null)}>Cancel</button>
+              <button className="coupon-confirm-delete" onClick={executeDeleteCoupon}>Yes, Delete</button>
             </div>
           </div>
         </div>

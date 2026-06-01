@@ -1,3 +1,4 @@
+// Sidebar.jsx - Updated to ensure mobile close works
 import React, { useState } from "react";
 import { NavLink } from "react-router-dom";
 import "./Sidebar.css";
@@ -56,7 +57,12 @@ const Sidebar = ({ isCollapsed, toggleSidebar }) => {
             onMouseEnter={() => setHoveredItem(item.path)}
             onMouseLeave={() => setHoveredItem(null)}
           >
-            <NavLink to={item.path} className="sidebar-link">
+            <NavLink to={item.path} className="sidebar-link" onClick={() => {
+              // On mobile, close sidebar after navigation
+              if (window.innerWidth <= 768 && !isCollapsed) {
+                toggleSidebar();
+              }
+            }}>
               <i className={item.icon}></i>
               {!isCollapsed && <span>{item.label}</span>}
               {isCollapsed && hoveredItem === item.path && (

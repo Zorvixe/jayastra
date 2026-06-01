@@ -1870,6 +1870,10 @@
 
 
 @media (max-width: 480px) {
+
+  .btn-resume-onboard{
+    display: none;
+  }
   .payments-content {
     width: 100%;
   }

@@ -27,8 +27,6 @@ const TransactionDetailsModal = ({ transaction, onClose }) => {
     });
   };
 
- 
-
   const getTransactionIcon = (type, status) => {
     if (type === 'credit') return 'bi-arrow-down-circle-fill';
     return 'bi-arrow-up-circle-fill';
@@ -385,6 +383,25 @@ const Payouts = () => {
       return '-';
     }
   };
+
+  // ========== ADDED: Listen for mobile FAB event to open withdraw modal ==========
+  useEffect(() => {
+    const handleOpenWithdrawModal = () => {
+      // Only open if user is vendor or admin (not super_admin)
+      if (userRole === "vendor" || userRole === "admin") {
+        setShowWithdrawModal(true);
+      } else {
+        toast.info("Withdrawals are only available for vendors");
+      }
+    };
+    
+    window.addEventListener("openWithdrawModal", handleOpenWithdrawModal);
+    
+    return () => {
+      window.removeEventListener("openWithdrawModal", handleOpenWithdrawModal);
+    };
+  }, [userRole]);
+  // ========== END OF ADDED CODE ==========
 
   // Fetch wallet transactions
   const fetchWalletTransactions = async () => {
@@ -1270,7 +1287,7 @@ const Payouts = () => {
                           <i className="bi bi-inbox"></i>
                           <p>No settlements found</p>
                         </div>
-                      </td>
+                       </td>
                     </tr>
                   ) : (
                     displayPayouts.map(p => (

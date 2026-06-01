@@ -1,0 +1,138 @@
+/* MobileNav.css - Mobile Bottom Navigation Bar */
+
+/* Mobile Nav Container - Fixed at bottom */
+.mobile-nav-container {
+  display: none;
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: white;
+  box-shadow: 0 -2px 20px rgba(0, 0, 0, 0.15);
+  z-index: 1050;
+  border-radius: 20px 20px 0 0;
+  border-top: 1px solid rgba(0, 0, 0, 0.05);
+}
+
+.mobile-nav {
+  display: flex;
+  justify-content: space-around;
+  align-items: center;
+  padding: 8px 16px 12px;
+  background: white;
+  border-radius: 20px 20px 0 0;
+}
+
+.mobile-nav-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  flex: 1;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 8px 0;
+  border-radius: 12px;
+  transition: all 0.2s ease;
+  color: #94a3b8;
+  position: relative;
+}
+
+.mobile-nav-item.active {
+  color: #8E2139;
+}
+
+.mobile-nav-item i {
+  font-size: 22px;
+}
+
+.mobile-nav-item span {
+  font-size: 11px;
+  font-weight: 500;
+}
+
+/* Floating Action Button (FAB) for Plus */
+.mobile-fab {
+  position: relative;
+  top: -25px;
+}
+
+.fab-button {
+  width: 56px;
+  height: 56px;
+  background: linear-gradient(135deg, #8E2139 0%, #6b192b 100%);
+  border: none;
+  border-radius: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 15px rgba(142, 33, 57, 0.4);
+}
+
+.fab-button i {
+  font-size: 28px;
+  color: white;
+  transition: transform 0.3s ease;
+}
+
+.fab-button:active {
+  transform: scale(0.95);
+}
+
+/* Badge for notifications on mobile */
+.mobile-nav-badge {
+  position: absolute;
+  top: -2px;
+  right: 20%;
+  background: #ef4444;
+  color: white;
+  font-size: 10px;
+  padding: 2px 6px;
+  border-radius: 10px;
+  font-weight: 700;
+  min-width: 18px;
+  text-align: center;
+}
+
+/* Show mobile nav only on mobile */
+@media (max-width: 768px) {
+  .mobile-nav-container {
+    display: block;
+  }
+  
+  /* Add bottom padding to main content to prevent overlap with bottom nav */
+  .admin-main {
+    padding-bottom: 80px !important;
+  }
+}
+
+@media (max-width: 480px) {
+  .mobile-nav {
+    padding: 6px 12px 10px;
+  }
+  
+  .mobile-nav-item i {
+    font-size: 20px;
+  }
+  
+  .mobile-nav-item span {
+    font-size: 10px;
+  }
+  
+  .fab-button {
+    width: 50px;
+    height: 50px;
+  }
+  
+  .fab-button i {
+    font-size: 24px;
+  }
+  
+  .mobile-fab {
+    top: -20px;
+  }
+}

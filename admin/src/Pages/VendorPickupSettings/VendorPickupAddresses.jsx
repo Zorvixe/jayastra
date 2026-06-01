@@ -40,6 +40,20 @@ const VendorPickupAddresses = () => {
     fetchAddresses();
   }, []);
 
+  // ========== ADDED: Listen for mobile FAB event to open add address modal ==========
+  useEffect(() => {
+    const handleOpenAddPickupAddressModal = () => {
+      openModal(null);
+    };
+    
+    window.addEventListener("openAddPickupAddressModal", handleOpenAddPickupAddressModal);
+    
+    return () => {
+      window.removeEventListener("openAddPickupAddressModal", handleOpenAddPickupAddressModal);
+    };
+  }, []); // Empty dependency array - openModal is stable
+  // ========== END OF ADDED CODE ==========
+
   const openModal = (address = null) => {
     if (address) {
       setEditingId(address.id);

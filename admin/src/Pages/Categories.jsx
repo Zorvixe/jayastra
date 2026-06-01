@@ -1,4 +1,4 @@
-// Categories.js - Updated version with global categories
+// Categories.js - Updated version with global categories and mobile FAB support
 import React, { useState, useEffect } from "react";
 import axios from '../utils/axiosConfig';
 import "./Categories.css";
@@ -103,6 +103,20 @@ const Categories = () => {
     }, 500);
     return () => clearTimeout(timer);
   }, [search]);
+
+  // ========== ADD THIS: Listen for mobile FAB event ==========
+  useEffect(() => {
+    const handleOpenCategoryModal = () => {
+      handleOpenAddModal();
+    };
+    
+    window.addEventListener("openAddCategoryModal", handleOpenCategoryModal);
+    
+    return () => {
+      window.removeEventListener("openAddCategoryModal", handleOpenCategoryModal);
+    };
+  }, []); // Empty dependency array - handleOpenAddModal is stable
+  // ========== END OF ADDED CODE ==========
 
   const handleDragStart = (e, index) => {
     // Only super_admin can reorder
