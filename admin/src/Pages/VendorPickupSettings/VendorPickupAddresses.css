@@ -370,4 +370,7 @@ small {
  .pickup-add-address-btn{
   display: none !important;
  }
+  .pickup-modal-content.pickup-large-modal {
+    max-height: calc(80vh - 40px);
+  }
 }

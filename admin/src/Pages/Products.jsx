@@ -297,7 +297,7 @@ const Products = () => {
                         <td>
                           <div className="actions">
                             <button
-                              className="edit-btn"
+                              className="edit-btn-prod"
                               onClick={() => setEditProductId(product.id)}
                               title="Edit"
                             >

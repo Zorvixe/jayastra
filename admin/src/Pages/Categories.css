@@ -696,12 +696,12 @@
 }
 
 .cate-btn-primary {
-  background: var(--cate-primary);
+  background: #8E2139;
   color: white;
 }
 
 .cate-btn-primary:hover {
-  background: var(--cate-primary-hover);
+  background: #7a1c30;
   box-shadow: 0 4px 6px rgba(79, 70, 229, 0.3);
 }
 
@@ -974,5 +974,9 @@
 @media (max-width: 480px) {
   .cate-add-main-btn {
     display: none !important;
+  }
+
+  .cate-modal-body{
+    max-height: calc(80vh - 250px);
   }
 }

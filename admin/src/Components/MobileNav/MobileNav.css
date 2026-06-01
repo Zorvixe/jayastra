@@ -136,3 +136,57 @@
     top: -20px;
   }
 }
+/* Add to MobileNav.css */
+
+/* User Initials Button Styles */
+
+.fab-button.user-initials-btn:hover {
+  transform: scale(1.05);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.2);
+}
+
+.user-initials {
+  font-size: 20px;
+  font-weight: 600;
+  color: white;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+/* Optional: Add different color variants based on user initial */
+.fab-button.user-initials-btn[data-initial="A"],
+.fab-button.user-initials-btn[data-initial="E"],
+.fab-button.user-initials-btn[data-initial="I"],
+.fab-button.user-initials-btn[data-initial="O"],
+.fab-button.user-initials-btn[data-initial="U"] {
+  background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+}
+
+/* Animation for initials button */
+@keyframes pulse {
+  0% {
+    box-shadow: 0 0 0 0 rgba(102, 126, 234, 0.4);
+  }
+  70% {
+    box-shadow: 0 0 0 10px rgba(102, 126, 234, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(102, 126, 234, 0);
+  }
+}
+
+.fab-button.user-initials-btn:active {
+  animation: pulse 0.5s ease-out;
+}
+
+/* Responsive adjustments */
+@media (max-width: 480px) {
+  .fab-button.user-initials-btn {
+    width: 48px;
+    height: 48px;
+  }
+  
+  .user-initials {
+    font-size: 18px;
+  }
+}

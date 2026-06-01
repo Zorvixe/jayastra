@@ -1,12 +1,18 @@
 // MobileNav.jsx - Mobile Bottom Navigation Component
 import React, { useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
+import axios from "axios";
 import "./MobileNav.css";
+
+const RAW_API_URL = process.env.REACT_APP_API_URL;
+const REACT_APP_API_URL = RAW_API_URL.replace(/['"]/g, '');
 
 const MobileNav = ({ onFabClick, unreadCount = 0 }) => {
   const navigate = useNavigate();
   const location = useLocation();
   const [activeTab, setActiveTab] = useState("home");
+  const [userInitials, setUserInitials] = useState("U");
+  const [userName, setUserName] = useState("");
 
   // Update active tab based on current route
   useEffect(() => {
@@ -22,10 +28,62 @@ const MobileNav = ({ onFabClick, unreadCount = 0 }) => {
     }
   }, [location]);
 
+  // Fetch user profile to get initials
+  useEffect(() => {
+    const fetchUserProfile = async () => {
+      const token = localStorage.getItem("token");
+      if (!token) return;
+
+      try {
+        const res = await axios.get(`${REACT_APP_API_URL}/user/profile`, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        const user = res.data;
+        let initials = "U";
+        
+        if (user.first_name && user.last_name) {
+          initials = `${user.first_name.charAt(0)}${user.last_name.charAt(0)}`.toUpperCase();
+          setUserName(`${user.first_name} ${user.last_name}`);
+        } else if (user.name) {
+          const nameParts = user.name.split(" ");
+          if (nameParts.length >= 2) {
+            initials = `${nameParts[0].charAt(0)}${nameParts[1].charAt(0)}`.toUpperCase();
+          } else {
+            initials = user.name.charAt(0).toUpperCase();
+          }
+          setUserName(user.name);
+        } else if (user.email) {
+          initials = user.email.charAt(0).toUpperCase();
+          setUserName(user.email);
+        }
+        
+        setUserInitials(initials);
+      } catch (error) {
+        console.error("Failed to fetch user profile:", error);
+        // Try to get from localStorage as fallback
+        const storedName = localStorage.getItem("admin_name");
+        if (storedName) {
+          const nameParts = storedName.split(" ");
+          if (nameParts.length >= 2) {
+            setUserInitials(`${nameParts[0].charAt(0)}${nameParts[1].charAt(0)}`.toUpperCase());
+          } else {
+            setUserInitials(storedName.charAt(0).toUpperCase());
+          }
+          setUserName(storedName);
+        }
+      }
+    };
+
+    fetchUserProfile();
+  }, []);
+
   const handleNavigation = (tab, path) => {
     setActiveTab(tab);
     navigate(path);
   };
+
+  // Check if we're on home tab to show initials instead of FAB
+  const isHomeActive = activeTab === "home";
 
   const navItems = [
     {
@@ -65,6 +123,22 @@ const MobileNav = ({ onFabClick, unreadCount = 0 }) => {
       <div className="mobile-nav">
         {navItems.map((item) => {
           if (item.isFab) {
+            // Show initials circle instead of FAB when on home tab
+            if (isHomeActive) {
+              return (
+                <div key={item.id} className="mobile-fab">
+                  <button 
+                    className="fab-button user-initials-btn" 
+                    onClick={() => handleNavigation("account", "/admin/profile")}
+                    title={userName || "My Account"}
+                  >
+                    <span className="user-initials">{userInitials}</span>
+                  </button>
+                </div>
+              );
+            }
+            
+            // Show regular FAB button on other tabs
             return (
               <div key={item.id} className="mobile-fab">
                 <button className="fab-button" onClick={onFabClick}>

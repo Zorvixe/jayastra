@@ -565,6 +565,11 @@
 }
 
 @media (max-width: 480px) {
+
+  .coupon-modal-actions{
+    display: flex;
+    flex-direction: row;
+  }
   .coupon-container {
     padding: 12px;
   }
@@ -606,6 +611,7 @@
   }
 
   .coupon-modal-body {
+    max-height: calc(80vh - 130px);
     padding: 14px 16px;
   }
 
@@ -626,4 +632,10 @@
   .coupon-add-btn{
     display: none;
   }
+  .coupon-cancel-btn, .coupon-submit-btn{
+    width: 100%;
+    justify-content: center;
+    padding: 5px;
+  }
+
 }
