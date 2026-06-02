@@ -1112,10 +1112,14 @@
 
 @media (max-width: 480px) {
 
+    .prof-form-actions {
+    flex-direction: row;
+  }
+
   .prof-header{
     display: flex;
   flex-direction: row;
-  align-items: center;
+  justify-content: flex-start;
   }
 
   .prof-detail-item label,
