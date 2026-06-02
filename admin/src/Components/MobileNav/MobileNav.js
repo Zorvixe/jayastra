@@ -40,7 +40,7 @@ const MobileNav = ({ onFabClick, unreadCount = 0 }) => {
         });
         const user = res.data;
         let initials = "U";
-        
+
         if (user.first_name && user.last_name) {
           initials = `${user.first_name.charAt(0)}${user.last_name.charAt(0)}`.toUpperCase();
           setUserName(`${user.first_name} ${user.last_name}`);
@@ -56,7 +56,7 @@ const MobileNav = ({ onFabClick, unreadCount = 0 }) => {
           initials = user.email.charAt(0).toUpperCase();
           setUserName(user.email);
         }
-        
+
         setUserInitials(initials);
       } catch (error) {
         console.error("Failed to fetch user profile:", error);
@@ -123,12 +123,11 @@ const MobileNav = ({ onFabClick, unreadCount = 0 }) => {
       <div className="mobile-nav">
         {navItems.map((item) => {
           if (item.isFab) {
-            // Show initials circle instead of FAB when on home tab
             if (isHomeActive) {
               return (
                 <div key={item.id} className="mobile-fab">
-                  <button 
-                    className="fab-button user-initials-btn" 
+                  <button
+                    className="fab-button user-initials-btn"
                     onClick={() => handleNavigation("account", "/admin/profile")}
                     title={userName || "My Account"}
                   >
@@ -137,17 +136,20 @@ const MobileNav = ({ onFabClick, unreadCount = 0 }) => {
                 </div>
               );
             }
-            
-            // Show regular FAB button on other tabs
+
             return (
               <div key={item.id} className="mobile-fab">
-                <button className="fab-button" onClick={onFabClick}>
-                  <i className={item.icon}></i>
+                <button
+                  className="fab-button"
+                  onClick={onFabClick}
+                  title={activeTab === "account" ? "Edit Profile" : "Add"}
+                >
+                  <i className={activeTab === "account" ? "bi bi-pencil" : item.icon}></i>
                 </button>
               </div>
             );
           }
-          
+
           return (
             <button
               key={item.id}

@@ -83,59 +83,63 @@ const AdminLayout = () => {
   };
 
   // Handle FAB click based on current page
- // Handle FAB click based on current page
-const handleFabClick = () => {
-  const path = location.pathname;
+  // Handle FAB click based on current page
+  const handleFabClick = () => {
+    const path = location.pathname;
 
-  // Products page - open Add Product modal
-  if (path.includes("/admin/products")) {
-    setShowAddModal(true);
-  }
-  // Categories page - open Add Category modal (via custom event)
-  else if (path.includes("/admin/categories")) {
-    window.dispatchEvent(new CustomEvent("openAddCategoryModal"));
-  }
-  // Coupons page - open Add Coupon modal (via custom event)
-  else if (path.includes("/admin/coupons")) {
-    window.dispatchEvent(new CustomEvent("openAddCouponModal"));
-  }
-  // Vendor Pickup page - open Add Pickup Address modal
-  else if (path.includes("/admin/vendor-pickup")) {
-    window.dispatchEvent(new CustomEvent("openAddPickupAddressModal"));
-  }
-  // Orders page - refresh orders
-  else if (path.includes("/admin/orders")) {
-    window.dispatchEvent(new CustomEvent("refreshOrders"));
-  }
-  // Payouts page - open withdrawal request modal
-  else if (path.includes("/admin/payouts")) {
-    window.dispatchEvent(new CustomEvent("openWithdrawModal"));
-  }
-  // Wishlist page - refresh wishlist
-  else if (path.includes("/admin/wishlist")) {
-    window.dispatchEvent(new CustomEvent("refreshWishlist"));
-  }
-  // Stock Notifications page - refresh stock notifications
-  else if (path.includes("/admin/stock-notifications")) {
-    window.dispatchEvent(new CustomEvent("refreshStockNotifications"));
-  }
-  // Returns page - could refresh returns
-  else if (path.includes("/admin/returns")) {
-    window.dispatchEvent(new CustomEvent("refreshReturns"));
-  }
-  // Users page - could refresh users
-  else if (path.includes("/admin/users")) {
-    window.dispatchEvent(new CustomEvent("refreshUsers"));
-  }
-  // Banners page - could add banner
-  else if (path.includes("/admin/banners")) {
-    window.dispatchEvent(new CustomEvent("openAddBannerModal"));
-  }
-  // Default - console log
-  else {
-    console.log("No add action defined for this page:", path);
-  }
-};
+    // Profile page - open profile edit on mobile
+    if (path.includes("/admin/profile")) {
+      window.dispatchEvent(new CustomEvent("openProfileEdit"));
+    }
+    // Products page - open Add Product modal
+    else if (path.includes("/admin/products")) {
+      setShowAddModal(true);
+    }
+    // Categories page - open Add Category modal (via custom event)
+    else if (path.includes("/admin/categories")) {
+      window.dispatchEvent(new CustomEvent("openAddCategoryModal"));
+    }
+    // Coupons page - open Add Coupon modal (via custom event)
+    else if (path.includes("/admin/coupons")) {
+      window.dispatchEvent(new CustomEvent("openAddCouponModal"));
+    }
+    // Vendor Pickup page - open Add Pickup Address modal
+    else if (path.includes("/admin/vendor-pickup")) {
+      window.dispatchEvent(new CustomEvent("openAddPickupAddressModal"));
+    }
+    // Orders page - refresh orders
+    else if (path.includes("/admin/orders")) {
+      window.dispatchEvent(new CustomEvent("refreshOrders"));
+    }
+    // Payouts page - open withdrawal request modal
+    else if (path.includes("/admin/payouts")) {
+      window.dispatchEvent(new CustomEvent("openWithdrawModal"));
+    }
+    // Wishlist page - refresh wishlist
+    else if (path.includes("/admin/wishlist")) {
+      window.dispatchEvent(new CustomEvent("refreshWishlist"));
+    }
+    // Stock Notifications page - refresh stock notifications
+    else if (path.includes("/admin/stock-notifications")) {
+      window.dispatchEvent(new CustomEvent("refreshStockNotifications"));
+    }
+    // Returns page - could refresh returns
+    else if (path.includes("/admin/returns")) {
+      window.dispatchEvent(new CustomEvent("refreshReturns"));
+    }
+    // Users page - could refresh users
+    else if (path.includes("/admin/users")) {
+      window.dispatchEvent(new CustomEvent("refreshUsers"));
+    }
+    // Banners page - could add banner
+    else if (path.includes("/admin/banners")) {
+      window.dispatchEvent(new CustomEvent("openAddBannerModal"));
+    }
+    // Default - console log
+    else {
+      console.log("No add action defined for this page:", path);
+    }
+  };
 
   const handleAddModalClose = () => {
     setShowAddModal(false);

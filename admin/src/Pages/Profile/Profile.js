@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useOutletContext } from "react-router-dom";
 import axios from "axios";
 import { toast } from "react-toastify";
 import "./Profile.css";
@@ -8,6 +8,8 @@ const API_URL = process.env.REACT_APP_API_URL;
 
 const Profile = () => {
     const navigate = useNavigate();
+    const outletContext = useOutletContext();
+    const isMobile = outletContext?.isMobile;
     const [loading, setLoading] = useState(true);
     const [updating, setUpdating] = useState(false);
     const [userRole, setUserRole] = useState(null);
@@ -22,6 +24,8 @@ const Profile = () => {
     const [showConfirmModal, setShowConfirmModal] = useState(false);
     const [confirmAction, setConfirmAction] = useState(null);
     const [confirmData, setConfirmData] = useState(null);
+    const [isEditingPersonal, setIsEditingPersonal] = useState(false);
+    const [isEditingVendor, setIsEditingVendor] = useState(false);
 
     const [addressForm, setAddressForm] = useState({
         location_name: "",
@@ -61,6 +65,19 @@ const Profile = () => {
             fetchPickupAddresses();
         }
     }, []);
+
+    useEffect(() => {
+        const handleOpenProfileEdit = () => {
+            if (activeTab === 'personal') {
+                setIsEditingPersonal(true);
+            } else if (activeTab === 'vendor') {
+                setIsEditingVendor(true);
+            }
+        };
+
+        window.addEventListener("openProfileEdit", handleOpenProfileEdit);
+        return () => window.removeEventListener("openProfileEdit", handleOpenProfileEdit);
+    }, [activeTab]);
 
     const fetchProfile = async () => {
         const token = localStorage.getItem("token");
@@ -264,7 +281,7 @@ const Profile = () => {
         } catch (error) {
             console.error("Profile update error:", error);
             const errorMsg = error.response?.data?.message || error.message || "Failed to update profile";
-            
+
             setErrorDetails({
                 title: "Profile Update Failed",
                 message: errorMsg,
@@ -542,8 +559,10 @@ const Profile = () => {
 
     if (loading) {
         return (
-            <div className="prof-loading">
-                <div className="prof-spinner"></div>
+            <div className="dash-loader-overlay">
+                <div className="dash-loader-container">
+                    <div className="dash-spinner"></div>
+                </div>
             </div>
         );
     }
@@ -590,9 +609,7 @@ const Profile = () => {
                                 <i className={`bi ${errorDetails.type === 'error' ? 'bi-exclamation-triangle-fill' : 'bi-info-circle-fill'}`}></i>
                             </div>
                             <h3>{errorDetails.title}</h3>
-                            <button className="prof-error-modal-close" onClick={() => setShowErrorModal(false)}>
-                                <i className="bi bi-x-lg"></i>
-                            </button>
+
                         </div>
 
                         <div className="prof-error-modal-body">
@@ -659,12 +676,19 @@ Timestamp: ${new Date().toLocaleString()}
             <div className="prof-card">
                 <div className="prof-header">
                     <div className="prof-avatar-large">
-                        <i className="bi bi-person-circle"></i>
+                        <h2>{(() => {
+                            const fn = formData.first_name?.trim();
+                            const ln = formData.last_name?.trim();
+                            if (fn && ln) return (fn.charAt(0) + ln.charAt(0)).toUpperCase();
+                            if (fn) return fn.charAt(0).toUpperCase();
+                            if (ln) return ln.charAt(0).toUpperCase();
+                            return "U";
+                        })()}</h2>
                     </div>
-                    <h2>My Profile</h2>
-                    <p>Manage your account information</p>
-                    <div className="prof-role-badge">
-                        <i className="bi bi-shield-check"></i> {userRole?.toUpperCase()}
+                    <div>
+                        <h2>{formData.first_name} {formData.last_name}</h2>
+                        <p>{formData.email || "Not provided"}</p>
+                        <p>{formData.phone || "Not provided"}</p>
                     </div>
                 </div>
 
@@ -696,302 +720,440 @@ Timestamp: ${new Date().toLocaleString()}
                 <div className="prof-content">
                     {/* Personal Information Tab */}
                     {activeTab === 'personal' && (
-                        <form onSubmit={handleSubmit} className="prof-form">
-                            <div className="prof-form-row">
-                                <div className="prof-form-group">
-                                    <label>First Name *</label>
-                                    <input
-                                        type="text"
-                                        name="first_name"
-                                        value={formData.first_name}
-                                        onChange={handleChange}
-                                        placeholder="Enter first name"
-                                        required
-                                    />
-                                </div>
-                                <div className="prof-form-group">
-                                    <label>Last Name *</label>
-                                    <input
-                                        type="text"
-                                        name="last_name"
-                                        value={formData.last_name}
-                                        onChange={handleChange}
-                                        placeholder="Enter last name"
-                                        required
-                                    />
-                                </div>
-                            </div>
-
-                            <div className="prof-form-row">
-                                <div className="prof-form-group">
-                                    <label>Email</label>
-                                    <input
-                                        type="email"
-                                        value={formData.email}
-                                        disabled
-                                        className="prof-readonly-field"
-                                    />
-                                    <small>Email cannot be changed</small>
-                                </div>
-                                <div className="prof-form-group">
-                                    <label>Phone Number</label>
-                                    {!isEditingPhone ? (
-                                        <div className="prof-phone-display">
-                                            <input
-                                                type="tel"
-                                                value={formData.phone || "Not set"}
-                                                disabled
-                                                className="prof-readonly-field"
-                                            />
+                        <>
+                            {!isEditingPersonal ? (
+                                // Read-only View
+                                <div className="prof-details-view">
+                                    <div className="prof-details-header">
+                                        <h3>Personal Information</h3>
+                                        {!isMobile && (
                                             <button
-                                                type="button"
-                                                className="prof-edit-phone-btn"
-                                                onClick={() => {
-                                                    setTempPhone(formData.phone || "");
-                                                    setIsEditingPhone(true);
-                                                }}
+                                                className="prof-btn-submit"
+                                                onClick={() => setIsEditingPersonal(true)}
                                             >
                                                 <i className="bi bi-pencil"></i> Edit
                                             </button>
+                                        )}
+                                    </div>
+                                    <div className="prof-details-grid">
+                                        <div className="prof-detail-item">
+                                            <label>First Name</label>
+                                            <p>{formData.first_name || "Not provided"}</p>
                                         </div>
-                                    ) : (
-                                        <div className="prof-phone-edit">
+                                        <div className="prof-detail-item">
+                                            <label>Last Name</label>
+                                            <p>{formData.last_name || "Not provided"}</p>
+                                        </div>
+
+                                        <div className="prof-detail-item">
+                                            <label>Gender</label>
+                                            <p>{formData.gender || "Not provided"}</p>
+                                        </div>
+                                        <div className="prof-detail-item">
+                                            <label>City</label>
+                                            <p>{formData.city || "Not provided"}</p>
+                                        </div>
+                                        <div className="prof-detail-item">
+                                            <label>State</label>
+                                            <p>{formData.state || "Not provided"}</p>
+                                        </div>
+                                        <div className="prof-detail-item">
+                                            <label>Pincode</label>
+                                            <p>{formData.pincode || "Not provided"}</p>
+                                        </div>
+                                        <div className="prof-detail-item prof-detail-item-full">
+                                            <label>Address</label>
+                                            <p>{formData.address || "Not provided"}</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            ) : (
+                                // Edit Form
+                                <form onSubmit={handleSubmit} className="prof-form">
+                                    <div className="prof-form-header">
+                                        <h3>Edit Personal Information</h3>
+                                        <button
+                                            type="button"
+                                            className="prof-modal-close"
+                                            onClick={() => setIsEditingPersonal(false)}
+                                        >
+                                            <i className="bi bi-x-lg"></i>
+                                        </button>
+                                    </div>
+                                    <div className="prof-form-row">
+                                        <div className="prof-form-group">
+                                            <label>First Name *</label>
                                             <input
-                                                type="tel"
-                                                value={tempPhone}
-                                                onChange={(e) => setTempPhone(e.target.value)}
-                                                placeholder="Enter 10-digit mobile number"
-                                                maxLength="10"
-                                                className="prof-phone-input"
+                                                type="text"
+                                                name="first_name"
+                                                value={formData.first_name}
+                                                onChange={handleChange}
+                                                placeholder="Enter first name"
+                                                required
                                             />
-                                            <div className="prof-phone-edit-actions">
-                                                <button
-                                                    type="button"
-                                                    className="prof-btn-save-phone"
-                                                    onClick={handleUpdatePhone}
-                                                    disabled={updating}
-                                                >
-                                                    {updating ? "Saving..." : "Save"}
-                                                </button>
-                                                <button
-                                                    type="button"
-                                                    className="prof-btn-cancel-phone"
-                                                    onClick={() => {
-                                                        setIsEditingPhone(false);
-                                                        setTempPhone(formData.phone || "");
-                                                    }}
-                                                >
-                                                    Cancel
-                                                </button>
-                                            </div>
                                         </div>
-                                    )}
-                                    <small>10-digit mobile number (used for login)</small>
-                                </div>
-                            </div>
+                                        <div className="prof-form-group">
+                                            <label>Last Name *</label>
+                                            <input
+                                                type="text"
+                                                name="last_name"
+                                                value={formData.last_name}
+                                                onChange={handleChange}
+                                                placeholder="Enter last name"
+                                                required
+                                            />
+                                        </div>
+                                    </div>
 
-                            <div className="prof-form-row">
-                                <div className="prof-form-group">
-                                    <label>Gender</label>
-                                    <select name="gender" value={formData.gender} onChange={handleChange}>
-                                        <option value="">Select Gender</option>
-                                        <option value="Male">Male</option>
-                                        <option value="Female">Female</option>
-                                        <option value="Other">Other</option>
-                                    </select>
-                                </div>
+                                    <div className="prof-form-row">
+                                        <div className="prof-form-group">
+                                            <label>Email</label>
+                                            <input
+                                                type="email"
+                                                value={formData.email}
+                                                disabled
+                                                className="prof-readonly-field"
+                                            />
+                                            <small>Email cannot be changed</small>
+                                        </div>
+                                        <div className="prof-form-group">
+                                            <label>Phone Number</label>
+                                            {!isEditingPhone ? (
+                                                <div className="prof-phone-display">
+                                                    <input
+                                                        type="tel"
+                                                        value={formData.phone || "Not set"}
+                                                        disabled
+                                                        className="prof-readonly-field"
+                                                    />
+                                                    <button
+                                                        type="button"
+                                                        className="prof-edit-phone-btn"
+                                                        onClick={() => {
+                                                            setTempPhone(formData.phone || "");
+                                                            setIsEditingPhone(true);
+                                                        }}
+                                                    >
+                                                        <i className="bi bi-pencil"></i> Edit
+                                                    </button>
+                                                </div>
+                                            ) : (
+                                                <div className="prof-phone-edit">
+                                                    <input
+                                                        type="tel"
+                                                        value={tempPhone}
+                                                        onChange={(e) => setTempPhone(e.target.value)}
+                                                        placeholder="Enter 10-digit mobile number"
+                                                        maxLength="10"
+                                                        className="prof-phone-input"
+                                                    />
+                                                    <div className="prof-phone-edit-actions">
+                                                        <button
+                                                            type="button"
+                                                            className="prof-btn-save-phone"
+                                                            onClick={handleUpdatePhone}
+                                                            disabled={updating}
+                                                        >
+                                                            {updating ? "Saving..." : "Save"}
+                                                        </button>
+                                                        <button
+                                                            type="button"
+                                                            className="prof-btn-cancel-phone"
+                                                            onClick={() => {
+                                                                setIsEditingPhone(false);
+                                                                setTempPhone(formData.phone || "");
+                                                            }}
+                                                        >
+                                                            Cancel
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            )}
+                                            <small>10-digit mobile number (used for login)</small>
+                                        </div>
+                                    </div>
 
-                                <div className="prof-form-group">
-                                    <label>Pincode</label>
-                                    <input
-                                        type="text"
-                                        name="pincode"
-                                        value={formData.pincode}
-                                        onChange={handleChange}
-                                        placeholder="Enter pincode"
-                                        maxLength="6"
-                                    />
-                                    <small>6-digit pincode</small>
-                                </div>
-                            </div>
+                                    <div className="prof-form-row">
+                                        <div className="prof-form-group">
+                                            <label>Gender</label>
+                                            <select name="gender" value={formData.gender} onChange={handleChange}>
+                                                <option value="">Select Gender</option>
+                                                <option value="Male">Male</option>
+                                                <option value="Female">Female</option>
+                                                <option value="Other">Other</option>
+                                            </select>
+                                        </div>
 
-                            <div className="prof-form-row">
-                                <div className="prof-form-group">
-                                    <label>City</label>
-                                    <input
-                                        type="text"
-                                        name="city"
-                                        value={formData.city}
-                                        onChange={handleChange}
-                                        placeholder="Enter city"
-                                    />
-                                </div>
-                                <div className="prof-form-group">
-                                    <label>State</label>
-                                    <input
-                                        type="text"
-                                        name="state"
-                                        value={formData.state}
-                                        onChange={handleChange}
-                                        placeholder="Enter state"
-                                    />
-                                </div>
-                            </div>
+                                        <div className="prof-form-group">
+                                            <label>Pincode</label>
+                                            <input
+                                                type="text"
+                                                name="pincode"
+                                                value={formData.pincode}
+                                                onChange={handleChange}
+                                                placeholder="Enter pincode"
+                                                maxLength="6"
+                                            />
+                                            <small>6-digit pincode</small>
+                                        </div>
+                                    </div>
 
-                            <div className="prof-form-group">
-                                <label>Address</label>
-                                <textarea
-                                    name="address"
-                                    value={formData.address}
-                                    onChange={handleChange}
-                                    placeholder="Enter your full address"
-                                    rows="3"
-                                />
-                            </div>
+                                    <div className="prof-form-row">
+                                        <div className="prof-form-group">
+                                            <label>City</label>
+                                            <input
+                                                type="text"
+                                                name="city"
+                                                value={formData.city}
+                                                onChange={handleChange}
+                                                placeholder="Enter city"
+                                            />
+                                        </div>
+                                        <div className="prof-form-group">
+                                            <label>State</label>
+                                            <input
+                                                type="text"
+                                                name="state"
+                                                value={formData.state}
+                                                onChange={handleChange}
+                                                placeholder="Enter state"
+                                            />
+                                        </div>
+                                    </div>
 
-                            <div className="prof-form-actions">
-                                <button
-                                    type="button"
-                                    className="prof-btn-cancel"
-                                    onClick={() => navigate("/admin/dashboard")}
-                                >
-                                    Cancel
-                                </button>
-                                <button
-                                    type="submit"
-                                    className="prof-btn-submit"
-                                    disabled={updating}
-                                >
-                                    {updating ? (
-                                        <><i className="bi bi-hourglass-split"></i> Updating...</>
-                                    ) : (
-                                        <><i className="bi bi-check-lg"></i> Update Profile</>
-                                    )}
-                                </button>
-                            </div>
-                        </form>
+                                    <div className="prof-form-group">
+                                        <label>Address</label>
+                                        <textarea
+                                            name="address"
+                                            value={formData.address}
+                                            onChange={handleChange}
+                                            placeholder="Enter your full address"
+                                            rows="3"
+                                        />
+                                    </div>
+
+                                    <div className="prof-form-actions">
+                                        <button
+                                            type="button"
+                                            className="prof-btn-cancel"
+                                            onClick={() => {
+                                                setIsEditingPersonal(false);
+                                                fetchProfile();
+                                            }}
+                                        >
+                                            Cancel
+                                        </button>
+                                        <button
+                                            type="submit"
+                                            className="prof-btn-submit"
+                                            disabled={updating}
+                                        >
+                                            {updating ? (
+                                                <><i className="bi bi-hourglass-split"></i> Updating...</>
+                                            ) : (
+                                                <><i className="bi bi-check-lg"></i> Update Profile</>
+                                            )}
+                                        </button>
+                                    </div>
+                                </form>
+                            )}
+                        </>
                     )}
 
                     {/* Vendor Details Tab */}
                     {activeTab === 'vendor' && isVendor && (
-                        <form onSubmit={handleVendorSubmit} className="prof-form">
-                            <div className="prof-form-row">
-                                <div className="prof-form-group">
-                                    <label>Store Name</label>
-                                    <input
-                                        type="text"
-                                        name="store_name"
-                                        value={formData.store_name}
-                                        onChange={handleChange}
-                                        placeholder="Enter your store name"
-                                    />
-                                    <small>Your business/store name</small>
+                        <>
+                            {!isEditingVendor ? (
+                                // Read-only View
+                                <div className="prof-details-view">
+                                    <div className="prof-details-header">
+                                        <h3>Vendor Details</h3>
+                                        {!isMobile && (
+                                            <button
+                                                className="prof-btn-submit"
+                                                onClick={() => setIsEditingVendor(true)}
+                                            >
+                                                <i className="bi bi-pencil"></i> Edit
+                                            </button>
+                                        )}
+                                    </div>
+                                    <div className="prof-details-grid">
+                                        <div className="prof-detail-item">
+                                            <label>Store Name</label>
+                                            <p>{formData.store_name || "Not provided"}</p>
+                                        </div>
+                                        <div className="prof-detail-item">
+                                            <label>GST Number</label>
+                                            <p>{formData.gst_number || "Not provided"}</p>
+                                        </div>
+                                        <div className="prof-detail-item prof-detail-item-full">
+                                            <label>Pickup Location Name</label>
+                                            <p>{formData.pickup_location_name || "Not provided"}</p>
+                                        </div>
+                                        <div className="prof-detail-item">
+                                            <label>Pickup City</label>
+                                            <p>{formData.pickup_city || "Not provided"}</p>
+                                        </div>
+                                        <div className="prof-detail-item">
+                                            <label>Pickup State</label>
+                                            <p>{formData.pickup_state || "Not provided"}</p>
+                                        </div>
+                                        <div className="prof-detail-item">
+                                            <label>Pickup Pincode</label>
+                                            <p>{formData.pickup_pincode || "Not provided"}</p>
+                                        </div>
+                                        <div className="prof-detail-item prof-detail-item-full">
+                                            <label>Pickup Address Line 1</label>
+                                            <p>{formData.pickup_address_line1 || "Not provided"}</p>
+                                        </div>
+                                        <div className="prof-detail-item prof-detail-item-full">
+                                            <label>Pickup Address Line 2</label>
+                                            <p>{formData.pickup_address_line2 || "Not provided"}</p>
+                                        </div>
+                                    </div>
                                 </div>
+                            ) : (
+                                // Edit Form
+                                <form onSubmit={handleVendorSubmit} className="prof-form">
+                                    <div className="prof-form-header">
+                                        <h3>Edit Vendor Details</h3>
+                                        <button
+                                            type="button"
+                                            className="prof-modal-close"
+                                            onClick={() => setIsEditingVendor(false)}
+                                        >
+                                            <i className="bi bi-x-lg"></i>
+                                        </button>
+                                    </div>
+                                    <div className="prof-form-row">
+                                        <div className="prof-form-group">
+                                            <label>Store Name</label>
+                                            <input
+                                                type="text"
+                                                name="store_name"
+                                                value={formData.store_name}
+                                                onChange={handleChange}
+                                                placeholder="Enter your store name"
+                                            />
+                                            <small>Your business/store name</small>
+                                        </div>
 
-                                <div className="prof-form-group">
-                                    <label>GST Number</label>
-                                    <input
-                                        type="text"
-                                        name="gst_number"
-                                        value={formData.gst_number}
-                                        onChange={handleChange}
-                                        placeholder="Enter GST number"
-                                        maxLength="15"
-                                    />
-                                    <small>15-character GSTIN (e.g., 22AAAAA0000A1Z)</small>
-                                </div>
-                            </div>
+                                        <div className="prof-form-group">
+                                            <label>GST Number</label>
+                                            <input
+                                                type="text"
+                                                name="gst_number"
+                                                value={formData.gst_number}
+                                                onChange={handleChange}
+                                                placeholder="Enter GST number"
+                                                maxLength="15"
+                                            />
+                                            <small>15-character GSTIN (e.g., 22AAAAA0000A1Z)</small>
+                                        </div>
+                                    </div>
 
-                            <div className="prof-form-section-title">
-                                <i className="bi bi-truck"></i> Default Pickup Location
-                                <small>Used for Shiprocket order processing</small>
-                            </div>
+                                    <div className="prof-form-section-title">
+                                        <i className="bi bi-truck"></i> Default Pickup Location
+                                        <small>Used for Shiprocket order processing</small>
+                                    </div>
 
-                            <div className="prof-form-row">
-                                <div className="prof-form-group">
-                                    <label>Pickup Location Name</label>
-                                    <input
-                                        type="text"
-                                        name="pickup_location_name"
-                                        value={formData.pickup_location_name}
-                                        onChange={handleChange}
-                                        placeholder="e.g., Main Warehouse, Store Front"
-                                    />
-                                </div>
+                                    <div className="prof-form-row">
+                                        <div className="prof-form-group">
+                                            <label>Pickup Location Name</label>
+                                            <input
+                                                type="text"
+                                                name="pickup_location_name"
+                                                value={formData.pickup_location_name}
+                                                onChange={handleChange}
+                                                placeholder="e.g., Main Warehouse, Store Front"
+                                            />
+                                        </div>
 
-                                <div className="prof-form-group">
-                                    <label>Pincode</label>
-                                    <input
-                                        type="text"
-                                        name="pickup_pincode"
-                                        value={formData.pickup_pincode}
-                                        onChange={handleChange}
-                                        placeholder="Pincode"
-                                        maxLength="6"
-                                    />
-                                    <small>6-digit pincode</small>
-                                </div>
-                            </div>
+                                        <div className="prof-form-group">
+                                            <label>Pincode</label>
+                                            <input
+                                                type="text"
+                                                name="pickup_pincode"
+                                                value={formData.pickup_pincode}
+                                                onChange={handleChange}
+                                                placeholder="Pincode"
+                                                maxLength="6"
+                                            />
+                                            <small>6-digit pincode</small>
+                                        </div>
+                                    </div>
 
-                            <div className="prof-form-row">
-                                <div className="prof-form-group">
-                                    <label>City</label>
-                                    <input
-                                        type="text"
-                                        name="pickup_city"
-                                        value={formData.pickup_city}
-                                        onChange={handleChange}
-                                        placeholder="City"
-                                    />
-                                </div>
-                                <div className="prof-form-group">
-                                    <label>State</label>
-                                    <input
-                                        type="text"
-                                        name="pickup_state"
-                                        value={formData.pickup_state}
-                                        onChange={handleChange}
-                                        placeholder="State"
-                                    />
-                                </div>
-                            </div>
+                                    <div className="prof-form-row">
+                                        <div className="prof-form-group">
+                                            <label>City</label>
+                                            <input
+                                                type="text"
+                                                name="pickup_city"
+                                                value={formData.pickup_city}
+                                                onChange={handleChange}
+                                                placeholder="City"
+                                            />
+                                        </div>
+                                        <div className="prof-form-group">
+                                            <label>State</label>
+                                            <input
+                                                type="text"
+                                                name="pickup_state"
+                                                value={formData.pickup_state}
+                                                onChange={handleChange}
+                                                placeholder="State"
+                                            />
+                                        </div>
+                                    </div>
 
-                            <div className="prof-form-group">
-                                <label>Address Line 1</label>
-                                <textarea
-                                    name="pickup_address_line1"
-                                    value={formData.pickup_address_line1}
-                                    onChange={handleChange}
-                                    placeholder="Street address, building number"
-                                    rows="2"
-                                />
-                            </div>
+                                    <div className="prof-form-group">
+                                        <label>Address Line 1</label>
+                                        <textarea
+                                            name="pickup_address_line1"
+                                            value={formData.pickup_address_line1}
+                                            onChange={handleChange}
+                                            placeholder="Street address, building number"
+                                            rows="2"
+                                        />
+                                    </div>
 
-                            <div className="prof-form-group">
-                                <label>Address Line 2 (Optional)</label>
-                                <textarea
-                                    name="pickup_address_line2"
-                                    value={formData.pickup_address_line2}
-                                    onChange={handleChange}
-                                    placeholder="Apartment, suite, unit"
-                                    rows="2"
-                                />
-                            </div>
+                                    <div className="prof-form-group">
+                                        <label>Address Line 2 (Optional)</label>
+                                        <textarea
+                                            name="pickup_address_line2"
+                                            value={formData.pickup_address_line2}
+                                            onChange={handleChange}
+                                            placeholder="Apartment, suite, unit"
+                                            rows="2"
+                                        />
+                                    </div>
 
-                            <div className="prof-form-actions">
-                                <button
-                                    type="submit"
-                                    className="prof-btn-submit"
-                                    disabled={updating}
-                                >
-                                    {updating ? (
-                                        <><i className="bi bi-hourglass-split"></i> Saving...</>
-                                    ) : (
-                                        <><i className="bi bi-save"></i> Save Vendor Details</>
-                                    )}
-                                </button>
-                            </div>
-                        </form>
+                                    <div className="prof-form-actions">
+                                        <button
+                                            type="button"
+                                            className="prof-btn-cancel"
+                                            onClick={() => {
+                                                setIsEditingVendor(false);
+                                                fetchProfile();
+                                            }}
+                                        >
+                                            Cancel
+                                        </button>
+                                        <button
+                                            type="submit"
+                                            className="prof-btn-submit"
+                                            disabled={updating}
+                                        >
+                                            {updating ? (
+                                                <><i className="bi bi-hourglass-split"></i> Saving...</>
+                                            ) : (
+                                                <><i className="bi bi-save"></i> Save Vendor Details</>
+                                            )}
+                                        </button>
+                                    </div>
+                                </form>
+                            )}
+                        </>
                     )}
 
                     {/* Pickup Addresses Tab */}
@@ -1015,7 +1177,7 @@ Timestamp: ${new Date().toLocaleString()}
                                         setShowAddressModal(true);
                                     }}
                                 >
-                                    <i className="bi bi-plus-lg"></i> Add New Address
+                                    <i className="bi bi-plus-lg"></i> Add New
                                 </button>
                             </div>
 
