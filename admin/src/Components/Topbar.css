@@ -468,10 +468,16 @@
   flex: 1;
 }
 
+.dropdown-user-store-name {
+  font-weight: 500;
+  font-size: 15px;
+  color: #1f2937;
+  margin-bottom: 4px;
+}
 .dropdown-user-name {
   font-weight: 700;
   font-size: 15px;
-  color: #1f2937;
+  color: #8E2139;
   margin-bottom: 4px;
 }
 

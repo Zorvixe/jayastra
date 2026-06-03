@@ -73,9 +73,10 @@ function AdminLogin() {
   // Auto-focus first PIN input when sheet opens
   useEffect(() => {
     if (showPinSheet && !lockedUntil) {
-      setTimeout(() => {
+      const timer = setTimeout(() => {
         pinInputRefs[0].current?.focus();
       }, 300);
+      return () => clearTimeout(timer);
     }
   }, [showPinSheet, lockedUntil]);
 
@@ -109,7 +110,7 @@ function AdminLogin() {
     const pastedData = e.clipboardData.getData('text').replace(/[^\d]/g, '').slice(0, 4);
     const newPin = [...pin];
     for (let i = 0; i < pastedData.length; i++) {
-      newPin[i] = pastedData[i];
+      newPin[i] = pastedData[i] || "";
     }
     setPin(newPin);
     
@@ -293,109 +294,6 @@ function AdminLogin() {
     setShowPin(false);
   };
 
-  // PIN Bottom Sheet Component
-  const PinBottomSheet = () => {
-    if (!showPinSheet) return null;
-    
-    return (
-      <>
-        <div className="ad-log-sheet-overlay" onClick={closePinSheet}></div>
-        <div className="ad-log-bottom-sheet">
-          <div className="ad-log-sheet-header">
-            <div className="ad-log-sheet-drag-handle"></div>
-            <div className="ad-log-sheet-title-wrapper">
-              <h3 className="ad-log-sheet-title">Login with PIN</h3>
-              <button className="ad-log-sheet-close-btn" onClick={closePinSheet}>
-                <i className="bi bi-x-lg"></i>
-              </button>
-            </div>
-          </div>
-          
-          <div className="ad-log-sheet-content">
-            <div className="ad-log-pin-form">
-              <p className="ad-log-pin-description">Enter your 4-digit PIN to login instantly</p>
-              
-              <div className="ad-log-pin-inputs" onPaste={handlePinPaste}>
-                {pin.map((digit, index) => (
-                  <div key={index} className="ad-log-pin-input-wrapper">
-                    <input
-                      ref={pinInputRefs[index]}
-                      type={showPin ? "text" : "password"}
-                      maxLength="1"
-                      value={digit}
-                      onChange={(e) => handlePinChange(index, e.target.value)}
-                      onKeyDown={(e) => handlePinKeyDown(index, e)}
-                      className={`ad-log-pin-digit ${pinError ? 'ad-log-error-border' : ''}`}
-                      inputMode="numeric"
-                      pattern="\d*"
-                      disabled={pinLoading}
-                      autoComplete="off"
-                    />
-                  </div>
-                ))}
-              </div>
-              
-              <button
-                type="button"
-                className="ad-log-pin-eye-icon"
-                onClick={() => setShowPin(!showPin)}
-              >
-                <i className={`bi ${showPin ? "bi-eye-slash" : "bi-eye"}`}></i>
-                <span>{showPin ? "Hide" : "Show"} PIN</span>
-              </button>
-              
-              {pinError && (
-                <div className="ad-log-pin-error">
-                  <i className="bi bi-exclamation-circle-fill"></i>
-                  <span>{pinError}</span>
-                </div>
-              )}
-              
-            
-              <div className="ad-log-remember-pin">
-                <label className="ad-log-checkbox-label">
-                  <input
-                    type="checkbox"
-                    checked={rememberPinUser}
-                    onChange={(e) => setRememberPinUser(e.target.checked)}
-                  />
-                  <span>Remember me for next time</span>
-                </label>
-              </div>
-              
-              <button 
-                className="ad-log-verify-btn"
-                onClick={handlePinLogin}
-                disabled={pinLoading || pin.join('').length !== 4}
-              >
-                {pinLoading ? (
-                  <>
-                    <i className="bi bi-hourglass-split"></i> Verifying...
-                  </>
-                ) : (
-                  <>
-                    <i className="bi bi-shield-lock"></i> Login with PIN
-                  </>
-                )}
-              </button>
-              
-              <button 
-                className="ad-log-back-to-credentials"
-                onClick={() => {
-                  closePinSheet();
-                  switchLoginMethod('credentials');
-                }}
-              >
-                <i className="bi bi-arrow-left"></i> Back to Credentials Login
-              </button>
-            </div>
-          </div>
-        </div>
-      </>
-    );
-  };
-
-  // Credentials Login Screen
   return (
     <div className="ad-log-container">
       <div className="ad-log-box">
@@ -405,12 +303,14 @@ function AdminLogin() {
         
         <div className="ad-log-method-switch">
           <button 
+            type="button"
             className={`ad-log-method-btn ${loginMethod === 'credentials' ? 'ad-log-active' : ''}`}
             onClick={() => switchLoginMethod('credentials')}
           >
             <i className="bi bi-key"></i> Credentials
           </button>
           <button 
+            type="button"
             className={`ad-log-method-btn ${loginMethod === 'pin' ? 'ad-log-active' : ''}`}
             onClick={() => isMobile ? openPinSheet() : switchLoginMethod('pin')}
           >
@@ -465,7 +365,7 @@ function AdminLogin() {
         
         {loginMethod === "pin" && !isMobile && (
           <div className="ad-log-pin-form">
-            <p className="ad-log-pin-description">Enter your 4-digit PIN to login instantly</p>
+            <p className="ad-log-pin-description">Enter your 4-digit PIN</p>
             
             <div className="ad-log-pin-inputs" onPaste={handlePinPaste}>
               {pin.map((digit, index) => (
@@ -503,7 +403,6 @@ function AdminLogin() {
               </div>
             )}
             
-        
             <div className="ad-log-remember-pin">
               <label className="ad-log-checkbox-label">
                 <input
@@ -516,6 +415,7 @@ function AdminLogin() {
             </div>
             
             <button 
+              type="button"
               className="ad-log-verify-btn"
               onClick={handlePinLogin}
               disabled={pinLoading || pin.join('').length !== 4}
@@ -526,7 +426,7 @@ function AdminLogin() {
                 </>
               ) : (
                 <>
-                  <i className="bi bi-shield-lock"></i> Login with PIN
+                  <i className="bi bi-shield-lock"></i> Login PIN
                 </>
               )}
             </button>
@@ -534,7 +434,96 @@ function AdminLogin() {
         )}
       </div>
       
-      <PinBottomSheet />
+      {/* 
+        Fixed Mobile Bottom Sheet: 
+        Rendered directly inline to avoid unmounting/remounting on input changes or eye toggles.
+      */}
+      {showPinSheet && (
+        <>
+          <div className="ad-log-sheet-overlay" onClick={closePinSheet}></div>
+          <div className="ad-log-bottom-sheet">
+            <div className="ad-log-sheet-header">
+              <div className="ad-log-sheet-drag-handle"></div>
+              <div className="ad-log-sheet-title-wrapper">
+                <h3 className="ad-log-sheet-title">Login PIN</h3>
+                <button type="button" className="ad-log-sheet-close-btn" onClick={closePinSheet}>
+                  <i className="bi bi-x-lg"></i>
+                </button>
+              </div>
+            </div>
+            
+            <div className="ad-log-sheet-content">
+              <div className="ad-log-pin-form">
+                <p className="ad-log-pin-description">Enter your 4-digit PIN</p>
+                
+                <div className="ad-log-pin-inputs" onPaste={handlePinPaste}>
+                  {pin.map((digit, index) => (
+                    <div key={index} className="ad-log-pin-input-wrapper">
+                      <input
+                        ref={pinInputRefs[index]}
+                        type={showPin ? "text" : "password"}
+                        maxLength="1"
+                        value={digit}
+                        onChange={(e) => handlePinChange(index, e.target.value)}
+                        onKeyDown={(e) => handlePinKeyDown(index, e)}
+                        className={`ad-log-pin-digit ${pinError ? 'ad-log-error-border' : ''}`}
+                        inputMode="numeric"
+                        pattern="\d*"
+                        disabled={pinLoading}
+                        autoComplete="off"
+                      />
+                    </div>
+                  ))}
+                </div>
+                
+                <button
+                  type="button"
+                  className="ad-log-pin-eye-icon"
+                  onClick={() => setShowPin(!showPin)}
+                >
+                  <i className={`bi ${showPin ? "bi-eye-slash" : "bi-eye"}`}></i>
+                  <span>{showPin ? "Hide" : "Show"} PIN</span>
+                </button>
+                
+                {pinError && (
+                  <div className="ad-log-pin-error">
+                    <i className="bi bi-exclamation-circle-fill"></i>
+                    <span>{pinError}</span>
+                  </div>
+                )}
+                
+                <div className="ad-log-remember-pin">
+                  <label className="ad-log-checkbox-label">
+                    <input
+                      type="checkbox"
+                      checked={rememberPinUser}
+                      onChange={(e) => setRememberPinUser(e.target.checked)}
+                    />
+                    <span>Remember me for next time</span>
+                  </label>
+                </div>
+                
+                <button 
+                  type="button"
+                  className="ad-log-verify-btn"
+                  onClick={handlePinLogin}
+                  disabled={pinLoading || pin.join('').length !== 4}
+                >
+                  {pinLoading ? (
+                    <>
+                      <i className="bi bi-hourglass-split"></i> Verifying...
+                    </>
+                  ) : (
+                    <>
+                      <i className="bi bi-shield-lock"></i> Login PIN
+                    </>
+                  )}
+                </button>
+              </div>
+            </div>
+          </div>
+        </>
+      )}
     </div>
   );
 }

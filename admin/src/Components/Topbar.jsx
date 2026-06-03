@@ -21,6 +21,7 @@ const Topbar = ({ toggleSidebar, isSidebarCollapsed }) => {
   const [adminName, setAdminName] = useState("");
   const [adminEmail, setAdminEmail] = useState("");
   const [adminPhone, setAdminPhone] = useState("");
+  const [storeName, setStoreName] = useState("");
   const [loadingProfile, setLoadingProfile] = useState(true);
 
   // State for wallet balance
@@ -80,10 +81,12 @@ const Topbar = ({ toggleSidebar, isSidebarCollapsed }) => {
         setAdminName(user.first_name && user.last_name ? `${user.first_name} ${user.last_name}` : user.name || "Admin");
         setAdminEmail(user.email || "");
         setAdminPhone(user.phone || "");
+        setStoreName(user.store_name || "");
       } catch (error) {
         console.error("Failed to fetch profile:", error);
         setAdminName(localStorage.getItem("admin_name") || "Admin");
         setAdminEmail(localStorage.getItem("admin_email") || "admin@Jayastra.com");
+        setStoreName(localStorage.getItem("storeName") || "");
       } finally {
         setLoadingProfile(false);
       }
@@ -431,6 +434,8 @@ const Topbar = ({ toggleSidebar, isSidebarCollapsed }) => {
                 </div>
                 <div className="dropdown-user-info">
                   <div className="dropdown-user-name">{adminName}</div>
+                  <div className="dropdown-user-store-name">{storeName}</div>
+
                   <div className="dropdown-user-email">{adminEmail}</div>
                 </div>
               </div>

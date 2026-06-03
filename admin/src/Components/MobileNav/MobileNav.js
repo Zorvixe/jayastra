@@ -112,9 +112,9 @@ const MobileNav = ({ onFabClick, unreadCount = 0 }) => {
     },
     {
       id: "account",
-      label: "Account",
-      icon: "bi bi-person-circle",
-      path: "/admin/profile"
+      label: "Wallet",
+      icon: "bi bi-cash-coin",
+      path: "/admin/payouts"
     }
   ];
 
