@@ -1,4 +1,3 @@
-/* Notion-Style Theme Variables */
 :root {
   --notion-bg: #ffffff;
   --notion-text: #37352f;
@@ -16,8 +15,6 @@
   --notion-modal-shadow: rgba(15, 15, 15, 0.1) 0px 4px 16px, rgba(15, 15, 15, 0.05) 0px 1px 2px;
   --notion-font: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
 }
-
-
 
 /* Profile Container */
 .prof-container {
@@ -95,13 +92,16 @@
 
 /* Profile Tabs */
 .prof-tabs {
-  width: 100%;
+  width: auto;
+  max-width: 100%;
   display: flex;
   border-bottom: 1px solid var(--notion-border);
   background: var(--notion-bg);
-  padding: 0;
+  padding: 0 8px;
   gap: 8px;
   margin-bottom: 28px;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
 }
 
 .prof-tab-btn {
@@ -114,8 +114,10 @@
   cursor: pointer;
   transition: background 0.12s ease, color 0.12s ease;
   border-radius: 4px;
-  display: flex;
+  display: inline-flex;
   align-items: center;
+  flex-shrink: 0;
+  white-space: nowrap;
 }
 
 .prof-tab-btn i {
@@ -174,6 +176,7 @@
 }
 
 .prof-form-group {
+  width: 100% !important;
   display: flex;
   flex-direction: column;
   gap: 6px;
@@ -446,7 +449,7 @@
 }
 
 .prof-action-btn.prof-edit {
-  background: #8E2139 !important;
+  background: var(--notion-bg);
   color: var(--notion-text);
 }
 
@@ -481,7 +484,6 @@
 
 .prof-no-addresses button {
   background: #8E2139;
-
   color: #ffffff;
   border: none;
   padding: 6px 14px;
@@ -1002,7 +1004,6 @@
 .prof-confirm-header {
   background: var(--notion-bg);
   color: var(--notion-text);
-  border-top: 4px solid var(--notion-warning);
 }
 
 .prof-confirm-icon {
@@ -1112,15 +1113,14 @@
 }
 
 @media (max-width: 480px) {
-
-    .prof-form-actions {
+  .prof-form-actions {
     flex-direction: row;
   }
 
-  .prof-header{
+  .prof-header {
     display: flex;
-  flex-direction: row;
-  justify-content: flex-start;
+    flex-direction: row;
+    justify-content: flex-start;
   }
 
   .prof-detail-item label,
@@ -1128,5 +1128,316 @@
     font-size: 10px;
     margin: 0;
     text-transform: none;
+  }
+}
+
+/* Unified Security Tab Notion-Theme Styling */
+.prof-security-section {
+  padding: 0;
+}
+
+.prof-security-card {
+  background: var(--notion-bg);
+  border-radius: 8px;
+  padding: 24px;
+  margin-bottom: 24px;
+  display: flex;
+  gap: 20px;
+  align-items: flex-start;
+  border: 1px solid var(--notion-border);
+  transition: background 0.12s ease;
+}
+
+.prof-security-card:hover {
+  background: var(--notion-hover);
+}
+
+.prof-security-icon {
+  width: 48px;
+  height: 48px;
+  background: var(--notion-hover);
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 22px;
+  color: #8E2139;
+  border: 1px solid var(--notion-border);
+  flex-shrink: 0;
+}
+
+.prof-security-info {
+  flex: 1;
+}
+
+.prof-security-info h4 {
+  margin: 0 0 4px 0;
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--notion-text);
+}
+
+.prof-security-info p {
+  margin: 0 0 12px 0;
+  color: var(--notion-text-muted);
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+.prof-security-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 500;
+  margin-bottom: 16px;
+  border: 1px solid transparent;
+}
+
+.prof-security-badge.active {
+  background: #e2f5e9;
+  color: #27ae60;
+  border-color: #c2eecf;
+}
+
+.prof-security-badge.disabled {
+  background: var(--notion-danger-bg);
+  color: var(--notion-danger);
+  border-color: #fcd2d2;
+}
+
+.prof-security-actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.prof-security-btn {
+  padding: 6px 14px;
+  border: 1px solid var(--notion-border);
+  border-radius: 4px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.12s ease, border-color 0.12s ease;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-family: inherit;
+  background: var(--notion-bg);
+  color: var(--notion-text);
+}
+
+.prof-security-btn.primary {
+  background: #8E2139;
+  color: #ffffff;
+  border-color: #8E2139;
+}
+
+.prof-security-btn.primary:hover {
+  background: #c22849;
+  border-color: #c22849;
+}
+
+.prof-security-btn.secondary:hover {
+  background: var(--notion-hover);
+}
+
+.prof-security-btn.danger {
+  background: var(--notion-danger-bg);
+  color: var(--notion-danger);
+  border-color: var(--notion-border);
+}
+
+.prof-security-btn.danger:hover {
+  background: #fcd2d2;
+}
+
+.prof-security-note {
+  background: var(--notion-warning-bg);
+  border: 1px solid var(--notion-border);
+  border-left: 3px solid var(--notion-warning);
+  padding: 16px;
+  border-radius: 6px;
+  display: flex;
+  gap: 12px;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.prof-security-note i {
+  color: var(--notion-warning);
+  font-size: 18px;
+  margin-top: 2px;
+}
+
+.prof-security-note strong {
+  color: var(--notion-text);
+  display: block;
+  margin-bottom: 4px;
+}
+
+.prof-security-note ul {
+  margin: 6px 0 0 0;
+  padding-left: 18px;
+}
+
+.prof-security-note li {
+  margin: 4px 0;
+  color: var(--notion-text-muted);
+}
+
+/* Custom Prefixed PIN Interface Styles */
+.prof-pin-setup-modal {
+  max-width: 440px !important;
+}
+
+.prof-pin-setup-content {
+  text-align: center;
+  padding: 10px 0;
+}
+
+.prof-pin-icon-large {
+  font-size: 48px;
+  margin-bottom: 12px;
+}
+
+.prof-pin-setup-content p {
+  color: var(--notion-text-muted);
+  margin-bottom: 24px;
+  font-size: 14px;
+}
+
+.prof-pin-inputs {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+  margin-bottom: 20px;
+}
+
+.prof-pin-digit {
+  width: 52px;
+  height: 60px;
+  text-align: center;
+  font-size: 24px;
+  font-weight: 600;
+  border: 1px solid var(--notion-border);
+  border-radius: 6px;
+  transition: all 0.15s ease;
+  font-family: monospace;
+  background: var(--notion-bg);
+  color: var(--notion-text);
+  margin-right: 20px;
+}
+
+.prof-pin-digit-con {
+  gap: 50px;
+}
+
+.prof-pin-digit:focus {
+  outline: none;
+  border-color: #8E2139;
+  box-shadow: 0 0 0 3px rgba(142, 33, 57, 0.15);
+}
+
+.prof-pin-error-border {
+  border-color: var(--notion-danger) !important;
+  animation: prof-shake 0.3s ease;
+}
+
+@keyframes prof-shake {
+
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+
+  25% {
+    transform: translateX(-4px);
+  }
+
+  75% {
+    transform: translateX(4px);
+  }
+}
+
+.prof-pin-error-message {
+  background: var(--notion-danger-bg);
+  color: var(--notion-danger);
+  padding: 10px;
+  border-radius: 6px;
+  font-size: 13px;
+  margin-top: 15px;
+  border: 1px solid var(--notion-border);
+}
+
+.prof-pin-buttons {
+  display: flex;
+  gap: 10px;
+  margin-top: 15px;
+}
+
+.prof-pin-buttons button {
+  flex: 1;
+}
+
+/* Mobile Layout Drawer Slider Transition Overrides */
+@media (max-width: 768px) {
+  .prof-mobile-sheet-overlay {
+    align-items: flex-end !important;
+  }
+
+  .prof-mobile-sheet-content {
+    width: 100% !important;
+    max-width: 100% !important;
+    border-radius: 16px 16px 0 0 !important;
+    margin: 0 !important;
+    max-height: 85vh !important;
+    animation: prof-slide-up 0.3s cubic-bezier(0.25, 1, 0.5, 1) forwards !important;
+    box-shadow: 0 -8px 24px rgba(15, 15, 15, 0.15) !important;
+    border: none !important;
+    border-top: 1px solid var(--notion-border) !important;
+    padding-bottom: 100px;
+  }
+
+  .prof-sheet-handle {
+    width: 36px;
+    height: 4px;
+    background: var(--notion-border);
+    border-radius: 2px;
+    margin: 12px auto 0 auto;
+  }
+
+  .prof-pin-digit {
+    width: 44px !important;
+    height: 52px !important;
+    font-size: 18px !important;
+  }
+
+  .prof-pin-inputs {
+    gap: 8px !important;
+  }
+
+  .prof-security-card {
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    padding: 20px;
+  }
+
+  .prof-security-actions {
+    justify-content: center;
+  }
+}
+
+@keyframes prof-slide-up {
+  from {
+    transform: translateY(100%);
+  }
+
+  to {
+    transform: translateY(0);
   }
 }

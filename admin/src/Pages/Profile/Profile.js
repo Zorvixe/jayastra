@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from "react";
+// AdminProfile.js - Complete Updated Version with PIN Management
+import React, { useState, useEffect, useRef } from "react";
 import { useNavigate, useOutletContext } from "react-router-dom";
 import axios from "axios";
 import { toast } from "react-toastify";
@@ -26,6 +27,21 @@ const Profile = () => {
     const [confirmData, setConfirmData] = useState(null);
     const [isEditingPersonal, setIsEditingPersonal] = useState(false);
     const [isEditingVendor, setIsEditingVendor] = useState(false);
+
+    // PIN Management States
+    const [hasPin, setHasPin] = useState(false);
+    const [showPinSetup, setShowPinSetup] = useState(false);
+    const [showPinReset, setShowPinReset] = useState(false);
+    const [pin, setPin] = useState(["", "", "", ""]);
+    const [confirmPin, setConfirmPin] = useState(["", "", "", ""]);
+    const [pinSetupStep, setPinSetupStep] = useState(1);
+    const [pinLoading, setPinLoading] = useState(false);
+    const [pinError, setPinError] = useState("");
+    const [currentPassword, setCurrentPassword] = useState("");
+    const [resetPinLoading, setResetPinLoading] = useState(false);
+
+    const pinInputRefs = [useRef(), useRef(), useRef(), useRef()];
+    const confirmPinInputRefs = [useRef(), useRef(), useRef(), useRef()];
 
     const [addressForm, setAddressForm] = useState({
         location_name: "",
@@ -61,6 +77,7 @@ const Profile = () => {
         const role = localStorage.getItem("userRole");
         setUserRole(role);
         fetchProfile();
+        checkPinStatus();
         if (role === 'vendor' || role === 'admin') {
             fetchPickupAddresses();
         }
@@ -78,6 +95,29 @@ const Profile = () => {
         window.addEventListener("openProfileEdit", handleOpenProfileEdit);
         return () => window.removeEventListener("openProfileEdit", handleOpenProfileEdit);
     }, [activeTab]);
+
+    // Auto-focus PIN inputs
+    useEffect(() => {
+        if (showPinSetup && pinSetupStep === 1) {
+            setTimeout(() => pinInputRefs[0]?.current?.focus(), 100);
+        } else if (showPinSetup && pinSetupStep === 2) {
+            setTimeout(() => confirmPinInputRefs[0]?.current?.focus(), 100);
+        }
+    }, [showPinSetup, pinSetupStep]);
+
+    const checkPinStatus = async () => {
+        const token = localStorage.getItem("token");
+        if (!token) return;
+
+        try {
+            const response = await axios.get(`${API_URL}/auth/pin-status`, {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+            setHasPin(response.data.hasPin);
+        } catch (error) {
+            console.error("Failed to check PIN status:", error);
+        }
+    };
 
     const fetchProfile = async () => {
         const token = localStorage.getItem("token");
@@ -159,6 +199,156 @@ const Profile = () => {
             ...addressForm,
             [e.target.name]: e.target.value
         });
+    };
+
+    const handlePinChange = (index, value, isConfirm = false) => {
+        if (value && !/^\d*$/.test(value)) return;
+
+        if (isConfirm) {
+            const newPin = [...confirmPin];
+            newPin[index] = value.slice(0, 1);
+            setConfirmPin(newPin);
+            if (value && index < 3) {
+                confirmPinInputRefs[index + 1]?.current?.focus();
+            }
+        } else {
+            const newPin = [...pin];
+            newPin[index] = value.slice(0, 1);
+            setPin(newPin);
+            if (value && index < 3) {
+                pinInputRefs[index + 1]?.current?.focus();
+            }
+        }
+
+        if (pinError) setPinError("");
+    };
+
+    const handlePinKeyDown = (index, e, isConfirm = false) => {
+        const currentPin = isConfirm ? confirmPin : pin;
+        const prevRefs = isConfirm ? confirmPinInputRefs : pinInputRefs;
+
+        if (e.key === 'Backspace' && !currentPin[index] && index > 0) {
+            prevRefs[index - 1]?.current?.focus();
+        }
+
+        if (e.key === 'Enter' && currentPin.join('').length === 4) {
+            if (isConfirm) {
+                handleCreatePin();
+            } else if (pinSetupStep === 1) {
+                handleGoToConfirm();
+            }
+        }
+    };
+
+    const handleGoToConfirm = () => {
+        const pinCode = pin.join('');
+        if (pinCode.length !== 4) {
+            setPinError('Please enter complete 4-digit PIN');
+            return;
+        }
+        setPinError('');
+        setPinSetupStep(2);
+    };
+
+    const handleCreatePin = async () => {
+        const pinCode = pin.join('');
+        const confirmPinCode = confirmPin.join('');
+
+        if (pinCode.length !== 4) {
+            setPinError('Please enter complete 4-digit PIN');
+            return;
+        }
+
+        if (pinCode !== confirmPinCode) {
+            setPinError('PINs do not match');
+            return;
+        }
+
+        setPinLoading(true);
+        setPinError('');
+
+        const token = localStorage.getItem("token");
+
+        try {
+            await axios.post(`${API_URL}/auth/create-pin`, { pin: pinCode }, {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+
+            toast.success("PIN created successfully! You can now use PIN for quick login.");
+            setShowPinSetup(false);
+            setHasPin(true);
+            setPin(["", "", "", ""]);
+            setConfirmPin(["", "", "", ""]);
+            setPinSetupStep(1);
+        } catch (error) {
+            setPinError(error.response?.data?.message || 'Failed to create PIN');
+        } finally {
+            setPinLoading(false);
+        }
+    };
+
+    const handleResetPin = async () => {
+        if (!currentPassword) {
+            setPinError("Please enter your current password");
+            return;
+        }
+
+        const newPinCode = pin.join('');
+        if (newPinCode.length !== 4) {
+            setPinError('PIN must be exactly 4 digits');
+            return;
+        }
+
+        if (newPinCode !== confirmPin.join('')) {
+            setPinError('PINs do not match');
+            return;
+        }
+
+        setResetPinLoading(true);
+        setPinError('');
+
+        const token = localStorage.getItem("token");
+
+        try {
+            await axios.post(`${API_URL}/auth/reset-pin`, {
+                password: currentPassword,
+                newPin: newPinCode
+            }, {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+
+            toast.success("PIN reset successfully!");
+            setShowPinReset(false);
+            setCurrentPassword("");
+            setPin(["", "", "", ""]);
+            setConfirmPin(["", "", "", ""]);
+            setPinSetupStep(1);
+        } catch (error) {
+            setPinError(error.response?.data?.message || 'Failed to reset PIN');
+        } finally {
+            setResetPinLoading(false);
+        }
+    };
+
+    const handleDisablePin = () => {
+        setConfirmAction(() => () => executeDisablePin());
+        setConfirmData({ type: "disable_pin" });
+        setShowConfirmModal(true);
+    };
+
+    const executeDisablePin = async () => {
+        const token = localStorage.getItem("token");
+        try {
+            await axios.delete(`${API_URL}/auth/disable-pin`, {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+            toast.success("PIN login disabled successfully");
+            setHasPin(false);
+        } catch (error) {
+            toast.error(error.response?.data?.message || 'Failed to disable PIN');
+        } finally {
+            setShowConfirmModal(false);
+        }
     };
 
     const validatePersonalForm = () => {
@@ -277,7 +467,7 @@ const Profile = () => {
             localStorage.setItem("admin_name", fullName);
             toast.success("Profile updated successfully!");
 
-            setTimeout(() => navigate("/admin/dashboard"), 1500);
+            setIsEditingPersonal(false);
         } catch (error) {
             console.error("Profile update error:", error);
             const errorMsg = error.response?.data?.message || error.message || "Failed to update profile";
@@ -343,6 +533,7 @@ const Profile = () => {
 
             if (response.data.success) {
                 toast.success("Vendor details updated successfully!");
+                setIsEditingVendor(false);
                 await fetchProfile();
             }
         } catch (error) {
@@ -571,10 +762,187 @@ const Profile = () => {
 
     return (
         <div className="prof-container">
+            {/* PIN Setup Modal */}
+            {showPinSetup && (
+                <div className={`prof-modal-overlay ${isMobile ? 'prof-mobile-sheet-overlay' : ''}`} onClick={() => setShowPinSetup(false)}>
+                    <div className={`prof-modal-content prof-pin-setup-modal ${isMobile ? 'prof-mobile-sheet-content' : ''}`} onClick={(e) => e.stopPropagation()}>
+                        {isMobile && <div className="prof-sheet-handle"></div>}
+                        <div className="prof-modal-header">
+                            <h3>Set Up PIN for Quick Login</h3>
+                            <button className="prof-modal-close" onClick={() => setShowPinSetup(false)}>
+                                <i className="bi bi-x-lg"></i>
+                            </button>
+                        </div>
+                        <div className="prof-modal-body">
+                            <div className="prof-pin-setup-content">
+                                <div className="prof-pin-icon-large">🔐</div>
+                                <p>Create a 4-digit PIN to login quickly next time</p>
+
+                                {pinSetupStep === 1 ? (
+                                    <>
+                                        <div className="prof-pin-inputs">
+                                            {pin.map((digit, index) => (
+                                                <input
+                                                    key={index}
+                                                    ref={el => pinInputRefs[index] = el}
+                                                    type="password"
+                                                    maxLength="1"
+                                                    value={digit}
+                                                    onChange={(e) => handlePinChange(index, e.target.value, false)}
+                                                    onKeyDown={(e) => handlePinKeyDown(index, e, false)}
+                                                    className={`prof-pin-digit ${pinError ? 'prof-pin-error-border' : ''}`}
+                                                    inputMode="numeric"
+                                                    pattern="\d*"
+                                                    autoComplete="off"
+                                                />
+                                            ))}
+                                        </div>
+                                        {pinError && <div className="prof-pin-error-message">{pinError}</div>}
+                                        <button
+                                            className="prof-btn-submit"
+                                            onClick={handleGoToConfirm}
+                                            disabled={pin.join('').length !== 4}
+                                            style={{ width: '100%', marginTop: '20px' }}
+                                        >
+                                            Continue
+                                        </button>
+                                    </>
+                                ) : (
+                                    <>
+                                        <div className="prof-pin-inputs">
+                                            {confirmPin.map((digit, index) => (
+                                                <input
+                                                    key={index}
+                                                    ref={el => confirmPinInputRefs[index] = el}
+                                                    type="password"
+                                                    maxLength="1"
+                                                    value={digit}
+                                                    onChange={(e) => handlePinChange(index, e.target.value, true)}
+                                                    onKeyDown={(e) => handlePinKeyDown(index, e, true)}
+                                                    className={`prof-pin-digit ${pinError ? 'prof-pin-error-border' : ''}`}
+                                                    inputMode="numeric"
+                                                    pattern="\d*"
+                                                    autoComplete="off"
+                                                />
+                                            ))}
+                                        </div>
+                                        {pinError && <div className="prof-pin-error-message">{pinError}</div>}
+                                        <div className="prof-pin-buttons">
+                                            <button className="prof-btn-cancel" onClick={() => setPinSetupStep(1)}>
+                                                Back
+                                            </button>
+                                            <button
+                                                className="prof-btn-submit"
+                                                onClick={handleCreatePin}
+                                                disabled={pinLoading || confirmPin.join('').length !== 4}
+                                            >
+                                                {pinLoading ? 'Creating...' : 'Create PIN'}
+                                            </button>
+                                        </div>
+                                    </>
+                                )}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* PIN Reset Modal */}
+            {showPinReset && (
+                <div className={`prof-modal-overlay ${isMobile ? 'prof-mobile-sheet-overlay' : ''}`} onClick={() => setShowPinReset(false)}>
+                    <div className={`prof-modal-content prof-pin-setup-modal ${isMobile ? 'prof-mobile-sheet-content' : ''}`} onClick={(e) => e.stopPropagation()}>
+                        {isMobile && <div className="prof-sheet-handle"></div>}
+                        <div className="prof-modal-header">
+                            <h3>Reset PIN</h3>
+                            <button className="prof-modal-close" onClick={() => setShowPinReset(false)}>
+                                <i className="bi bi-x-lg"></i>
+                            </button>
+                        </div>
+                        <div className="prof-modal-body">
+                            <div className="prof-pin-setup-content">
+                                <p>Reset your 4-digit PIN</p>
+
+                                <div className="prof-form-group" style={{ marginTop: '15px', display: 'flex', flexDirection: 'column' }}>
+                                    <label>Current Password</label>
+                                    <input
+                                        type="password"
+                                        value={currentPassword}
+                                        onChange={(e) => setCurrentPassword(e.target.value)}
+                                        placeholder="Enter your current password"
+                                        className={pinError ? 'error-input' : ''}
+                                        style={{ marginBottom: '20px' }}
+                                    />
+                                </div>
+
+                                <div className="prof-pin-inputs" style={{ marginTop: '15px', display: 'flex', flexDirection: 'column' }}>
+                                    <label>New Pin</label>
+
+                                    <div className="prof-pin-digit-con">
+                                        {pin.map((digit, index) => (
+                                            <input
+                                                key={index}
+                                                ref={el => pinInputRefs[index] = el}
+                                                type="password"
+                                                maxLength="1"
+                                                value={digit}
+                                                onChange={(e) => handlePinChange(index, e.target.value, false)}
+                                                onKeyDown={(e) => handlePinKeyDown(index, e, false)}
+                                                className={`prof-pin-digit ${pinError ? 'prof-pin-error-border' : ''}`}
+                                                inputMode="numeric"
+                                                pattern="\d*"
+                                                autoComplete="off"
+                                            />
+                                        ))}
+                                    </div>
+                                </div>
+
+                                <div className="prof-pin-inputs" style={{ marginTop: '15px', display: 'flex', flexDirection: 'column' }}>
+                                    <label>Confirm New Pin</label>
+
+                                    <div className="prof-pin-digit-con">
+                                        {confirmPin.map((digit, index) => (
+                                            <input
+                                                key={index}
+                                                ref={el => confirmPinInputRefs[index] = el}
+                                                type="password"
+                                                maxLength="1"
+                                                value={digit}
+                                                onChange={(e) => handlePinChange(index, e.target.value, true)}
+                                                onKeyDown={(e) => handlePinKeyDown(index, e, true)}
+                                                className={`prof-pin-digit ${pinError ? 'prof-pin-error-border' : ''}`}
+                                                inputMode="numeric"
+                                                pattern="\d*"
+                                                autoComplete="off"
+                                            />
+                                        ))}
+                                    </div>
+                                </div>
+
+                                {pinError && <div className="prof-pin-error-message" style={{ marginTop: '15px' }}>{pinError}</div>}
+
+                                <div className="prof-pin-buttons" style={{ marginTop: '20px' }}>
+                                    <button className="prof-btn-cancel" onClick={() => setShowPinReset(false)}>
+                                        Cancel
+                                    </button>
+                                    <button
+                                        className="prof-btn-submit"
+                                        onClick={handleResetPin}
+                                        disabled={resetPinLoading || !currentPassword || pin.join('').length !== 4 || confirmPin.join('').length !== 4}
+                                    >
+                                        {resetPinLoading ? 'Resetting...' : 'Reset PIN'}
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+
             {/* Confirmation Modal */}
             {showConfirmModal && (
-                <div className="prof-modal-overlay" onClick={() => setShowConfirmModal(false)}>
-                    <div className="prof-modal-content prof-confirm-modal" onClick={(e) => e.stopPropagation()}>
+                <div className={`prof-modal-overlay ${isMobile ? 'prof-mobile-sheet-overlay' : ''}`} onClick={() => setShowConfirmModal(false)}>
+                    <div className={`prof-modal-content prof-confirm-modal ${isMobile ? 'prof-mobile-sheet-content' : ''}`} onClick={(e) => e.stopPropagation()}>
+                        {isMobile && <div className="prof-sheet-handle"></div>}
                         <div className="prof-modal-header prof-confirm-header">
                             <div className="prof-confirm-icon">
                                 <i className="bi bi-question-circle-fill"></i>
@@ -585,15 +953,31 @@ const Profile = () => {
                             </button>
                         </div>
                         <div className="prof-modal-body">
-                            <p>Are you sure you want to delete this address?</p>
-                            <p className="prof-confirm-warning">This action cannot be undone.</p>
+                            {confirmData?.type === "disable_pin" ? (
+                                <>
+                                    <p>Are you sure you want to disable PIN login?</p>
+                                    <p className="prof-confirm-warning">You will need to use your password to login next time.</p>
+                                </>
+                            ) : (
+                                <>
+                                    <p>Are you sure you want to delete this address?</p>
+                                    <p className="prof-confirm-warning">This action cannot be undone.</p>
+                                </>
+                            )}
                         </div>
                         <div className="prof-modal-footer">
                             <button className="prof-btn-cancel" onClick={() => setShowConfirmModal(false)}>
                                 Cancel
                             </button>
-                            <button className="prof-btn-danger" onClick={confirmAction}>
-                                <i className="bi bi-trash"></i> Delete
+                            <button
+                                className={confirmData?.type === "disable_pin" ? "prof-btn-submit" : "prof-btn-danger"}
+                                onClick={confirmAction}
+                            >
+                                {confirmData?.type === "disable_pin" ? (
+                                    <><i className="bi bi-shield-slash"></i> Disable PIN</>
+                                ) : (
+                                    <><i className="bi bi-trash"></i> Delete</>
+                                )}
                             </button>
                         </div>
                     </div>
@@ -609,7 +993,6 @@ const Profile = () => {
                                 <i className={`bi ${errorDetails.type === 'error' ? 'bi-exclamation-triangle-fill' : 'bi-info-circle-fill'}`}></i>
                             </div>
                             <h3>{errorDetails.title}</h3>
-
                         </div>
 
                         <div className="prof-error-modal-body">
@@ -699,6 +1082,12 @@ Timestamp: ${new Date().toLocaleString()}
                     >
                         <i className="bi bi-person"></i> Personal Info
                     </button>
+                    <button
+                        className={`prof-tab-btn ${activeTab === 'security' ? 'prof-active' : ''}`}
+                        onClick={() => setActiveTab('security')}
+                    >
+                        <i className="bi bi-shield-lock"></i> Security
+                    </button>
                     {isVendor && (
                         <>
                             <button
@@ -722,7 +1111,6 @@ Timestamp: ${new Date().toLocaleString()}
                     {activeTab === 'personal' && (
                         <>
                             {!isEditingPersonal ? (
-                                // Read-only View
                                 <div className="prof-details-view">
                                     <div className="prof-details-header">
                                         <h3>Personal Information</h3>
@@ -744,7 +1132,6 @@ Timestamp: ${new Date().toLocaleString()}
                                             <label>Last Name</label>
                                             <p>{formData.last_name || "Not provided"}</p>
                                         </div>
-
                                         <div className="prof-detail-item">
                                             <label>Gender</label>
                                             <p>{formData.gender || "Not provided"}</p>
@@ -768,7 +1155,6 @@ Timestamp: ${new Date().toLocaleString()}
                                     </div>
                                 </div>
                             ) : (
-                                // Edit Form
                                 <form onSubmit={handleSubmit} className="prof-form">
                                     <div className="prof-form-header">
                                         <h3>Edit Personal Information</h3>
@@ -960,11 +1346,77 @@ Timestamp: ${new Date().toLocaleString()}
                         </>
                     )}
 
+                    {/* Security Tab - PIN Management */}
+                    {activeTab === 'security' && (
+                        <div className="prof-security-section">
+                            <div className="prof-section-header">
+                                <h3><i className="bi bi-shield-lock"></i> Security Settings</h3>
+                            </div>
+
+                            <div className="prof-security-card">
+                                <div className="prof-security-icon">
+                                    <i className="bi bi-key"></i>
+                                </div>
+                                <div className="prof-security-info">
+                                    <h4>PIN Login</h4>
+                                    <p>Use a 4-digit PIN for quick and secure login</p>
+                                    {hasPin ? (
+                                        <>
+                                            <div className="prof-security-badge active">
+                                                <i className="bi bi-check-circle-fill"></i> PIN Enabled
+                                            </div>
+                                            <div className="prof-security-actions">
+                                                <button
+                                                    className="prof-security-btn secondary"
+                                                    onClick={() => setShowPinReset(true)}
+                                                >
+                                                    <i className="bi bi-arrow-repeat"></i> Reset PIN
+                                                </button>
+                                                <button
+                                                    className="prof-security-btn danger"
+                                                    onClick={handleDisablePin}
+                                                >
+                                                    <i className="bi bi-trash"></i> Disable PIN
+                                                </button>
+                                            </div>
+                                        </>
+                                    ) : (
+                                        <>
+                                            <div className="prof-security-badge disabled">
+                                                <i className="bi bi-x-circle-fill"></i> PIN Disabled
+                                            </div>
+                                            <div className="prof-security-actions">
+                                                <button
+                                                    className="prof-security-btn primary"
+                                                    onClick={() => setShowPinSetup(true)}
+                                                >
+                                                    <i className="bi bi-plus-circle"></i> Set Up PIN
+                                                </button>
+                                            </div>
+                                        </>
+                                    )}
+                                </div>
+                            </div>
+
+                            <div className="prof-security-note">
+                                <i className="bi bi-info-circle"></i>
+                                <div>
+                                    <strong>Note:</strong>
+                                    <ul>
+                                        <li>PIN must be exactly 4 digits</li>
+                                        <li>After 5 failed attempts, account will be locked for 15 minutes</li>
+                                        <li>You can still login using your password</li>
+                                        <li>Reset PIN requires password verification</li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
                     {/* Vendor Details Tab */}
                     {activeTab === 'vendor' && isVendor && (
                         <>
                             {!isEditingVendor ? (
-                                // Read-only View
                                 <div className="prof-details-view">
                                     <div className="prof-details-header">
                                         <h3>Vendor Details</h3>
@@ -1013,7 +1465,6 @@ Timestamp: ${new Date().toLocaleString()}
                                     </div>
                                 </div>
                             ) : (
-                                // Edit Form
                                 <form onSubmit={handleVendorSubmit} className="prof-form">
                                     <div className="prof-form-header">
                                         <h3>Edit Vendor Details</h3>
@@ -1240,8 +1691,9 @@ Timestamp: ${new Date().toLocaleString()}
 
             {/* Address Modal */}
             {showAddressModal && (
-                <div className="prof-modal-overlay" onClick={() => setShowAddressModal(false)}>
-                    <div className="prof-modal-content" onClick={(e) => e.stopPropagation()}>
+                <div className={`prof-modal-overlay ${isMobile ? 'prof-mobile-sheet-overlay' : ''}`} onClick={() => setShowAddressModal(false)}>
+                    <div className={`prof-modal-content ${isMobile ? 'prof-mobile-sheet-content' : ''}`} onClick={(e) => e.stopPropagation()}>
+                        {isMobile && <div className="prof-sheet-handle"></div>}
                         <div className="prof-modal-header">
                             <h3>{editingAddress ? 'Edit Address' : 'Add New Pickup Address'}</h3>
                             <button className="prof-modal-close" onClick={() => setShowAddressModal(false)}>

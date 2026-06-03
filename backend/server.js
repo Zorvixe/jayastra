@@ -746,6 +746,36 @@ const initDatabase = async () => {
     `);
 
 
+    // Add PIN verification table for users
+    // Add PIN verification table for users
+    await pool.query(`
+  CREATE TABLE IF NOT EXISTS user_pins (
+    id SERIAL PRIMARY KEY,
+    user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+    pin_hash TEXT NOT NULL,
+    is_active BOOLEAN DEFAULT true,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(user_id)
+  )
+`);
+
+    // Add PIN login attempts tracking for security
+    await pool.query(`
+  CREATE TABLE IF NOT EXISTS pin_login_attempts (
+    id SERIAL PRIMARY KEY,
+    user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+    attempt_count INTEGER DEFAULT 0,
+    locked_until TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(user_id)
+  )
+`);
+
+
+
+
+
     // SETTINGS TABLE
     await pool.query(`
           CREATE TABLE IF NOT EXISTS settings (
@@ -812,96 +842,739 @@ const initDatabase = async () => {
 };
 
 // ================= AUTH ROUTES =================
+// ================= REGISTRATION ENDPOINT WITH PIN =================
 app.post("/api/auth/register", async (req, res) => {
+  const client = await pool.connect();
   try {
-    const { name, email, password, phone } = req.body;
-    if (!name || name.length < 3) return res.status(400).json({ message: "Name must be at least 3 characters" });
-    if (!validator.isEmail(email)) return res.status(400).json({ message: "Invalid email" });
-    if (!validator.isStrongPassword(password, { minLength: 8, minLowercase: 1, minUppercase: 1, minNumbers: 1, minSymbols: 1 })) {
-      return res.status(400).json({ message: "Password must contain uppercase, lowercase, number and symbol" });
-    }
-    if (phone && !validator.isMobilePhone(phone, 'any')) return res.status(400).json({ message: "Invalid phone number" });
+    const {
+      name,
+      email,
+      password,
+      phone,
+      setPin,     // optional: boolean to set PIN during registration
+      pin         // optional: 4-digit PIN if setPin is true
+    } = req.body;
 
+    // Validate required fields
+    if (!name || name.length < 3) {
+      return res.status(400).json({
+        success: false,
+        message: "Name must be at least 3 characters"
+      });
+    }
+
+    if (!email && !phone) {
+      return res.status(400).json({
+        success: false,
+        message: "Either email or phone number is required"
+      });
+    }
+
+    // Validate email if provided
+    if (email && !validator.isEmail(email)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid email format"
+      });
+    }
+
+    // Validate password if provided (for email registration)
+    if (email && password) {
+      if (!validator.isStrongPassword(password, {
+        minLength: 8,
+        minLowercase: 1,
+        minUppercase: 1,
+        minNumbers: 1,
+        minSymbols: 1
+      })) {
+        return res.status(400).json({
+          success: false,
+          message: "Password must contain uppercase, lowercase, number and symbol"
+        });
+      }
+    }
+
+    // Validate phone if provided
+    if (phone && !validator.isMobilePhone(phone, 'any')) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid phone number format"
+      });
+    }
+
+    // Validate PIN if being set
+    if (setPin && pin) {
+      if (!/^\d{4}$/.test(pin)) {
+        return res.status(400).json({
+          success: false,
+          message: "PIN must be exactly 4 digits"
+        });
+      }
+    }
+
+    // Check if user already exists
+    let existingUserQuery = "SELECT * FROM users WHERE";
+    let existingParams = [];
+    let conditions = [];
+
+    if (email) {
+      conditions.push(` LOWER(email) = $${existingParams.length + 1}`);
+      existingParams.push(email.toLowerCase());
+    }
+    if (phone) {
+      if (conditions.length > 0) existingUserQuery += " OR";
+      conditions.push(` phone = $${existingParams.length + 1}`);
+      existingParams.push(phone);
+    }
+
+    existingUserQuery += conditions.join(" OR");
+
+    const userExists = await pool.query(existingUserQuery, existingParams);
+    if (userExists.rows.length > 0) {
+      return res.status(400).json({
+        success: false,
+        message: "User with this email or phone already exists"
+      });
+    }
+
+    // Parse name into first and last name
     const [first_name, ...rest] = name.trim().split(" ");
     const last_name = rest.join(" ");
 
-    const userExists = await pool.query("SELECT * FROM users WHERE email=$1 OR phone=$2", [email, phone]);
-    if (userExists.rows.length > 0) return res.status(400).json({ message: "User already exists" });
+    // Hash password if provided
+    let hashedPassword = null;
+    if (password) {
+      hashedPassword = await bcrypt.hash(password, 10);
+    }
 
-    const hashedPassword = await bcrypt.hash(password, 10);
-    const newUser = await pool.query(
-      `INSERT INTO users (name, email, password, phone, first_name, last_name) VALUES ($1,$2,$3,$4,$5,$6) RETURNING id,name,email,phone,first_name,last_name,role`,
-      [name, email, hashedPassword, phone, first_name, last_name]
+    await client.query("BEGIN");
+
+    // Insert user
+    const newUser = await client.query(
+      `INSERT INTO users (name, email, password, phone, first_name, last_name, status, role, created_at) 
+       VALUES ($1, $2, $3, $4, $5, $6, 'Active', 'user', NOW()) 
+       RETURNING id, name, email, phone, first_name, last_name, role, status`,
+      [name, email || null, hashedPassword, phone || null, first_name, last_name]
     );
 
-    res.json({ success: true, message: "User registered successfully", user: { ...newUser.rows[0], role: newUser.rows[0].role ? newUser.rows[0].role.toLowerCase() : "user" } });
+    const userId = newUser.rows[0].id;
+
+    // Set PIN if requested
+    let pinSet = false;
+    if (setPin && pin) {
+      const hashedPin = await bcrypt.hash(pin, 10);
+      await client.query(
+        `INSERT INTO user_pins (user_id, pin_hash, is_active, created_at) 
+         VALUES ($1, $2, true, NOW())`,
+        [userId, hashedPin]
+      );
+      pinSet = true;
+    }
+
+    await client.query("COMMIT");
+
+    // Generate JWT token
+    const token = jwt.sign(
+      { id: userId, role: "user" },
+      JWT_SECRET,
+      { expiresIn: "7d" }
+    );
+
+    // Send welcome email if SendGrid is configured
+    if (process.env.SENDGRID_API_KEY && email) {
+      try {
+        const msg = {
+          to: email,
+          from: process.env.FROM_EMAIL,
+          subject: "Welcome to Jayastra Store!",
+          html: `
+            <div style="font-family: Arial, sans-serif; padding: 20px;">
+              <h2 style="color: #8E2139;">Welcome ${name}!</h2>
+              <p>Thank you for registering with Jayastra Store.</p>
+              ${pinSet ? '<p>Your PIN has been set up successfully for quick login.</p>' : ''}
+              <p>Start shopping and enjoy exclusive offers!</p>
+              <a href="${process.env.FRONTEND_URL}" style="background: #8E2139; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;">Shop Now</a>
+            </div>
+          `,
+        };
+        await sgMail.send(msg);
+      } catch (emailErr) {
+        console.error("Welcome email failed:", emailErr.message);
+      }
+    }
+
+    res.json({
+      success: true,
+      message: pinSet ? "User registered successfully with PIN" : "User registered successfully",
+      token,
+      user: {
+        id: newUser.rows[0].id,
+        name: newUser.rows[0].name,
+        email: newUser.rows[0].email,
+        phone: newUser.rows[0].phone,
+        role: "user",
+        hasPin: pinSet
+      }
+    });
+
   } catch (error) {
-    console.error(error);
-    res.status(500).json({ error: "Registration failed" });
+    await client.query("ROLLBACK");
+    console.error("Registration error:", error);
+    res.status(500).json({
+      success: false,
+      error: "Registration failed",
+      message: error.message
+    });
+  } finally {
+    client.release();
   }
 });
 
+// ================= SIMPLE LOGIN (PHONE ONLY) WITH PIN SUPPORT =================
 app.post("/api/auth/simple-login", async (req, res) => {
   try {
-    const { phone, name } = req.body;
-    if (!phone) return res.status(400).json({ message: "Phone number is required" });
-    let userResult = await pool.query("SELECT * FROM users WHERE phone = $1", [phone]);
+    const { phone, name, usePin, pin } = req.body;
+
+    if (!phone) {
+      return res.status(400).json({
+        success: false,
+        message: "Phone number is required"
+      });
+    }
+
+    const cleanPhone = phone.replace(/\s+/g, "");
+
+    // Find user by phone
+    let userResult = await pool.query(
+      "SELECT * FROM users WHERE phone = $1",
+      [cleanPhone]
+    );
+
     let user;
+    let isNewUser = false;
+
     if (userResult.rows.length === 0) {
-      if (!name) return res.status(400).json({ message: "User not found, please provide name to register" });
+      // New user registration
+      if (!name) {
+        return res.status(400).json({
+          success: false,
+          message: "User not found, please provide name to register"
+        });
+      }
+
+      if (name.length < 3) {
+        return res.status(400).json({
+          success: false,
+          message: "Name must be at least 3 characters"
+        });
+      }
+
       const [first_name, ...rest] = name.trim().split(" ");
       const last_name = rest.join(" ");
-      const newUserRes = await pool.query(`INSERT INTO users (name, phone, first_name, last_name) VALUES ($1, $2, $3, $4) RETURNING *`, [name, phone, first_name, last_name]);
+
+      const newUserRes = await pool.query(
+        `INSERT INTO users (name, phone, first_name, last_name, role, status) 
+         VALUES ($1, $2, $3, $4, 'user', 'Active') 
+         RETURNING *`,
+        [name, cleanPhone, first_name, last_name]
+      );
+
       user = newUserRes.rows[0];
+      isNewUser = true;
     } else {
       user = userResult.rows[0];
+
+      // Check if user is blocked
+      if (user.status === 'Blocked') {
+        return res.status(403).json({
+          success: false,
+          message: "Your account has been blocked. Please contact support."
+        });
+      }
     }
-    const token = jwt.sign({ id: user.id, role: user.role }, JWT_SECRET, { expiresIn: "7d" });
-    res.json({ success: true, token, user: { id: user.id, name: user.name, phone: user.phone, role: user.role } });
-  } catch (err) {
-    res.status(500).json({ error: "Authentication failed" });
+
+    // Handle PIN login for existing users
+    if (!isNewUser && usePin) {
+      if (!pin || !/^\d{4}$/.test(pin)) {
+        return res.status(400).json({
+          success: false,
+          message: "PIN must be exactly 4 digits"
+        });
+      }
+
+      // Check PIN login attempts
+      const attemptsResult = await pool.query(
+        "SELECT * FROM pin_login_attempts WHERE user_id = $1",
+        [user.id]
+      );
+
+      let attempts = attemptsResult.rows[0];
+
+      if (attempts && attempts.locked_until && new Date(attempts.locked_until) > new Date()) {
+        const minutesLeft = Math.ceil((new Date(attempts.locked_until) - new Date()) / (1000 * 60));
+        return res.status(429).json({
+          success: false,
+          message: `Too many failed attempts. Login with Credentials.`,
+          locked: true,
+          minutesLeft
+        });
+      }
+
+      // Get user's PIN
+      const pinResult = await pool.query(
+        "SELECT pin_hash FROM user_pins WHERE user_id = $1 AND is_active = true",
+        [user.id]
+      );
+
+      if (pinResult.rows.length === 0) {
+        return res.status(401).json({
+          success: false,
+          message: "No PIN set for this account. Please login without PIN."
+        });
+      }
+
+      // Verify PIN
+      const isValid = await bcrypt.compare(pin, pinResult.rows[0].pin_hash);
+
+      if (!isValid) {
+        let newAttemptCount = 1;
+        let lockedUntil = null;
+
+        if (attempts) {
+          newAttemptCount = attempts.attempt_count + 1;
+
+          if (newAttemptCount >= 5) {
+            lockedUntil = new Date(Date.now() + 15 * 60 * 1000);
+
+            await pool.query(
+              `UPDATE pin_login_attempts 
+               SET attempt_count = $1, locked_until = $2, updated_at = NOW() 
+               WHERE user_id = $3`,
+              [newAttemptCount, lockedUntil, user.id]
+            );
+
+            return res.status(429).json({
+              success: false,
+              message: "Too many failed attempts. Login with Credentials.",
+              locked: true,
+              minutesLeft: 15
+            });
+          } else {
+            await pool.query(
+              `UPDATE pin_login_attempts 
+               SET attempt_count = $1, updated_at = NOW() 
+               WHERE user_id = $2`,
+              [newAttemptCount, user.id]
+            );
+          }
+        } else {
+          await pool.query(
+            `INSERT INTO pin_login_attempts (user_id, attempt_count) VALUES ($1, $2)`,
+            [user.id, 1]
+          );
+        }
+
+        return res.status(401).json({
+          success: false,
+          message: `Invalid PIN or Not Registered.`,
+          attemptsLeft: 5 - newAttemptCount
+        });
+      }
+
+      // Reset attempts on successful login
+      await pool.query(
+        `DELETE FROM pin_login_attempts WHERE user_id = $1`,
+        [user.id]
+      );
+    }
+
+    // Generate token
+    const role = user.role ? user.role.toLowerCase() : "user";
+    const token = jwt.sign(
+      { id: user.id, role },
+      JWT_SECRET,
+      { expiresIn: "7d" }
+    );
+
+    // Check if user has PIN set
+    const pinCheck = await pool.query(
+      "SELECT id FROM user_pins WHERE user_id = $1 AND is_active = true",
+      [user.id]
+    );
+    const hasPin = pinCheck.rows.length > 0;
+
+    res.json({
+      success: true,
+      token,
+      user: {
+        id: user.id,
+        name: user.name,
+        phone: user.phone,
+        email: user.email,
+        role,
+        hasPin,
+        isNewUser
+      },
+      message: isNewUser ? "Registration successful" : (usePin ? "PIN login successful" : "Login successful")
+    });
+
+  } catch (error) {
+    console.error("Simple login error:", error);
+    res.status(500).json({
+      success: false,
+      error: "Authentication failed",
+      message: error.message
+    });
   }
 });
-
+// ================= LOGIN ENDPOINT WITH PIN CHECK =================
 app.post("/api/auth/login", async (req, res) => {
   try {
-    let { identifier, password } = req.body;
-    if (!identifier || !password) return res.status(400).json({ message: "Email or phone and password are required" });
-    identifier = identifier.trim();
+    let { identifier, password, usePin, pin } = req.body;
 
-    let userResult;
-    if (validator.isEmail(identifier)) {
-      userResult = await pool.query("SELECT * FROM users WHERE LOWER(email) = $1", [identifier.toLowerCase()]);
-    } else {
-      const phone = identifier.replace(/\s+/g, "");
-      userResult = await pool.query("SELECT * FROM users WHERE phone = $1", [phone]);
+    if (!identifier) {
+      return res.status(400).json({
+        success: false,
+        message: "Email or phone number is required"
+      });
     }
 
-    if (userResult.rows.length === 0) return res.status(400).json({ message: "Invalid email/phone or password" });
+    identifier = identifier.trim();
+
+    // Find user by email or phone
+    let userResult;
+    if (validator.isEmail(identifier)) {
+      userResult = await pool.query(
+        "SELECT * FROM users WHERE LOWER(email) = $1",
+        [identifier.toLowerCase()]
+      );
+    } else {
+      const phone = identifier.replace(/\s+/g, "");
+      userResult = await pool.query(
+        "SELECT * FROM users WHERE phone = $1",
+        [phone]
+      );
+    }
+
+    if (userResult.rows.length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid email/phone or credentials"
+      });
+    }
 
     const user = userResult.rows[0];
+
+    // Check if user is blocked
+    if (user.status === 'Blocked') {
+      return res.status(403).json({
+        success: false,
+        message: "Your account has been blocked. Please contact support."
+      });
+    }
+
+    // Handle PIN login
+    if (usePin) {
+      if (!pin || !/^\d{4}$/.test(pin)) {
+        return res.status(400).json({
+          success: false,
+          message: "PIN must be exactly 4 digits"
+        });
+      }
+
+      // Check PIN login attempts
+      const attemptsResult = await pool.query(
+        "SELECT * FROM pin_login_attempts WHERE user_id = $1",
+        [user.id]
+      );
+
+      let attempts = attemptsResult.rows[0];
+
+      if (attempts && attempts.locked_until && new Date(attempts.locked_until) > new Date()) {
+        const minutesLeft = Math.ceil((new Date(attempts.locked_until) - new Date()) / (1000 * 60));
+        return res.status(429).json({
+          success: false,
+          message: `Too many failed attempts. Login with Credentials.`,
+          locked: true,
+          minutesLeft
+        });
+      }
+
+      // Get user's PIN
+      const pinResult = await pool.query(
+        "SELECT pin_hash FROM user_pins WHERE user_id = $1 AND is_active = true",
+        [user.id]
+      );
+
+      if (pinResult.rows.length === 0) {
+        return res.status(401).json({
+          success: false,
+          message: "No PIN set for this account. Please use password login."
+        });
+      }
+
+      // Verify PIN
+      const isValid = await bcrypt.compare(pin, pinResult.rows[0].pin_hash);
+
+      if (!isValid) {
+        // Update failed attempts
+        let newAttemptCount = 1;
+        let lockedUntil = null;
+
+        if (attempts) {
+          newAttemptCount = attempts.attempt_count + 1;
+
+          // Lock after 5 failed attempts for 15 minutes
+          if (newAttemptCount >= 5) {
+            lockedUntil = new Date(Date.now() + 15 * 60 * 1000);
+
+            await pool.query(
+              `UPDATE pin_login_attempts 
+               SET attempt_count = $1, locked_until = $2, updated_at = NOW() 
+               WHERE user_id = $3`,
+              [newAttemptCount, lockedUntil, user.id]
+            );
+
+            return res.status(429).json({
+              success: false,
+              message: "Too many failed attempts. Login with Credentials.",
+              locked: true,
+              minutesLeft: 15
+            });
+          } else {
+            await pool.query(
+              `UPDATE pin_login_attempts 
+               SET attempt_count = $1, updated_at = NOW() 
+               WHERE user_id = $2`,
+              [newAttemptCount, user.id]
+            );
+          }
+        } else {
+          await pool.query(
+            `INSERT INTO pin_login_attempts (user_id, attempt_count) VALUES ($1, $2)`,
+            [user.id, 1]
+          );
+        }
+
+        return res.status(401).json({
+          success: false,
+          message: `Invalid PIN or Not Registered.`,
+          attemptsLeft: 5 - newAttemptCount
+        });
+      }
+
+      // Reset attempts on successful login
+      await pool.query(
+        `DELETE FROM pin_login_attempts WHERE user_id = $1`,
+        [user.id]
+      );
+
+      // Generate token
+      const role = user.role ? user.role.toLowerCase() : "user";
+      const token = jwt.sign(
+        { id: user.id, role },
+        JWT_SECRET,
+        { expiresIn: "7d" }
+      );
+
+      return res.json({
+        success: true,
+        token,
+        user: {
+          id: user.id,
+          name: user.name,
+          email: user.email,
+          phone: user.phone,
+          role,
+          hasPin: true
+        },
+        message: "PIN login successful"
+      });
+    }
+
+    // Handle password login
+    if (!password) {
+      return res.status(400).json({
+        success: false,
+        message: "Password is required"
+      });
+    }
+
+    // Check if user has password set
+    if (!user.password) {
+      return res.status(400).json({
+        success: false,
+        message: "No password set for this account. Please use phone login or reset password."
+      });
+    }
+
     const isMatch = await bcrypt.compare(password, user.password);
-    if (!isMatch) return res.status(400).json({ message: "Invalid email/phone or password" });
+    if (!isMatch) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid email/phone or password"
+      });
+    }
+
+    // Check if user has PIN set (to return this info to frontend)
+    const pinCheck = await pool.query(
+      "SELECT id FROM user_pins WHERE user_id = $1 AND is_active = true",
+      [user.id]
+    );
+    const hasPin = pinCheck.rows.length > 0;
 
     const role = user.role ? user.role.toLowerCase() : "user";
-    const token = jwt.sign({ id: user.id, role }, JWT_SECRET, { expiresIn: "7d" });
+    const token = jwt.sign(
+      { id: user.id, role },
+      JWT_SECRET,
+      { expiresIn: "7d" }
+    );
 
-    res.json({ success: true, token, user: { id: user.id, name: user.name, email: user.email, role } });
+    res.json({
+      success: true,
+      token,
+      user: {
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        phone: user.phone,
+        role,
+        hasPin
+      },
+      message: "Login successful"
+    });
+
   } catch (error) {
-    res.status(500).json({ error: "Login failed" });
+    console.error("Login error:", error);
+    res.status(500).json({
+      success: false,
+      error: "Login failed",
+      message: error.message
+    });
   }
 });
-
+// ================= GOOGLE LOGIN WITH PIN SUPPORT =================
 app.post("/api/auth/google-login", async (req, res) => {
-  const { name, email } = req.body;
-  const [first_name, ...rest] = name.split(" ");
-  const last_name = rest.join(" ");
-  let user = await pool.query("SELECT * FROM users WHERE email=$1", [email]);
-  if (user.rows.length === 0) {
-    user = await pool.query(`INSERT INTO users(name,email,password,first_name,last_name) VALUES($1,$2,$3,$4,$5) RETURNING *`, [name, email, "google_auth", first_name, last_name]);
+  try {
+    const { name, email, setPin, pin } = req.body;
+
+    if (!email) {
+      return res.status(400).json({
+        success: false,
+        message: "Email is required for Google login"
+      });
+    }
+
+    // Validate PIN if being set
+    if (setPin && pin) {
+      if (!/^\d{4}$/.test(pin)) {
+        return res.status(400).json({
+          success: false,
+          message: "PIN must be exactly 4 digits"
+        });
+      }
+    }
+
+    const [first_name, ...rest] = (name || "User").split(" ");
+    const last_name = rest.join(" ");
+
+    // Check if user exists
+    let user = await pool.query(
+      "SELECT * FROM users WHERE LOWER(email) = $1",
+      [email.toLowerCase()]
+    );
+
+    let isNewUser = false;
+    let userId;
+
+    if (user.rows.length === 0) {
+      // Create new user
+      const newUser = await pool.query(
+        `INSERT INTO users (name, email, password, first_name, last_name, role, status, provider, created_at) 
+         VALUES ($1, $2, $3, $4, $5, 'user', 'Active', 'google', NOW()) 
+         RETURNING *`,
+        [name || "User", email.toLowerCase(), "google_auth", first_name, last_name]
+      );
+      user = newUser;
+      isNewUser = true;
+      userId = newUser.rows[0].id;
+    } else {
+      userId = user.rows[0].id;
+
+      // Update provider if not set
+      if (!user.rows[0].provider) {
+        await pool.query(
+          "UPDATE users SET provider = 'google' WHERE id = $1",
+          [userId]
+        );
+      }
+    }
+
+    // Set PIN if requested
+    let pinSet = false;
+    if (setPin && pin) {
+      const hashedPin = await bcrypt.hash(pin, 10);
+
+      // Check if PIN already exists
+      const existingPin = await pool.query(
+        "SELECT id FROM user_pins WHERE user_id = $1",
+        [userId]
+      );
+
+      if (existingPin.rows.length > 0) {
+        await pool.query(
+          `UPDATE user_pins 
+           SET pin_hash = $1, is_active = true, updated_at = NOW() 
+           WHERE user_id = $2`,
+          [hashedPin, userId]
+        );
+      } else {
+        await pool.query(
+          `INSERT INTO user_pins (user_id, pin_hash, is_active, created_at) 
+           VALUES ($1, $2, true, NOW())`,
+          [userId, hashedPin]
+        );
+      }
+      pinSet = true;
+    }
+
+    // Generate token
+    const role = user.rows[0]?.role ? user.rows[0].role.toLowerCase() : "user";
+    const token = jwt.sign(
+      { id: userId, role },
+      JWT_SECRET,
+      { expiresIn: "7d" }
+    );
+
+    // Check if user has PIN set
+    const pinCheck = await pool.query(
+      "SELECT id FROM user_pins WHERE user_id = $1 AND is_active = true",
+      [userId]
+    );
+    const hasPin = pinCheck.rows.length > 0;
+
+    res.json({
+      success: true,
+      token,
+      user: {
+        id: userId,
+        name: user.rows[0]?.name || name,
+        email: email.toLowerCase(),
+        role,
+        hasPin,
+        isNewUser
+      },
+      message: isNewUser ? "Google registration successful" : (pinSet ? "Google login with PIN setup successful" : "Google login successful")
+    });
+
+  } catch (error) {
+    console.error("Google login error:", error);
+    res.status(500).json({
+      success: false,
+      error: "Google authentication failed",
+      message: error.message
+    });
   }
-  const token = jwt.sign({ id: user.rows[0].id, role: user.rows[0].role }, JWT_SECRET, { expiresIn: "7d" });
-  res.json({ token, user: user.rows[0] });
 });
 
 // ================= ADMIN WISHLIST ROUTES =================
@@ -5144,6 +5817,681 @@ app.post("/api/admin/navbar/categories/bulk-visibility", verifyToken, verifyAdmi
     res.status(500).json({ success: false, message: "Failed to update visibility" });
   } finally {
     client.release();
+  }
+});
+
+// ================= PIN AUTHENTICATION ROUTES =================
+
+// Create or update user PIN (after login)
+app.post("/api/auth/create-pin", verifyToken, async (req, res) => {
+  try {
+    const { pin } = req.body;
+    const userId = req.user.id;
+
+    // Validate PIN: exactly 4 digits
+    if (!pin || !/^\d{4}$/.test(pin)) {
+      return res.status(400).json({
+        success: false,
+        message: "PIN must be exactly 4 digits"
+      });
+    }
+
+    // Hash the PIN
+    const hashedPin = await bcrypt.hash(pin, 10);
+
+    // Check if user already has a PIN
+    const existingPin = await pool.query(
+      "SELECT id FROM user_pins WHERE user_id = $1",
+      [userId]
+    );
+
+    if (existingPin.rows.length > 0) {
+      // Update existing PIN
+      await pool.query(
+        `UPDATE user_pins 
+         SET pin_hash = $1, is_active = true, updated_at = CURRENT_TIMESTAMP 
+         WHERE user_id = $2`,
+        [hashedPin, userId]
+      );
+    } else {
+      // Insert new PIN
+      await pool.query(
+        `INSERT INTO user_pins (user_id, pin_hash) VALUES ($1, $2)`,
+        [userId, hashedPin]
+      );
+    }
+
+    res.json({
+      success: true,
+      message: "PIN created successfully! You can now use PIN for quick login."
+    });
+
+  } catch (error) {
+    console.error("Create PIN error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to create PIN"
+    });
+  }
+});
+
+// Check if user has PIN set
+app.get("/api/auth/has-pin", verifyToken, async (req, res) => {
+  try {
+    const userId = req.user.id;
+
+    const result = await pool.query(
+      "SELECT id, is_active FROM user_pins WHERE user_id = $1 AND is_active = true",
+      [userId]
+    );
+
+    res.json({
+      success: true,
+      hasPin: result.rows.length > 0
+    });
+
+  } catch (error) {
+    console.error("Check PIN error:", error);
+    res.status(500).json({
+      success: false,
+      hasPin: false
+    });
+  }
+});
+
+// Verify PIN and get user
+app.post("/api/auth/verify-pin", async (req, res) => {
+  try {
+    const { identifier, pin } = req.body;
+
+    if (!identifier || !pin) {
+      return res.status(400).json({
+        success: false,
+        message: "Identifier and PIN are required"
+      });
+    }
+
+    if (!/^\d{4}$/.test(pin)) {
+      return res.status(400).json({
+        success: false,
+        message: "PIN must be exactly 4 digits"
+      });
+    }
+
+    // Find user by email or phone
+    let userResult;
+    if (validator.isEmail(identifier)) {
+      userResult = await pool.query(
+        "SELECT * FROM users WHERE LOWER(email) = $1 AND status = 'Active'",
+        [identifier.toLowerCase()]
+      );
+    } else {
+      const phone = identifier.replace(/\s+/g, "");
+      userResult = await pool.query(
+        "SELECT * FROM users WHERE phone = $1 AND status = 'Active'",
+        [phone]
+      );
+    }
+
+    if (userResult.rows.length === 0) {
+      return res.status(401).json({
+        success: false,
+        message: "User not found"
+      });
+    }
+
+    const user = userResult.rows[0];
+
+    // Check PIN login attempts
+    const attemptsResult = await pool.query(
+      "SELECT * FROM pin_login_attempts WHERE user_id = $1",
+      [user.id]
+    );
+
+    let attempts = attemptsResult.rows[0];
+
+    if (attempts && attempts.locked_until && new Date(attempts.locked_until) > new Date()) {
+      const minutesLeft = Math.ceil((new Date(attempts.locked_until) - new Date()) / (1000 * 60));
+      return res.status(429).json({
+        success: false,
+        message: `Too many failed attempts. Login with Credentials.`,
+        locked: true,
+        minutesLeft
+      });
+    }
+
+    // Get user's PIN
+    const pinResult = await pool.query(
+      "SELECT pin_hash FROM user_pins WHERE user_id = $1 AND is_active = true",
+      [user.id]
+    );
+
+    if (pinResult.rows.length === 0) {
+      return res.status(401).json({
+        success: false,
+        message: "No PIN set for this account"
+      });
+    }
+
+    // Verify PIN
+    const isValid = await bcrypt.compare(pin, pinResult.rows[0].pin_hash);
+
+    if (!isValid) {
+      // Update failed attempts
+      let newAttemptCount = 1;
+      let lockedUntil = null;
+
+      if (attempts) {
+        newAttemptCount = attempts.attempt_count + 1;
+
+        // Lock after 5 failed attempts for 15 minutes
+        if (newAttemptCount >= 5) {
+          lockedUntil = new Date(Date.now() + 15 * 60 * 1000); // 15 minutes lock
+
+          await pool.query(
+            `UPDATE pin_login_attempts 
+             SET attempt_count = $1, locked_until = $2, updated_at = CURRENT_TIMESTAMP 
+             WHERE user_id = $3`,
+            [newAttemptCount, lockedUntil, user.id]
+          );
+
+          return res.status(429).json({
+            success: false,
+            message: "Too many failed attempts. Login with Credentials.",
+            locked: true,
+            minutesLeft: 15
+          });
+        } else {
+          await pool.query(
+            `UPDATE pin_login_attempts 
+             SET attempt_count = $1, updated_at = CURRENT_TIMESTAMP 
+             WHERE user_id = $2`,
+            [newAttemptCount, user.id]
+          );
+        }
+      } else {
+        await pool.query(
+          `INSERT INTO pin_login_attempts (user_id, attempt_count) VALUES ($1, $2)`,
+          [user.id, 1]
+        );
+      }
+
+      return res.status(401).json({
+        success: false,
+        message: `Invalid PIN or Not Registered.`,
+        attemptsLeft: 5 - newAttemptCount
+      });
+    }
+
+    // Reset attempts on successful login
+    await pool.query(
+      `DELETE FROM pin_login_attempts WHERE user_id = $1`,
+      [user.id]
+    );
+
+    // Generate JWT token
+    const token = jwt.sign(
+      { id: user.id, role: user.role || "user" },
+      JWT_SECRET,
+      { expiresIn: "7d" }
+    );
+
+    res.json({
+      success: true,
+      token,
+      user: {
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        phone: user.phone,
+        role: user.role || "user"
+      },
+      message: "PIN verified successfully"
+    });
+
+  } catch (error) {
+    console.error("PIN verification error:", error);
+    res.status(500).json({
+      success: false,
+      message: "PIN verification failed"
+    });
+  }
+});
+
+// Disable PIN (remove PIN login option)
+app.delete("/api/auth/disable-pin", verifyToken, async (req, res) => {
+  try {
+    const userId = req.user.id;
+
+    await pool.query(
+      "UPDATE user_pins SET is_active = false, updated_at = CURRENT_TIMESTAMP WHERE user_id = $1",
+      [userId]
+    );
+
+    res.json({
+      success: true,
+      message: "PIN login disabled successfully"
+    });
+
+  } catch (error) {
+    console.error("Disable PIN error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to disable PIN"
+    });
+  }
+});
+
+// Reset PIN (require password verification first)
+app.post("/api/auth/reset-pin", verifyToken, async (req, res) => {
+  try {
+    const { password, newPin } = req.body;
+    const userId = req.user.id;
+
+    if (!newPin || !/^\d{4}$/.test(newPin)) {
+      return res.status(400).json({
+        success: false,
+        message: "New PIN must be exactly 4 digits"
+      });
+    }
+
+    // Verify user's password
+    const userResult = await pool.query(
+      "SELECT password FROM users WHERE id = $1",
+      [userId]
+    );
+
+    if (userResult.rows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found"
+      });
+    }
+
+    const isValid = await bcrypt.compare(password, userResult.rows[0].password);
+
+    if (!isValid) {
+      return res.status(401).json({
+        success: false,
+        message: "Current password is incorrect"
+      });
+    }
+
+    // Update PIN
+    const hashedPin = await bcrypt.hash(newPin, 10);
+
+    await pool.query(
+      `INSERT INTO user_pins (user_id, pin_hash, is_active) 
+       VALUES ($1, $2, true) 
+       ON CONFLICT (user_id) 
+       DO UPDATE SET pin_hash = $2, is_active = true, updated_at = CURRENT_TIMESTAMP`,
+      [userId, hashedPin]
+    );
+
+    res.json({
+      success: true,
+      message: "PIN reset successfully"
+    });
+
+  } catch (error) {
+    console.error("Reset PIN error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to reset PIN"
+    });
+  }
+});
+
+
+
+// Check if user has PIN set
+app.get("/api/auth/check-user-pin/:userId", async (req, res) => {
+  try {
+    const { userId } = req.params;
+
+    const result = await pool.query(
+      "SELECT id FROM user_pins WHERE user_id = $1 AND is_active = true",
+      [userId]
+    );
+
+    res.json({
+      success: true,
+      hasPin: result.rows.length > 0
+    });
+  } catch (error) {
+    console.error("Check user PIN error:", error);
+    res.json({ success: true, hasPin: false });
+  }
+});
+
+// Get user's PIN status (for authenticated users)
+app.get("/api/auth/pin-status", verifyToken, async (req, res) => {
+  try {
+    const userId = req.user.id;
+
+    const result = await pool.query(
+      "SELECT id, is_active, created_at, updated_at FROM user_pins WHERE user_id = $1",
+      [userId]
+    );
+
+    const hasPin = result.rows.length > 0 && result.rows[0].is_active;
+
+    res.json({
+      success: true,
+      hasPin,
+      pinInfo: hasPin ? {
+        createdAt: result.rows[0].created_at,
+        updatedAt: result.rows[0].updated_at
+      } : null
+    });
+
+  } catch (error) {
+    console.error("PIN status error:", error);
+    res.status(500).json({
+      success: false,
+      hasPin: false,
+      message: error.message
+    });
+  }
+});
+// ================= PIN ONLY LOGIN (No email/phone required) =================
+// Check user by identifier (for PIN login flow)
+app.post("/api/auth/check-user", async (req, res) => {
+  try {
+    const { identifier } = req.body;
+
+    if (!identifier) {
+      return res.status(400).json({ success: false, userId: null, exists: false, hasPin: false });
+    }
+
+    let userResult;
+    if (validator.isEmail(identifier)) {
+      userResult = await pool.query(
+        "SELECT id, name, status FROM users WHERE LOWER(email) = $1",
+        [identifier.toLowerCase()]
+      );
+    } else {
+      const phone = identifier.replace(/\s+/g, "");
+      userResult = await pool.query(
+        "SELECT id, name, status FROM users WHERE phone = $1",
+        [phone]
+      );
+    }
+
+    if (userResult.rows.length === 0) {
+      return res.json({
+        success: true,
+        userId: null,
+        exists: false,
+        hasPin: false
+      });
+    }
+
+    const user = userResult.rows[0];
+
+    // Check if user has PIN set
+    const pinResult = await pool.query(
+      "SELECT id, pin_hash FROM user_pins WHERE user_id = $1 AND is_active = true AND pin_hash IS NOT NULL",
+      [user.id]
+    );
+
+    res.json({
+      success: true,
+      userId: user.id,
+      userName: user.name,
+      exists: true,
+      hasPin: pinResult.rows.length > 0 && pinResult.rows[0].pin_hash !== null
+    });
+  } catch (error) {
+    console.error("Check user error:", error);
+    res.status(500).json({ success: false, userId: null, exists: false, hasPin: false });
+  }
+});
+
+// ================= PIN ONLY LOGIN (No email/phone required) =================
+app.post("/api/auth/login-with-pin-only", async (req, res) => {
+  try {
+    const { pin, userId } = req.body;
+    
+    if (!pin || !/^\d{4}$/.test(pin)) {
+      return res.status(400).json({
+        success: false,
+        message: "PIN must be exactly 4 digits"
+      });
+    }
+    
+    let user = null;
+    
+    // If userId is provided, use it directly
+    if (userId) {
+      const userResult = await pool.query(
+        "SELECT * FROM users WHERE id = $1 AND status = 'Active'",
+        [userId]
+      );
+      if (userResult.rows.length > 0) {
+        user = userResult.rows[0];
+      }
+    }
+    
+    // If no user found by ID, find by PIN (only for the specific user)
+    if (!user) {
+      // IMPORTANT: We need to find the user FIRST before checking attempts
+      // Get all users with active PINs
+      const pinResult = await pool.query(`
+        SELECT up.user_id, up.pin_hash 
+        FROM user_pins up
+        WHERE up.is_active = true AND up.pin_hash IS NOT NULL AND up.pin_hash != ''
+      `);
+      
+      // Find the user that matches this PIN
+      for (const row of pinResult.rows) {
+        try {
+          const isValid = await bcrypt.compare(pin, row.pin_hash);
+          if (isValid) {
+            const userResult = await pool.query(
+              "SELECT * FROM users WHERE id = $1 AND status = 'Active'",
+              [row.user_id]
+            );
+            if (userResult.rows.length > 0) {
+              user = userResult.rows[0];
+              break;
+            }
+          }
+        } catch (compareErr) {
+          console.error("Error comparing PIN for user", row.user_id, compareErr.message);
+          continue;
+        }
+      }
+    }
+    
+    // If no user found with this PIN, return error (don't track attempts for non-existent user)
+    if (!user) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid PIN or Not Registered. Please try again."
+      });
+    }
+    
+    // Now we have a specific user - check attempts ONLY for this user
+    const attemptsResult = await pool.query(
+      "SELECT * FROM pin_login_attempts WHERE user_id = $1",
+      [user.id]
+    );
+    
+    let attempts = attemptsResult.rows[0];
+    
+    // Check if this specific user is locked
+    if (attempts && attempts.locked_until && new Date(attempts.locked_until) > new Date()) {
+      const minutesLeft = Math.ceil((new Date(attempts.locked_until) - new Date()) / (1000 * 60));
+      return res.status(400).json({
+        success: false,
+        message: `Too many failed attempts. Login with Credentials.`,
+        locked: true,
+        minutesLeft: minutesLeft
+      });
+    }
+    
+    // Verify PIN for this specific user
+    const pinResult = await pool.query(
+      "SELECT pin_hash FROM user_pins WHERE user_id = $1 AND is_active = true",
+      [user.id]
+    );
+    
+    if (pinResult.rows.length === 0 || !pinResult.rows[0].pin_hash) {
+      return res.status(400).json({
+        success: false,
+        message: "No PIN set for this account. Please login with credentials first."
+      });
+    }
+    
+    const isValid = await bcrypt.compare(pin, pinResult.rows[0].pin_hash);
+    
+    if (!isValid) {
+      let newAttemptCount = 1;
+      let lockedUntil = null;
+      
+      if (attempts) {
+        newAttemptCount = attempts.attempt_count + 1;
+        
+        // Lock after 5 failed attempts for 15 minutes - ONLY for this user
+        if (newAttemptCount >= 5) {
+          lockedUntil = new Date(Date.now() + 15 * 60 * 1000);
+          
+          await pool.query(
+            `UPDATE pin_login_attempts 
+             SET attempt_count = $1, locked_until = $2, updated_at = NOW() 
+             WHERE user_id = $3`,
+            [newAttemptCount, lockedUntil, user.id]
+          );
+          
+          return res.status(400).json({
+            success: false,
+            message: `Too many failed attempts. Login with Credentials.`,
+            locked: true,
+            minutesLeft: 15,
+            attemptsLeft: 0
+          });
+        } else {
+          await pool.query(
+            `UPDATE pin_login_attempts 
+             SET attempt_count = $1, updated_at = NOW() 
+             WHERE user_id = $2`,
+            [newAttemptCount, user.id]
+          );
+        }
+      } else {
+        await pool.query(
+          `INSERT INTO pin_login_attempts (user_id, attempt_count) VALUES ($1, $2)`,
+          [user.id, 1]
+        );
+      }
+      
+      const remainingAttempts = 5 - newAttemptCount;
+      return res.status(400).json({
+        success: false,
+        message: remainingAttempts > 0 
+          ? `Invalid PIN or Not Registered.`
+          : "Invalid PIN or Not Registered. Please try again later.",
+        attemptsLeft: remainingAttempts
+      });
+    }
+    
+    // Reset attempts on successful login for this user only
+    await pool.query(
+      `DELETE FROM pin_login_attempts WHERE user_id = $1`,
+      [user.id]
+    );
+    
+    const role = user.role ? user.role.toLowerCase() : "user";
+    const token = jwt.sign(
+      { id: user.id, role },
+      JWT_SECRET,
+      { expiresIn: "7d" }
+    );
+    
+    res.json({
+      success: true,
+      token,
+      user: {
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        phone: user.phone,
+        role
+      },
+      message: "PIN login successful"
+    });
+    
+  } catch (error) {
+    console.error("PIN only login error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Server error. Please try again later."
+    });
+  }
+});
+
+
+// ================= RESET PIN ATTEMPTS FOR A SPECIFIC USER (Admin only) =================
+app.post("/api/admin/reset-pin-attempts/:userId", verifyToken, verifySuperAdmin, async (req, res) => {
+  try {
+    const { userId } = req.params;
+    
+    await pool.query(
+      "DELETE FROM pin_login_attempts WHERE user_id = $1",
+      [userId]
+    );
+    
+    res.json({
+      success: true,
+      message: "PIN attempts reset successfully for user"
+    });
+  } catch (error) {
+    console.error("Reset PIN attempts error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to reset PIN attempts"
+    });
+  }
+});
+
+// ================= GET PIN ATTEMPTS STATUS FOR A USER =================
+app.get("/api/auth/pin-attempts-status", verifyToken, async (req, res) => {
+  try {
+    const userId = req.user.id;
+    
+    const result = await pool.query(
+      "SELECT attempt_count, locked_until FROM pin_login_attempts WHERE user_id = $1",
+      [userId]
+    );
+    
+    let isLocked = false;
+    let minutesLeft = 0;
+    let attemptsLeft = 5;
+    
+    if (result.rows.length > 0) {
+      const attempts = result.rows[0];
+      attemptsLeft = 5 - (attempts.attempt_count || 0);
+      
+      if (attempts.locked_until && new Date(attempts.locked_until) > new Date()) {
+        isLocked = true;
+        minutesLeft = Math.ceil((new Date(attempts.locked_until) - new Date()) / (1000 * 60));
+      }
+    }
+    
+    res.json({
+      success: true,
+      attemptsLeft: Math.max(0, attemptsLeft),
+      isLocked,
+      minutesLeft
+    });
+  } catch (error) {
+    console.error("Get PIN attempts error:", error);
+    res.status(500).json({
+      success: false,
+      attemptsLeft: 5,
+      isLocked: false
+    });
   }
 });
 
