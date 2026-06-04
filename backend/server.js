@@ -4713,7 +4713,6 @@ let tokenExpiry = null;
 let cachedShiprocketConfig = null;
 let configLastFetched = null;
 
-// Function to get Shiprocket config from database
 const getShiprocketConfig = async () => {
   // Cache config for 1 minute to reduce DB calls
   if (cachedShiprocketConfig && configLastFetched && (Date.now() - configLastFetched) < 60000) {
@@ -4725,9 +4724,17 @@ const getShiprocketConfig = async () => {
       "SELECT key, value FROM settings WHERE key IN ('shiprocket_email', 'shiprocket_password', 'shiprocket_pickup_pincode', 'shiprocket_webhook_secret')"
     );
     
-    const config = {};
+    const config = {
+      shiprocket_email: '',
+      shiprocket_password: '',
+      shiprocket_pickup_pincode: '518508',
+      shiprocket_webhook_secret: ''
+    };
+    
     result.rows.forEach(row => {
-      config[row.key] = row.value;
+      if (row.value && row.value.trim() !== '') {
+        config[row.key] = row.value;
+      }
     });
     
     cachedShiprocketConfig = config;
@@ -4737,14 +4744,13 @@ const getShiprocketConfig = async () => {
   } catch (error) {
     console.error("Failed to fetch Shiprocket config:", error);
     return {
-      shiprocket_email: process.env.SHIPROCKET_EMAIL || '',
-      shiprocket_password: process.env.SHIPROCKET_PASSWORD || '',
-      shiprocket_pickup_pincode: process.env.SHIPROCKET_PICKUP_PINCODE || '581322',
-      shiprocket_webhook_secret: process.env.SHIPROCKET_WEBHOOK_SECRET || 'JayastraWebhookSecure123'
+      shiprocket_email: '',
+      shiprocket_password: '',
+      shiprocket_pickup_pincode: '581322',
+      shiprocket_webhook_secret: ''
     };
   }
 };
-
 const authenticateShiprocket = async () => {
   // Check if token is still valid (9 days expiry)
   if (shiprocketToken && tokenExpiry && Date.now() < tokenExpiry) {
@@ -4756,7 +4762,7 @@ const authenticateShiprocket = async () => {
   const email = config.shiprocket_email;
   const password = config.shiprocket_password;
   
-  if (!email || !password) {
+  if (!email || !password || email === '' || password === '') {
     console.error("Shiprocket credentials not configured in settings");
     throw new Error("Shiprocket credentials not configured. Please add them in Settings page.");
   }
@@ -4777,6 +4783,21 @@ const authenticateShiprocket = async () => {
     
     const data = await response.json();
     
+    if (response.status !== 200) {
+      console.error("Shiprocket auth failed with status:", response.status);
+      console.error("Shiprocket response:", data);
+      
+      let errorMessage = "Shiprocket authentication failed";
+      if (data.message) {
+        if (data.message.toLowerCase().includes("invalid")) {
+          errorMessage = "Invalid Shiprocket credentials. Please check your email and password in Settings.";
+        } else {
+          errorMessage = data.message;
+        }
+      }
+      throw new Error(errorMessage);
+    }
+    
     if (data.token) {
       shiprocketToken = data.token;
       // Token expires in 10 days, set expiry to 9 days for safety
@@ -4784,7 +4805,7 @@ const authenticateShiprocket = async () => {
       console.log("✅ Shiprocket authenticated successfully");
       return shiprocketToken;
     } else {
-      console.error("Shiprocket auth failed:", data.message);
+      console.error("Shiprocket auth failed - no token received:", data);
       throw new Error(data.message || "Invalid Shiprocket credentials");
     }
   } catch (err) {
@@ -7055,17 +7076,25 @@ app.put("/api/admin/shiprocket-settings", verifyToken, verifyAdminOrSuperAdmin, 
   }
 });
 
-// Test Shiprocket credentials
 // Test Shiprocket credentials - Allow both super_admin and admin
 app.post("/api/admin/shiprocket-test", verifyToken, verifyAdminOrSuperAdmin, async (req, res) => {
   try {
-    const { email, password } = req.body;
+    let { email, password } = req.body;
     
+    // If no credentials provided in request, try to get from database settings
     if (!email || !password) {
-      return res.status(400).json({ success: false, message: "Email and password are required" });
+      const config = await getShiprocketConfig();
+      email = config.shiprocket_email;
+      password = config.shiprocket_password;
+      
+      if (!email || !password) {
+        return res.status(400).json({ 
+          success: false, 
+          message: "No credentials provided and no saved credentials found in settings." 
+        });
+      }
     }
     
-    // Log for debugging
     console.log("Testing Shiprocket credentials for email:", email);
     
     const response = await fetch("https://apiv2.shiprocket.in/v1/external/auth/login", {
@@ -7081,11 +7110,25 @@ app.post("/api/admin/shiprocket-test", verifyToken, verifyAdminOrSuperAdmin, asy
     if (data.token) {
       res.json({ success: true, message: "Credentials are valid! Shiprocket API is working." });
     } else {
-      res.status(401).json({ success: false, message: data.message || "Invalid credentials. Please check your Shiprocket login details." });
+      // Provide more detailed error message
+      let errorMessage = data.message || "Invalid credentials. Please check your Shiprocket login details.";
+      
+      // Common Shiprocket error messages
+      if (data.message && data.message.toLowerCase().includes("invalid")) {
+        errorMessage = "Invalid email or password. Please verify your Shiprocket credentials.";
+      } else if (response.status === 401) {
+        errorMessage = "Authentication failed. Please check your Shiprocket credentials.";
+      } else if (response.status === 403) {
+        errorMessage = "Access denied. Please ensure your Shiprocket account has API access enabled.";
+      } else if (response.status === 500) {
+        errorMessage = "Shiprocket server error. Please try again later.";
+      }
+      
+      res.status(401).json({ success: false, message: errorMessage });
     }
   } catch (error) {
     console.error("Shiprocket test error:", error);
-    res.status(500).json({ success: false, message: error.message });
+    res.status(500).json({ success: false, message: error.message || "Network error. Please check your connection." });
   }
 });
 
