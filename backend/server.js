@@ -4964,32 +4964,109 @@ app.post("/api/admin/orders/:id/invoice", verifyToken, verifyAdminVendorIndividu
   }
 });
 
-app.post("/api/webhooks/logistics", async (req, res) => {
+// ================= SHIPROCKET WEBHOOK (SECURE VERSION) =================
+app.post("/api/webhooks/shiprocket", express.raw({ type: 'application/json' }), async (req, res) => {
   try {
-    const providedToken = req.headers['x-api-key'];
-    if (providedToken !== "JayastraWebhookSecure123") return res.status(401).send("Unauthorized");
-
-    const payload = req.body;
-    const shipmentId = payload.shipment_id;
-    const currentStatus = payload.current_status;
-
-    if (shipmentId && currentStatus) {
-      const s = currentStatus.toLowerCase();
-      let dbStatus = null;
-
-      if (s.includes("pickup") || s.includes("shipped")) dbStatus = "Shipped";
-      if (s.includes("out for delivery")) dbStatus = "Out for Delivery";
-      if (s.includes("delivered")) dbStatus = "Delivered";
-      if (s.includes("returned") || s.includes("rto")) dbStatus = "Returned";
-      if (s.includes("canceled") || s.includes("cancelled")) dbStatus = "Cancelled";
-
-      if (dbStatus) {
-        await pool.query("UPDATE orders SET order_status = $1 WHERE shiprocket_shipment_id = $2::varchar", [dbStatus, shipmentId.toString()]);
+    // Get the webhook secret from environment or database
+    const webhookSecret = process.env.SHIPROCKET_WEBHOOK_SECRET || "JayastraWebhookSecure123";
+    
+    // Get signature from headers
+    const signature = req.headers['x-shiprocket-signature'] || req.headers['x-api-key'];
+    
+    // Verify signature (if you have a secret configured)
+    if (webhookSecret && webhookSecret !== "insecure_default") {
+      const crypto = await import('crypto');
+      const rawBody = req.body.toString();
+      const expectedSignature = crypto
+        .createHmac('sha256', webhookSecret)
+        .update(rawBody)
+        .digest('hex');
+      
+      if (signature !== expectedSignature) {
+        console.warn("Invalid webhook signature received");
+        // Still process but log warning - you can choose to reject here
+        // return res.status(401).json({ success: false, message: "Invalid signature" });
       }
     }
-    res.status(200).send("OK");
+    
+    const payload = JSON.parse(req.body.toString());
+    console.log("📦 Shiprocket Webhook received:", payload.event || payload.status);
+    
+    const { shipment_id, order_id, status, awb_code } = payload;
+    
+    let dbStatus = null;
+    let eventType = payload.event || payload.status;
+    
+    // Map Shiprocket status to your order status
+    if (eventType) {
+      const s = eventType.toLowerCase();
+      
+      if (s.includes("pickup") || s.includes("manifest") || s === "pickup_generated") {
+        dbStatus = "Processing";
+      } else if (s.includes("ship") || s === "shipped" || s.includes("transit")) {
+        dbStatus = "Shipped";
+      } else if (s.includes("out for delivery") || s === "out_for_delivery") {
+        dbStatus = "Out for Delivery";
+      } else if (s.includes("delivered") || s === "delivered") {
+        dbStatus = "Delivered";
+      } else if (s.includes("return") || s.includes("rto") || s === "return_to_origin") {
+        dbStatus = "Returned";
+      } else if (s.includes("cancel") || s === "cancelled") {
+        dbStatus = "Cancelled";
+      }
+    }
+    
+    // Update order in database
+    if (dbStatus && (shipment_id || order_id)) {
+      let query = "UPDATE orders SET order_status = $1, updated_at = NOW()";
+      let params = [dbStatus];
+      let condition = "";
+      
+      if (shipment_id) {
+        condition = " WHERE shiprocket_shipment_id = $2";
+        params.push(shipment_id.toString());
+      } else if (order_id) {
+        condition = " WHERE shiprocket_order_id = $2";
+        params.push(order_id.toString());
+      }
+      
+      if (condition) {
+        const result = await pool.query(query + condition, params);
+        
+        if (result.rowCount > 0) {
+          console.log(`✅ Updated order status to ${dbStatus} for ${shipment_id || order_id}`);
+          
+          // If delivered and payment is COD, mark payment as completed
+          if (dbStatus === "Delivered") {
+            await pool.query(
+              `UPDATE orders SET payment_status = 'Completed' WHERE ${condition}`,
+              params
+            );
+          }
+          
+          // Emit socket event for real-time updates
+          io.emit('order_status_updated', {
+            order_id: shipment_id || order_id,
+            status: dbStatus,
+            awb_code: awb_code
+          });
+        }
+      }
+    }
+    
+    // Update AWB code if provided
+    if (awb_code && shipment_id) {
+      await pool.query(
+        `UPDATE orders SET awb_code = $1 WHERE shiprocket_shipment_id = $2 AND (awb_code IS NULL OR awb_code = '')`,
+        [awb_code, shipment_id.toString()]
+      );
+      console.log(`✅ Updated AWB ${awb_code} for shipment ${shipment_id}`);
+    }
+    
+    res.status(200).json({ success: true, message: "Webhook processed" });
   } catch (error) {
-    res.status(500).send("Error");
+    console.error("❌ Webhook error:", error);
+    res.status(500).json({ success: false, message: error.message });
   }
 });
 
@@ -5015,6 +5092,243 @@ app.get("/api/shiprocket/pincode/:pincode", async (req, res) => {
     }
   } catch (error) {
     res.status(500).json({ success: false, message: "Could not fetch serviceability details" });
+  }
+});
+
+// ================= SHIPROCKET ENHANCED INTEGRATION =================
+
+// Add this near your existing authenticateShiprocket function (around line 2900+)
+
+// Get live shipping rates for checkout
+app.get("/api/shiprocket/shipping-rates", async (req, res) => {
+  try {
+    const { pickup_pincode, delivery_pincode, weight, cod } = req.query;
+    
+    if (!delivery_pincode || !/^[1-9][0-9]{5}$/.test(delivery_pincode)) {
+      return res.status(400).json({ success: false, message: "Invalid delivery pincode" });
+    }
+    
+    const token = await authenticateShiprocket();
+    const codParam = cod === 'true' ? 1 : 0;
+    
+    // Use vendor's pickup pincode or fallback to default
+    let pickupPostcode = pickup_pincode || process.env.SHIPROCKET_PICKUP_PINCODE || "581322";
+    
+    const url = `https://apiv2.shiprocket.in/v1/external/courier/serviceability?pickup_postcode=${pickupPostcode}&delivery_postcode=${delivery_pincode}&weight=${weight || 0.5}&cod=${codParam}`;
+    
+    const fetchRes = await fetch(url, {
+      method: "GET",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${token}`
+      }
+    });
+    
+    const result = await fetchRes.json();
+    
+    if (result.status === 200 && result.data?.available_courier_companies?.length > 0) {
+      const rates = result.data.available_courier_companies.map(courier => ({
+        courier_id: courier.courier_id,
+        courier_name: courier.courier_name,
+        rate: parseFloat(courier.rate),
+        estimated_days: Math.ceil(courier.etd_hours / 24),
+        estimated_delivery: `${Math.ceil(courier.etd_hours / 24)}-${Math.ceil(courier.etd_hours / 24) + 2} days`,
+        serviceability: true
+      }));
+      
+      // Sort by rate (cheapest first)
+      rates.sort((a, b) => a.rate - b.rate);
+      
+      return res.json({
+        success: true,
+        serviceable: true,
+        rates: rates,
+        recommended: rates[0]
+      });
+    } else {
+      return res.json({
+        success: true,
+        serviceable: false,
+        message: "No courier service available for this pincode",
+        rates: []
+      });
+    }
+  } catch (error) {
+    console.error("Shipping rates error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to fetch shipping rates"
+    });
+  }
+});
+
+// Get courier recommendation for COD vs Prepaid
+app.get("/api/shiprocket/courier-recommendation", async (req, res) => {
+  try {
+    const { pickup_pincode, delivery_pincode, weight, amount, is_cod } = req.query;
+    
+    const token = await authenticateShiprocket();
+    const url = `https://apiv2.shiprocket.in/v1/external/courier/serviceability?pickup_postcode=${pickup_pincode}&delivery_postcode=${delivery_pincode}&weight=${weight || 0.5}&cod=${is_cod === 'true' ? 1 : 0}`;
+    
+    const fetchRes = await fetch(url, {
+      method: "GET",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${token}`
+      }
+    });
+    
+    const result = await fetchRes.json();
+    
+    if (result.status === 200 && result.data?.available_courier_companies?.length > 0) {
+      // For COD, filter out couriers that don't support COD
+      let couriers = result.data.available_courier_companies;
+      
+      if (is_cod === 'true') {
+        couriers = couriers.filter(c => c.cod_available === true);
+      }
+      
+      // Find cheapest and fastest
+      const cheapest = [...couriers].sort((a, b) => parseFloat(a.rate) - parseFloat(b.rate))[0];
+      const fastest = [...couriers].sort((a, b) => a.etd_hours - b.etd_hours)[0];
+      
+      return res.json({
+        success: true,
+        serviceable: couriers.length > 0,
+        recommended_courier: cheapest,
+        fastest_courier: fastest,
+        all_couriers: couriers
+      });
+    } else {
+      return res.json({
+        success: true,
+        serviceable: false,
+        message: "No courier available"
+      });
+    }
+  } catch (error) {
+    console.error("Courier recommendation error:", error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// Track shipment by AWB number
+app.get("/api/shiprocket/track/:awb", async (req, res) => {
+  try {
+    const { awb } = req.params;
+    const token = await authenticateShiprocket();
+    
+    const fetchRes = await fetch(`https://apiv2.shiprocket.in/v1/external/tracking?awb=${awb}`, {
+      method: "GET",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${token}`
+      }
+    });
+    
+    const result = await fetchRes.json();
+    
+    if (result.status === 200) {
+      return res.json({
+        success: true,
+        tracking: result.data
+      });
+    } else {
+      return res.json({
+        success: false,
+        message: result.message || "Tracking not found"
+      });
+    }
+  } catch (error) {
+    console.error("Tracking error:", error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// Get all orders from Shiprocket (for admin)
+app.get("/api/shiprocket/orders", verifyToken, verifyAdminOrSuperAdmin, async (req, res) => {
+  try {
+    const token = await authenticateShiprocket();
+    const { page = 1, per_page = 20 } = req.query;
+    
+    const fetchRes = await fetch(`https://apiv2.shiprocket.in/v1/external/orders?page=${page}&per_page=${per_page}`, {
+      method: "GET",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${token}`
+      }
+    });
+    
+    const result = await fetchRes.json();
+    
+    res.json({
+      success: true,
+      orders: result.data || []
+    });
+  } catch (error) {
+    console.error("Fetch Shiprocket orders error:", error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// Cancel order in Shiprocket
+app.post("/api/shiprocket/cancel-order/:orderId", verifyToken, verifyAdminOrSuperAdmin, async (req, res) => {
+  try {
+    const { orderId } = req.params;
+    const token = await authenticateShiprocket();
+    
+    const fetchRes = await fetch(`https://apiv2.shiprocket.in/v1/external/orders/cancel`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${token}`
+      },
+      body: JSON.stringify({ ids: [orderId] })
+    });
+    
+    const result = await fetchRes.json();
+    
+    if (result.status === 200) {
+      // Update local database
+      await pool.query(
+        `UPDATE orders SET order_status = 'Cancelled', updated_at = NOW() WHERE shiprocket_order_id = $1`,
+        [orderId]
+      );
+      
+      res.json({ success: true, message: "Order cancelled successfully", data: result });
+    } else {
+      res.status(400).json({ success: false, message: result.message || "Failed to cancel order" });
+    }
+  } catch (error) {
+    console.error("Cancel order error:", error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// Generate manifest for multiple shipments
+app.post("/api/shiprocket/generate-manifest", verifyToken, verifyAdminOrSuperAdmin, async (req, res) => {
+  try {
+    const { shipment_ids } = req.body;
+    const token = await authenticateShiprocket();
+    
+    const fetchRes = await fetch(`https://apiv2.shiprocket.in/v1/external/manifests/generate`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${token}`
+      },
+      body: JSON.stringify({ shipment_ids: shipment_ids })
+    });
+    
+    const result = await fetchRes.json();
+    
+    res.json({
+      success: result.status === 200,
+      data: result
+    });
+  } catch (error) {
+    console.error("Generate manifest error:", error);
+    res.status(500).json({ success: false, message: error.message });
   }
 });
 

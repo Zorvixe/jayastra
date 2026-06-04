@@ -1,7 +1,11 @@
 import React, { useEffect, useState } from "react";
 import axios from '../utils/axiosConfig';
 import { toast } from "react-toastify";
+
+import shiprocketService from '../services/shiprocketService';
+
 import "./Order.css";
+
 
 const API_URL = process.env.REACT_APP_API_URL;
 
@@ -41,7 +45,7 @@ const Orders = () => {
         }
       });
       setOrders(res.data.orders || []);
-      
+
       if (isSilent && selectedOrder) {
         const updatedSelectedOrder = res.data.orders.find(o => o.id === selectedOrder.id);
         if (updatedSelectedOrder) setSelectedOrder(updatedSelectedOrder);
@@ -175,27 +179,60 @@ const Orders = () => {
     return div.innerHTML;
   };
 
-  // ================= PRINT LOCAL INVOICE (FIXED VERSION WITH BANNER) =================
-  // ================= PRINT LOCAL INVOICE (FIXED VERSION WITH BANNER) =================
-const handlePrint = (order) => {
-  const printWindow = window.open("", "_blank", "width=800,height=900");
-  
-  const totalAmount = parseFloat(order.total_amount) || 0;
-  const discount = parseFloat(order.discount) || 0;
-  const subtotal = totalAmount + discount;
+  // Add this function to your Orders component
+  const checkCourierAvailability = async (order) => {
+    const pinMatch = order.address?.match(/\b\d{6}\b/);
+    const pincode = pinMatch ? pinMatch[0] : null;
 
-  // Use the correct URL for logo from public folder
-  // Since the logo is in public folder, it's served from the root of your React app
-  const bannerUrl = `${window.location.origin}/jayastra_banner.png`;
-  
-  // Also create a fallback data URL in case the image fails to load
-  const fallbackLogo = `
+    if (!pincode) {
+      toast.warning("No pincode found in address");
+      return;
+    }
+
+    try {
+      const totalWeight = order.items?.reduce((sum, item) => {
+        const itemWeight = parseFloat(item.weight) || 0.5;
+        return sum + (itemWeight * item.quantity);
+      }, 0) || 0.5;
+
+      const result = await shiprocketService.getCourierRecommendation(
+        pincode,
+        order.total_amount,
+        order.payment_method === 'COD',
+        totalWeight
+      );
+
+      if (result.serviceable && result.recommended_courier) {
+        toast.success(`Recommended: ${result.recommended_courier.courier_name} - ₹${result.recommended_courier.rate} (Est. ${Math.ceil(result.recommended_courier.etd_hours / 24)} days)`);
+      } else {
+        toast.warning(result.message || "No courier available for this pincode");
+      }
+    } catch (error) {
+      toast.error("Failed to check courier availability");
+    }
+  };
+
+  // ================= PRINT LOCAL INVOICE (FIXED VERSION WITH BANNER) =================
+  // ================= PRINT LOCAL INVOICE (FIXED VERSION WITH BANNER) =================
+  const handlePrint = (order) => {
+    const printWindow = window.open("", "_blank", "width=800,height=900");
+
+    const totalAmount = parseFloat(order.total_amount) || 0;
+    const discount = parseFloat(order.discount) || 0;
+    const subtotal = totalAmount + discount;
+
+    // Use the correct URL for logo from public folder
+    // Since the logo is in public folder, it's served from the root of your React app
+    const bannerUrl = `${window.location.origin}/jayastra_banner.png`;
+
+    // Also create a fallback data URL in case the image fails to load
+    const fallbackLogo = `
     <svg width="200" height="50" viewBox="0 0 200 50" xmlns="http://www.w3.org/2000/svg">
       <text x="0" y="35" font-family="Arial, sans-serif" font-size="28" font-weight="bold" fill="#8E2139">JAYASTRA</text>
     </svg>
   `;
 
-  const html = `
+    const html = `
     <!DOCTYPE html>
     <html>
       <head>
@@ -412,10 +449,10 @@ const handlePrint = (order) => {
               </thead>
               <tbody>
                 ${order.items && order.items.map((item, index) => {
-                  const price = parseFloat(item.price) || 0;
-                  const quantity = parseInt(item.quantity) || 0;
-                  const itemTotal = price * quantity;
-                  return `
+      const price = parseFloat(item.price) || 0;
+      const quantity = parseInt(item.quantity) || 0;
+      const itemTotal = price * quantity;
+      return `
                     <tr>
                       <td>${index + 1}</td>
                       <td>${escapeHtml(item.product_code || 'N/A')}</td>
@@ -425,7 +462,7 @@ const handlePrint = (order) => {
                       <td>₹${itemTotal.toFixed(2)}</td>
                     </tr>
                   `;
-                }).join('')}
+    }).join('')}
               </tbody>
             </table>
 
@@ -475,9 +512,9 @@ const handlePrint = (order) => {
     </html>
   `;
 
-  printWindow.document.write(html);
-  printWindow.document.close();
-};
+    printWindow.document.write(html);
+    printWindow.document.close();
+  };
 
   return (
     <div className="orders-container">
@@ -681,6 +718,14 @@ const handlePrint = (order) => {
 
             <div className="modal-footer-admin">
               <button
+                className="invoice-btn-admin check-courier-btn"
+                onClick={() => checkCourierAvailability(selectedOrder)}
+                disabled={loading}
+                style={{ background: '#10b981', color: 'white' }}
+              >
+                <i className="bi bi-search"></i> Check Courier
+              </button>
+              <button
                 className="invoice-btn-admin push-btn"
                 onClick={() => setConfirmPushOrderId(selectedOrder.id)}
                 disabled={selectedOrder.shiprocket_order_id || pushLoading}
@@ -699,9 +744,9 @@ const handlePrint = (order) => {
               </button>
 
               {selectedOrder.shiprocket_order_id && !selectedOrder.awb_code && (
-                <button 
-                  className="invoice-btn-admin generate-awb-btn" 
-                  onClick={() => generateAWB(selectedOrder.id)} 
+                <button
+                  className="invoice-btn-admin generate-awb-btn"
+                  onClick={() => generateAWB(selectedOrder.id)}
                   disabled={loading}
                 >
                   <i className="bi bi-upc-scan"></i> Generate AWB
@@ -709,9 +754,9 @@ const handlePrint = (order) => {
               )}
 
               {selectedOrder.awb_code && (
-                <button 
-                  className="invoice-btn-admin label-btn" 
-                  onClick={() => downloadLabel(selectedOrder.id)} 
+                <button
+                  className="invoice-btn-admin label-btn"
+                  onClick={() => downloadLabel(selectedOrder.id)}
                   disabled={loading}
                 >
                   <i className="bi bi-tag-fill"></i> Label (AWB: {selectedOrder.awb_code})
@@ -719,22 +764,24 @@ const handlePrint = (order) => {
               )}
 
               {selectedOrder.awb_code && (
-                <button 
-                  className="invoice-btn-admin shiprocket-invoice-btn" 
-                  onClick={() => downloadShiprocketInvoice(selectedOrder.id)} 
+                <button
+                  className="invoice-btn-admin shiprocket-invoice-btn"
+                  onClick={() => downloadShiprocketInvoice(selectedOrder.id)}
                   disabled={loading}
                 >
                   <i className="bi bi-receipt"></i> SR Invoice
                 </button>
               )}
 
-              <button 
-                className="invoice-btn-admin local-invoice-btn" 
-                onClick={() => handlePrint(selectedOrder)} 
+              <button
+                className="invoice-btn-admin local-invoice-btn"
+                onClick={() => handlePrint(selectedOrder)}
                 disabled={loading}
               >
                 <i className="bi bi-printer"></i> Local Invoice
               </button>
+
+
             </div>
 
           </div>
@@ -744,11 +791,11 @@ const handlePrint = (order) => {
       {previewImage && (
         <div className="admin-lightbox-overlay" onClick={() => setPreviewImage(null)}>
           <div className="lightbox-content">
-            <img 
-              src={previewImage} 
-              alt="Product Preview" 
-              onClick={(e) => e.stopPropagation()} 
-              onError={(e) => e.target.src = "/assets/placeholder-product.jpg"} 
+            <img
+              src={previewImage}
+              alt="Product Preview"
+              onClick={(e) => e.stopPropagation()}
+              onError={(e) => e.target.src = "/assets/placeholder-product.jpg"}
             />
             <button className="close-lightbox" onClick={() => setPreviewImage(null)}>✕</button>
           </div>
