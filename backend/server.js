@@ -102,6 +102,61 @@ app.use(
     credentials: true,
   })
 );
+
+app.post("/api/razorpay/webhook", express.raw({ type: 'application/json' }), async (req, res) => {
+  try {
+    const webhookSecret = process.env.RAZORPAY_WEBHOOK_SECRET;
+    const signature = req.headers['x-razorpay-signature'];
+    
+    // Get the raw body as string
+    const rawBody = req.body.toString();
+    
+    const expectedSignature = crypto
+      .createHmac('sha256', webhookSecret)
+      .update(rawBody)
+      .digest('hex');
+
+    console.log("Webhook received - signature valid:", signature === expectedSignature);
+    
+    if (signature !== expectedSignature) {
+      console.error("Invalid webhook signature");
+      return res.status(400).json({ success: false, message: 'Invalid webhook signature' });
+    }
+
+    const event = JSON.parse(rawBody);
+    console.log("Webhook event:", event.event);
+    
+    if (event.event === 'payment.captured') {
+      const payment = event.payload.payment.entity;
+      const orderId = payment.order_id;
+      const paymentId = payment.id;
+      
+      // Update order payment status
+      await pool.query(
+        `UPDATE orders 
+         SET payment_status = 'Completed', 
+             razorpay_payment_id = $1, 
+             updated_at = NOW() 
+         WHERE razorpay_order_id = $2 AND payment_status != 'Completed'`,
+        [paymentId, orderId]
+      );
+      
+      console.log(`✅ Payment captured for order: ${orderId}`);
+    }
+    
+    if (event.event === 'payment.failed') {
+      const payment = event.payload.payment.entity;
+      console.log(`❌ Payment failed for order: ${payment.order_id}`);
+      // Optionally update order status
+    }
+    
+    res.json({ success: true });
+  } catch (error) {
+    console.error("Webhook error:", error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
 app.use(express.json({ limit: '50mb' }));
 
 // ================= DATABASE =================
@@ -4963,28 +5018,6 @@ app.get("/api/shiprocket/pincode/:pincode", async (req, res) => {
   }
 });
 
-app.post("/api/razorpay/webhook", express.raw({ type: 'application/json' }), async (req, res) => {
-  try {
-    const webhookSecret = process.env.RAZORPAY_WEBHOOK_SECRET;
-    const signature = req.headers['x-razorpay-signature'];
-    const expectedSignature = crypto.createHmac('sha256', webhookSecret).update(JSON.stringify(req.body)).digest('hex');
-
-    if (signature !== expectedSignature) return res.status(400).json({ success: false, message: 'Invalid webhook signature' });
-
-    const event = req.body;
-    if (event.event === 'payment.captured') {
-      const payment = event.payload.payment.entity;
-      const orderId = payment.order_id;
-      await pool.query(
-        `UPDATE orders SET payment_status = 'Completed', razorpay_payment_id = $1, updated_at = NOW() WHERE razorpay_order_id = $2 AND payment_status != 'Completed'`,
-        [payment.id, orderId]
-      );
-    }
-    res.json({ success: true });
-  } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
-  }
-});
 
 app.get("/api/admin/admins", verifyToken, verifySuperAdmin, async (req, res) => {
   try {
