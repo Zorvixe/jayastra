@@ -4732,9 +4732,16 @@ const getShiprocketConfig = async () => {
     };
     
     result.rows.forEach(row => {
-      if (row.value && row.value.trim() !== '') {
-        config[row.key] = row.value;
+      // Only set if value is not empty
+      if (row.value && row.value.trim() !== '' && row.value !== '********') {
+        config[row.key] = row.value.trim();
       }
+    });
+    
+    console.log("Shiprocket config loaded from DB:", {
+      hasEmail: !!config.shiprocket_email,
+      hasPassword: !!config.shiprocket_password,
+      pickupPincode: config.shiprocket_pickup_pincode
     });
     
     cachedShiprocketConfig = config;
@@ -4746,7 +4753,7 @@ const getShiprocketConfig = async () => {
     return {
       shiprocket_email: '',
       shiprocket_password: '',
-      shiprocket_pickup_pincode: '581322',
+      shiprocket_pickup_pincode: '518508',
       shiprocket_webhook_secret: ''
     };
   }
@@ -4754,6 +4761,7 @@ const getShiprocketConfig = async () => {
 const authenticateShiprocket = async () => {
   // Check if token is still valid (9 days expiry)
   if (shiprocketToken && tokenExpiry && Date.now() < tokenExpiry) {
+    console.log("Using cached Shiprocket token, expires in:", Math.round((tokenExpiry - Date.now()) / 1000 / 60 / 60), "hours");
     return shiprocketToken;
   }
   
@@ -4762,13 +4770,16 @@ const authenticateShiprocket = async () => {
   const email = config.shiprocket_email;
   const password = config.shiprocket_password;
   
-  if (!email || !password || email === '' || password === '') {
+  console.log("Authenticating with Shiprocket - Email:", email);
+  console.log("Has password:", !!password);
+  
+  if (!email || email === '' || !password || password === '') {
     console.error("Shiprocket credentials not configured in settings");
     throw new Error("Shiprocket credentials not configured. Please add them in Settings page.");
   }
   
   try {
-    console.log("Authenticating with Shiprocket...");
+    console.log("Calling Shiprocket login API...");
     
     const response = await fetch("https://apiv2.shiprocket.in/v1/external/auth/login", {
       method: "POST",
@@ -4781,15 +4792,18 @@ const authenticateShiprocket = async () => {
       })
     });
     
+    console.log("Shiprocket response status:", response.status);
+    
     const data = await response.json();
+    console.log("Shiprocket response has token:", !!data.token);
     
     if (response.status !== 200) {
       console.error("Shiprocket auth failed with status:", response.status);
-      console.error("Shiprocket response:", data);
+      console.error("Shiprocket response:", JSON.stringify(data).substring(0, 500));
       
       let errorMessage = "Shiprocket authentication failed";
       if (data.message) {
-        if (data.message.toLowerCase().includes("invalid")) {
+        if (data.message.toLowerCase().includes("invalid") || data.message.toLowerCase().includes("wrong")) {
           errorMessage = "Invalid Shiprocket credentials. Please check your email and password in Settings.";
         } else {
           errorMessage = data.message;
@@ -4802,18 +4816,17 @@ const authenticateShiprocket = async () => {
       shiprocketToken = data.token;
       // Token expires in 10 days, set expiry to 9 days for safety
       tokenExpiry = Date.now() + (9 * 24 * 60 * 60 * 1000);
-      console.log("✅ Shiprocket authenticated successfully");
+      console.log("✅ Shiprocket authenticated successfully, token expires in 9 days");
       return shiprocketToken;
     } else {
       console.error("Shiprocket auth failed - no token received:", data);
       throw new Error(data.message || "Invalid Shiprocket credentials");
     }
   } catch (err) {
-    console.error("Shiprocket Auth Error:", err);
+    console.error("Shiprocket Auth Error:", err.message);
     throw err;
   }
 };
-
 app.post("/api/admin/orders/:id/shiprocket", verifyToken, verifyAdminVendorIndividualAccess, async (req, res) => {
   try {
     const orderId = req.params.id;
@@ -6996,7 +7009,6 @@ app.get("/api/auth/pin-attempts-status", verifyToken, async (req, res) => {
 
 // ================= SHIPROCKET CONFIGURATION ENDPOINTS =================
 
-// Get Shiprocket settings (for admin panel)
 // Get Shiprocket settings - Allow both super_admin and admin
 app.get("/api/admin/shiprocket-settings", verifyToken, verifyAdminOrSuperAdmin, async (req, res) => {
   try {
@@ -7004,11 +7016,17 @@ app.get("/api/admin/shiprocket-settings", verifyToken, verifyAdminOrSuperAdmin, 
       "SELECT key, value FROM settings WHERE key IN ('shiprocket_email', 'shiprocket_password', 'shiprocket_pickup_pincode', 'shiprocket_webhook_secret')"
     );
     
-    const settings = {};
+    const settings = {
+      shiprocket_email: '',
+      shiprocket_password: '',
+      shiprocket_pickup_pincode: '518508',
+      shiprocket_webhook_secret: ''
+    };
+    
     result.rows.forEach(row => {
-      // Don't send password in plain text to frontend
       if (row.key === 'shiprocket_password') {
-        settings[row.key] = row.value ? '********' : '';
+        // Always return masked password for security
+        settings[row.key] = row.value && row.value !== '' ? '********' : '';
       } else {
         settings[row.key] = row.value || '';
       }
@@ -7017,6 +7035,65 @@ app.get("/api/admin/shiprocket-settings", verifyToken, verifyAdminOrSuperAdmin, 
     res.json({ success: true, settings });
   } catch (error) {
     console.error("Failed to fetch Shiprocket settings:", error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// Update Shiprocket settings - Allow both super_admin and admin
+app.put("/api/admin/shiprocket-settings", verifyToken, verifyAdminOrSuperAdmin, async (req, res) => {
+  try {
+    const { shiprocket_email, shiprocket_password, shiprocket_pickup_pincode, shiprocket_webhook_secret } = req.body;
+    
+    // Update each setting
+    const updates = [];
+    
+    if (shiprocket_email !== undefined) {
+      updates.push(pool.query(
+        "INSERT INTO settings (key, value) VALUES ('shiprocket_email', $1) ON CONFLICT (key) DO UPDATE SET value = $1, updated_at = CURRENT_TIMESTAMP",
+        [shiprocket_email.trim()]
+      ));
+    }
+    
+    // Only update password if it's not masked (not '********') and not empty
+    if (shiprocket_password !== undefined && shiprocket_password !== '********' && shiprocket_password !== '') {
+      updates.push(pool.query(
+        "INSERT INTO settings (key, value) VALUES ('shiprocket_password', $1) ON CONFLICT (key) DO UPDATE SET value = $1, updated_at = CURRENT_TIMESTAMP",
+        [shiprocket_password]
+      ));
+      console.log("Password updated in database");
+    } else if (shiprocket_password === '********') {
+      console.log("Password unchanged (masked value received)");
+    }
+    
+    if (shiprocket_pickup_pincode !== undefined) {
+      updates.push(pool.query(
+        "INSERT INTO settings (key, value) VALUES ('shiprocket_pickup_pincode', $1) ON CONFLICT (key) DO UPDATE SET value = $1, updated_at = CURRENT_TIMESTAMP",
+        [shiprocket_pickup_pincode]
+      ));
+    }
+    
+    if (shiprocket_webhook_secret !== undefined) {
+      updates.push(pool.query(
+        "INSERT INTO settings (key, value) VALUES ('shiprocket_webhook_secret', $1) ON CONFLICT (key) DO UPDATE SET value = $1, updated_at = CURRENT_TIMESTAMP",
+        [shiprocket_webhook_secret]
+      ));
+    }
+    
+    await Promise.all(updates);
+    
+    // Invalidate cache
+    cachedShiprocketConfig = null;
+    configLastFetched = null;
+    
+    // Reset token so it will re-authenticate with new credentials
+    shiprocketToken = null;
+    tokenExpiry = null;
+    
+    console.log("Shiprocket settings updated successfully");
+    
+    res.json({ success: true, message: "Shiprocket settings updated successfully" });
+  } catch (error) {
+    console.error("Failed to update Shiprocket settings:", error);
     res.status(500).json({ success: false, message: error.message });
   }
 });
@@ -7077,22 +7154,60 @@ app.put("/api/admin/shiprocket-settings", verifyToken, verifyAdminOrSuperAdmin, 
 });
 
 // Test Shiprocket credentials - Allow both super_admin and admin
+// Test Shiprocket credentials - Allow both super_admin and admin
 app.post("/api/admin/shiprocket-test", verifyToken, verifyAdminOrSuperAdmin, async (req, res) => {
   try {
-    let { email, password } = req.body;
+    let { email, password, saveCredentials } = req.body;
+    
+    console.log("Shiprocket test request:", { 
+      hasEmail: !!email, 
+      hasPassword: !!password,
+      saveCredentials 
+    });
     
     // If no credentials provided in request, try to get from database settings
-    if (!email || !password) {
+    if (!email || !password || email === '' || password === '') {
+      console.log("No credentials in request, fetching from database...");
       const config = await getShiprocketConfig();
       email = config.shiprocket_email;
       password = config.shiprocket_password;
       
-      if (!email || !password) {
+      console.log("Database credentials:", { 
+        hasEmail: !!email, 
+        hasPassword: !!password,
+        email: email ? email.substring(0, 3) + '***' : 'none'
+      });
+      
+      if (!email || !password || email === '' || password === '') {
         return res.status(400).json({ 
           success: false, 
-          message: "No credentials provided and no saved credentials found in settings." 
+          message: "No credentials provided. Please save Shiprocket credentials in Settings first or provide email/password in request." 
         });
       }
+    }
+    
+    // Validate email format
+    if (!email || !email.includes('@')) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid email format. Please enter a valid email address."
+      });
+    }
+    
+    // Validate password is not empty
+    if (!password || password.trim() === '') {
+      return res.status(400).json({
+        success: false,
+        message: "Password is required. Please enter your Shiprocket password."
+      });
+    }
+    
+    // Don't test with masked password
+    if (password === '********') {
+      return res.status(400).json({
+        success: false,
+        message: "Please enter your actual Shiprocket password to test. The saved password is masked for security."
+      });
     }
     
     console.log("Testing Shiprocket credentials for email:", email);
@@ -7100,35 +7215,78 @@ app.post("/api/admin/shiprocket-test", verifyToken, verifyAdminOrSuperAdmin, asy
     const response = await fetch("https://apiv2.shiprocket.in/v1/external/auth/login", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email, password })
+      body: JSON.stringify({ 
+        email: email.trim(), 
+        password: password 
+      })
     });
     
     const data = await response.json();
     
     console.log("Shiprocket test response status:", response.status);
+    console.log("Shiprocket test response has token:", !!data.token);
     
-    if (data.token) {
-      res.json({ success: true, message: "Credentials are valid! Shiprocket API is working." });
-    } else {
-      // Provide more detailed error message
-      let errorMessage = data.message || "Invalid credentials. Please check your Shiprocket login details.";
-      
-      // Common Shiprocket error messages
-      if (data.message && data.message.toLowerCase().includes("invalid")) {
-        errorMessage = "Invalid email or password. Please verify your Shiprocket credentials.";
-      } else if (response.status === 401) {
-        errorMessage = "Authentication failed. Please check your Shiprocket credentials.";
-      } else if (response.status === 403) {
-        errorMessage = "Access denied. Please ensure your Shiprocket account has API access enabled.";
-      } else if (response.status === 500) {
-        errorMessage = "Shiprocket server error. Please try again later.";
+    if (response.ok && data.token) {
+      // If test was successful and credentials were provided via body, optionally save them
+      if (saveCredentials !== false) {
+        console.log("Saving valid credentials to database...");
+        
+        await pool.query(
+          "INSERT INTO settings (key, value) VALUES ('shiprocket_email', $1) ON CONFLICT (key) DO UPDATE SET value = $1, updated_at = CURRENT_TIMESTAMP",
+          [email.trim()]
+        );
+        await pool.query(
+          "INSERT INTO settings (key, value) VALUES ('shiprocket_password', $1) ON CONFLICT (key) DO UPDATE SET value = $1, updated_at = CURRENT_TIMESTAMP",
+          [password]
+        );
+        
+        console.log("Credentials saved to database");
+        
+        // Invalidate cache
+        cachedShiprocketConfig = null;
+        configLastFetched = null;
+        shiprocketToken = null;
+        tokenExpiry = null;
       }
       
+      res.json({ 
+        success: true, 
+        message: "✅ Credentials are valid! Shiprocket API is working correctly."
+      });
+    } else {
+      // Provide detailed error message
+      let errorMessage = "Invalid credentials. Please check your Shiprocket login details.";
+      
+      if (data.message) {
+        const msg = data.message.toLowerCase();
+        if (msg.includes("invalid") || msg.includes("unauthorized")) {
+          errorMessage = "❌ Invalid email or password. Please verify your Shiprocket credentials.";
+        } else if (msg.includes("network") || msg.includes("connection")) {
+          errorMessage = "❌ Network error. Please check your internet connection.";
+        } else if (msg.includes("rate limit") || msg.includes("too many")) {
+          errorMessage = "❌ Too many attempts. Please try again after some time.";
+        } else {
+          errorMessage = `❌ Shiprocket error: ${data.message}`;
+        }
+      }
+      
+      if (response.status === 401) {
+        errorMessage = "❌ Authentication failed (401). Please check your Shiprocket credentials.";
+      } else if (response.status === 403) {
+        errorMessage = "❌ Access denied (403). Please ensure your Shiprocket account has API access enabled.";
+      } else if (response.status === 500) {
+        errorMessage = "❌ Shiprocket server error (500). Please try again later.";
+      }
+      
+      console.error("Shiprocket test failed:", errorMessage);
       res.status(401).json({ success: false, message: errorMessage });
     }
   } catch (error) {
     console.error("Shiprocket test error:", error);
-    res.status(500).json({ success: false, message: error.message || "Network error. Please check your connection." });
+    res.status(500).json({ 
+      success: false, 
+      message: error.message || "Network error. Please check your connection and try again." 
+    });
   }
 });
 
