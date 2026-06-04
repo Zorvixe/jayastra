@@ -16,7 +16,7 @@ const ShiprocketSettings = () => {
     shiprocket_pickup_pincode: "",
     shiprocket_webhook_secret: ""
   });
-  
+
   // For showing/hiding password
   const [showPassword, setShowPassword] = useState(false);
   const [showWebhookSecret, setShowWebhookSecret] = useState(false);
@@ -32,7 +32,7 @@ const ShiprocketSettings = () => {
       const response = await axios.get(`${API_URL}/admin/shiprocket-settings`, {
         headers: { Authorization: `Bearer ${token}` }
       });
-      
+
       if (response.data.success) {
         setSettings({
           shiprocket_email: response.data.settings.shiprocket_email || "",
@@ -57,15 +57,15 @@ const ShiprocketSettings = () => {
   const handleSave = async (e) => {
     e.preventDefault();
     setSaving(true);
-    
+
     try {
       const token = localStorage.getItem("token");
       await axios.put(`${API_URL}/admin/shiprocket-settings`, settings, {
         headers: { Authorization: `Bearer ${token}` }
       });
-      
+
       toast.success("Shiprocket settings saved successfully!");
-      
+
       // Refresh to show masked password
       await fetchSettings();
     } catch (err) {
@@ -76,25 +76,36 @@ const ShiprocketSettings = () => {
     }
   };
 
+  // Update the handleTestCredentials function
   const handleTestCredentials = async () => {
     if (!settings.shiprocket_email || !settings.shiprocket_password || settings.shiprocket_password === '********') {
       toast.error("Please enter valid email and password before testing");
       return;
     }
-    
+
     setTesting(true);
-    
+
     try {
+      const token = localStorage.getItem("token");
+      console.log("Testing credentials with email:", settings.shiprocket_email);
+
       const response = await axios.post(`${API_URL}/admin/shiprocket-test`, {
         email: settings.shiprocket_email,
         password: settings.shiprocket_password
+      }, {
+        headers: { Authorization: `Bearer ${token}` }
       });
-      
+
       if (response.data.success) {
         toast.success(response.data.message || "Credentials are valid!");
       }
     } catch (err) {
-      toast.error(err.response?.data?.message || "Invalid credentials. Please check your Shiprocket login details.");
+      console.error("Test error:", err);
+      if (err.response?.status === 401) {
+        toast.error("Authentication failed. Please logout and login again.");
+      } else {
+        toast.error(err.response?.data?.message || "Invalid credentials. Please check your Shiprocket login details.");
+      }
     } finally {
       setTesting(false);
     }
@@ -116,7 +127,7 @@ const ShiprocketSettings = () => {
       <p className="shiprocket-description">Configure your Shiprocket account for order shipping and tracking.</p>
 
       <form onSubmit={handleSave} className="shiprocket-form">
-        
+
         {/* Shiprocket Credentials Section */}
         <div className="shiprocket-section">
           <h5 className="shiprocket-section-title">
@@ -244,7 +255,7 @@ const ShiprocketSettings = () => {
                 {`${window.location.origin}/api/webhooks/shiprocket`}
               </code>
               <p className="shiprocket-webhook-help">
-                Go to Shiprocket Dashboard → Settings → API → Webhooks. Add this URL and set the 
+                Go to Shiprocket Dashboard → Settings → API → Webhooks. Add this URL and set the
                 header <strong>x-api-key</strong> with your webhook secret above.
               </p>
             </div>

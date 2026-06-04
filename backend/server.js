@@ -6976,7 +6976,8 @@ app.get("/api/auth/pin-attempts-status", verifyToken, async (req, res) => {
 // ================= SHIPROCKET CONFIGURATION ENDPOINTS =================
 
 // Get Shiprocket settings (for admin panel)
-app.get("/api/admin/shiprocket-settings", verifyToken, verifySuperAdmin, async (req, res) => {
+// Get Shiprocket settings - Allow both super_admin and admin
+app.get("/api/admin/shiprocket-settings", verifyToken, verifyAdminOrSuperAdmin, async (req, res) => {
   try {
     const result = await pool.query(
       "SELECT key, value FROM settings WHERE key IN ('shiprocket_email', 'shiprocket_password', 'shiprocket_pickup_pincode', 'shiprocket_webhook_secret')"
@@ -7000,7 +7001,8 @@ app.get("/api/admin/shiprocket-settings", verifyToken, verifySuperAdmin, async (
 });
 
 // Update Shiprocket settings
-app.put("/api/admin/shiprocket-settings", verifyToken, verifySuperAdmin, async (req, res) => {
+// Update Shiprocket settings - Allow both super_admin and admin
+app.put("/api/admin/shiprocket-settings", verifyToken, verifyAdminOrSuperAdmin, async (req, res) => {
   try {
     const { shiprocket_email, shiprocket_password, shiprocket_pickup_pincode, shiprocket_webhook_secret } = req.body;
     
@@ -7054,13 +7056,17 @@ app.put("/api/admin/shiprocket-settings", verifyToken, verifySuperAdmin, async (
 });
 
 // Test Shiprocket credentials
-app.post("/api/admin/shiprocket-test", verifyToken, verifySuperAdmin, async (req, res) => {
+// Test Shiprocket credentials - Allow both super_admin and admin
+app.post("/api/admin/shiprocket-test", verifyToken, verifyAdminOrSuperAdmin, async (req, res) => {
   try {
     const { email, password } = req.body;
     
     if (!email || !password) {
       return res.status(400).json({ success: false, message: "Email and password are required" });
     }
+    
+    // Log for debugging
+    console.log("Testing Shiprocket credentials for email:", email);
     
     const response = await fetch("https://apiv2.shiprocket.in/v1/external/auth/login", {
       method: "POST",
@@ -7070,17 +7076,18 @@ app.post("/api/admin/shiprocket-test", verifyToken, verifySuperAdmin, async (req
     
     const data = await response.json();
     
+    console.log("Shiprocket test response status:", response.status);
+    
     if (data.token) {
       res.json({ success: true, message: "Credentials are valid! Shiprocket API is working." });
     } else {
-      res.status(401).json({ success: false, message: data.message || "Invalid credentials" });
+      res.status(401).json({ success: false, message: data.message || "Invalid credentials. Please check your Shiprocket login details." });
     }
   } catch (error) {
     console.error("Shiprocket test error:", error);
     res.status(500).json({ success: false, message: error.message });
   }
 });
-
 
 app.get("/", (req, res) => res.send("Jayastra API is running 🚀"));
 
