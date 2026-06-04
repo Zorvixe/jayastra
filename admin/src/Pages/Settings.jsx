@@ -1,7 +1,8 @@
-// Settings.jsx - Updated version with sett prefix
+// Settings.jsx - Updated version with settings- prefix
 import React, { useState, useEffect } from "react";
 import axios from 'axios';
 import { toast } from 'react-toastify';
+import SettingshipRocket from "./ShiprocketSettings/ShiprocketSettings";
 import "./Settings.css";
 
 const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
@@ -130,192 +131,194 @@ const Settings = () => {
   };
 
   if (loading) return (
-    <div className="sett-loader-overlay">
-      <div className="sett-loader-container">
-        <div className="sett-spinner"></div>
+    <div className="settings-loader-overlay">
+      <div className="settings-loader-container">
+        <div className="settings-spinner"></div>
       </div>
     </div>
   );
 
   return (
-    <div className="sett-container">
-      <h4 className="sett-title">Settings & Configuration</h4>
+    <div className="settings-container">
+      <h4 className="settings-title">Settings & Configuration</h4>
 
-      <form onSubmit={handleSave} className="sett-form">
+      <form onSubmit={handleSave} className="settings-form">
 
         {/* ================= CONTACT ================= */}
-        <div className="sett-section">
-          <h5 className="sett-section-title"><i className="bi bi-envelope"></i> Contact Information</h5>
+        <div className="settings-section">
+          <h5 className="settings-section-title"><i className="bi bi-envelope"></i> Contact Information</h5>
 
-          <div className="sett-form-group">
-            <label className="sett-label">Contact Email</label>
+          <div className="settings-form-group">
+            <label className="settings-label">Contact Email</label>
             <input
               type="email"
               name="contactEmail"
               value={settings.contactEmail}
               onChange={handleChange}
               placeholder="Contact Email"
-              className="sett-input"
+              className="settings-input"
             />
           </div>
 
-          <div className="sett-form-group">
-            <label className="sett-label">Phone Number</label>
+          <div className="settings-form-group">
+            <label className="settings-label">Phone Number</label>
             <input
               type="text"
               name="phone"
               value={settings.phone}
               onChange={handleChange}
               placeholder="Phone Number"
-              className="sett-input"
+              className="settings-input"
             />
           </div>
         </div>
 
         {/* ================= RAZORPAY PAYMENT ================= */}
-        <div className="sett-section">
-          <h5 className="sett-section-title"><i className="bi bi-credit-card"></i> Razorpay Payment Gateway</h5>
+        <div className="settings-section">
+          <h5 className="settings-section-title"><i className="bi bi-credit-card"></i> Razorpay Payment Gateway</h5>
 
-          <div className="sett-form-group">
-            <label className="sett-label">Razorpay Key ID</label>
+          <div className="settings-form-group">
+            <label className="settings-label">Razorpay Key ID</label>
             <input
               type="text"
               name="razorpay_key_id"
               value={settings.razorpay_key_id}
               onChange={handleChange}
               placeholder="rzp_live_xxxxxxxxxxxxxx or rzp_test_xxxxxxxxxxxxxx"
-              className="sett-input"
+              className="settings-input"
             />
-            <small className="sett-help-text">Your Razorpay Key ID (starts with rzp_)</small>
+            <small className="settings-help-text">Your Razorpay Key ID (starts with rzp_)</small>
           </div>
 
-          <div className="sett-form-group">
-            <label className="sett-label">Razorpay Key Secret</label>
+          <div className="settings-form-group">
+            <label className="settings-label">Razorpay Key Secret</label>
             <input
               type="password"
               name="razorpay_key_secret"
               value={settings.razorpay_key_secret}
               onChange={handleChange}
               placeholder="Your Razorpay Secret Key"
-              className="sett-input"
+              className="settings-input"
             />
-            <small className="sett-help-text">Your Razorpay Secret Key - keep this secure</small>
+            <small className="settings-help-text">Your Razorpay Secret Key - keep this secure</small>
           </div>
 
           {settings.razorpay_key_id && settings.razorpay_key_secret && (
-            <div className="sett-success-badge">
+            <div className="settings-success-badge">
               <i className="bi bi-check-circle"></i> Razorpay credentials configured
             </div>
           )}
         </div>
 
         {/* ================= TAX & SHIPPING ================= */}
-        <div className="sett-section">
-          <h5 className="sett-section-title"><i className="bi bi-receipt"></i> Tax & Shipping</h5>
+        <div className="settings-section">
+          <h5 className="settings-section-title"><i className="bi bi-receipt"></i> Tax & Shipping</h5>
 
-          <div className="sett-form-group">
-            <label className="sett-label">Tax Percentage (%)</label>
+          <div className="settings-form-group">
+            <label className="settings-label">Tax Percentage (%)</label>
             <input
               type="number"
               name="taxPercent"
               value={settings.taxPercent}
               onChange={handleChange}
               placeholder="Tax %"
-              className="sett-input"
+              className="settings-input"
               step="0.01"
             />
-            <small className="sett-help-text">Tax percentage to be applied on orders</small>
+            <small className="settings-help-text">Tax percentage to be applied on orders</small>
           </div>
 
-          <div className="sett-form-group">
-            <label className="sett-label">Shipping Charge (₹)</label>
+          <div className="settings-form-group">
+            <label className="settings-label">Shipping Charge (₹)</label>
             <input
               type="number"
               name="shippingCharge"
               value={settings.shippingCharge}
               onChange={handleChange}
               placeholder="Shipping Charge"
-              className="sett-input"
+              className="settings-input"
               step="0.01"
             />
-            <small className="sett-help-text">Flat shipping charge for all orders</small>
+            <small className="settings-help-text">Flat shipping charge for all orders</small>
           </div>
         </div>
 
         {/* ================= PAYMENT ADJUSTMENTS ================= */}
-        <div className="sett-section">
-          <h5 className="sett-section-title"><i className="bi bi-currency-exchange"></i> Payment Adjustments</h5>
+        <div className="settings-section">
+          <h5 className="settings-section-title"><i className="bi bi-currency-exchange"></i> Payment Adjustments</h5>
 
-          <div className="sett-form-group">
-            <label className="sett-label">Online Payment Discount (₹)</label>
+          <div className="settings-form-group">
+            <label className="settings-label">Online Payment Discount (₹)</label>
             <input
               type="number"
               name="online_payment_discount"
               value={settings.online_payment_discount}
               onChange={handleChange}
               placeholder="e.g. 5"
-              className="sett-input"
+              className="settings-input"
               step="0.01"
               min="0"
             />
-            <small className="sett-help-text">This amount will be reduced from total for prepaid orders.</small>
+            <small className="settings-help-text">This amount will be reduced from total for prepaid orders.</small>
           </div>
 
-          <div className="sett-form-group">
-            <label className="sett-label">Cash on Delivery Fee (₹)</label>
+          <div className="settings-form-group">
+            <label className="settings-label">Cash on Delivery Fee (₹)</label>
             <input
               type="number"
               name="cod_fee"
               value={settings.cod_fee}
               onChange={handleChange}
               placeholder="e.g. 50"
-              className="sett-input"
+              className="settings-input"
               step="0.01"
               min="0"
             />
-            <small className="sett-help-text">This amount will be added to total for COD orders.</small>
+            <small className="settings-help-text">This amount will be added to total for COD orders.</small>
           </div>
         </div>
 
         {/* ================= PLATFORM FEE ================= */}
-        <div className="sett-section">
-          <h5 className="sett-section-title"><i className="bi bi-percent"></i> Platform Fee (Vendor Commission)</h5>
+        <div className="settings-section">
+          <h5 className="settings-section-title"><i className="bi bi-percent"></i> Platform Fee (Vendor Commission)</h5>
 
-          <div className="sett-form-group">
-            <label className="sett-label">Platform Fee Percentage (%)</label>
+          <div className="settings-form-group">
+            <label className="settings-label">Platform Fee Percentage (%)</label>
             <input
               type="number"
               name="platform_fee_percent"
               value={settings.platform_fee_percent}
               onChange={handleChange}
               placeholder="10"
-              className="sett-input"
+              className="settings-input"
               step="0.5"
               min="0"
               max="100"
             />
-            <small className="sett-help-text">
+            <small className="settings-help-text">
               Percentage deducted from each vendor's sale. Default: 10%
             </small>
           </div>
         </div>
 
-       <div className="sett-form-actions">
-         <button type="submit" className="sett-save-btn" disabled={saving}>
-          <i className="bi bi-check-circle"></i> {saving ? "Saving..." : "Save Settings"}
-        </button>
-       </div>
+        <div className="settings-form-actions">
+          <button type="submit" className="settings-save-btn" disabled={saving}>
+            <i className="bi bi-check-circle"></i> {saving ? "Saving..." : "Save Settings"}
+          </button>
+        </div>
 
       </form>
 
+      <SettingshipRocket />
+
       {/* ================= DANGER ZONE ================= */}
-      <div className="sett-danger-zone">
-        <h5 className="sett-danger-title"><i className="bi bi-exclamation-triangle"></i> Danger Zone</h5>
-        <p className="sett-danger-text">
+      <div className="settings-danger-zone">
+        <h5 className="settings-danger-title"><i className="bi bi-exclamation-triangle"></i> Danger Zone</h5>
+        <p className="settings-danger-text">
           Reset the system to its initial state. This will permanently delete all orders, reviews, and customers while keeping your products and admin accounts.
         </p>
         <button
-          className="sett-reset-btn"
+          className="settings-reset-btn"
           onClick={handleResetSystem}
         >
           Reset System Data

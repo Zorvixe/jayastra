@@ -1,12 +1,14 @@
+/* Settings.css - All classnames prefixed with settings- */
+
 /* Main Container */
-.sett-container {
+.settings-container {
   background: white;
   padding: 20px;
   border-radius: 12px;
   margin: 0 auto;
 }
 
-.sett-title {
+.settings-title {
   color: #1f2937;
   font-size: 1.5rem;
   font-weight: 600;
@@ -16,12 +18,12 @@
 }
 
 /* Form Styles */
-.sett-form {
+.settings-form {
   margin-top: 20px;
 }
 
 /* Section Styles */
-.sett-section {
+.settings-section {
   margin-bottom: 30px;
   padding: 20px;
   background: #f9fafb;
@@ -29,7 +31,7 @@
   border: 1px solid #e5e7eb;
 }
 
-.sett-section-title {
+.settings-section-title {
   margin-bottom: 20px;
   color: #374151;
   font-size: 1.1rem;
@@ -39,16 +41,16 @@
   gap: 8px;
 }
 
-.sett-section-title i {
+.settings-section-title i {
   color: #8E2139;
 }
 
 /* Form Group */
-.sett-form-group {
+.settings-form-group {
   margin-bottom: 15px;
 }
 
-.sett-label {
+.settings-label {
   display: block;
   font-weight: 500;
   margin-bottom: 5px;
@@ -57,7 +59,7 @@
 }
 
 /* Input Styles */
-.sett-input {
+.settings-input {
   width: 100%;
   padding: 10px 12px;
   border-radius: 6px;
@@ -67,18 +69,18 @@
   box-sizing: border-box;
 }
 
-.sett-input:focus {
+.settings-input:focus {
   outline: none;
   border-color: #8E2139;
   box-shadow: 0 0 0 3px rgba(142, 33, 57, 0.1);
 }
 
-.sett-input:hover {
+.settings-input:hover {
   border-color: #9ca3af;
 }
 
 /* Help Text */
-.sett-help-text {
+.settings-help-text {
   font-size: 0.75rem;
   color: #6b7280;
   display: block;
@@ -86,7 +88,7 @@
 }
 
 /* Info Box */
-.sett-info-box {
+.settings-info-box {
   background: #f0f9ff;
   padding: 12px;
   border-radius: 8px;
@@ -96,22 +98,22 @@
   border-left: 3px solid #0369a1;
 }
 
-.sett-info-box i {
+.settings-info-box i {
   margin-right: 8px;
 }
 
-.sett-info-box a {
+.settings-info-box a {
   color: #0369a1;
   text-decoration: none;
   font-weight: 500;
 }
 
-.sett-info-box a:hover {
+.settings-info-box a:hover {
   text-decoration: underline;
 }
 
 /* Success Badge */
-.sett-success-badge {
+.settings-success-badge {
   margin-top: 12px;
   padding: 8px 12px;
   background: #f0fdf4;
@@ -121,28 +123,28 @@
   border-left: 3px solid #16a34a;
 }
 
-.sett-success-badge i {
+.settings-success-badge i {
   margin-right: 6px;
 }
 
 /* Logo Preview */
-.sett-logo-preview {
+.settings-logo-preview {
   margin-top: 10px;
 }
 
-.sett-logo-preview img {
+.settings-logo-preview img {
   height: 80px;
   border-radius: 6px;
   object-fit: contain;
 }
 
-.sett-form-actions{
+.settings-form-actions {
   display: flex;
-  justify-content: flex-end;
+  justify-content: flex-end !important;
 }
 
 /* Save Button */
-.sett-save-btn {
+.settings-save-btn {
   background: #8E2139;
   color: white;
   padding: 12px 24px;
@@ -156,18 +158,18 @@
   margin-top: 10px;
 }
 
-.sett-save-btn:hover:not(:disabled) {
+.settings-save-btn:hover:not(:disabled) {
   background: #6b182b;
   transform: translateY(-1px);
 }
 
-.sett-save-btn:disabled {
+.settings-save-btn:disabled {
   opacity: 0.6;
   cursor: not-allowed;
 }
 
 /* Danger Zone */
-.sett-danger-zone {
+.settings-danger-zone {
   margin-top: 40px;
   padding: 20px;
   border-top: 2px solid #fee2e2;
@@ -175,20 +177,20 @@
   border-radius: 10px;
 }
 
-.sett-danger-title {
+.settings-danger-title {
   color: #dc2626;
   margin-bottom: 10px;
   font-size: 1.1rem;
   font-weight: 600;
 }
 
-.sett-danger-text {
+.settings-danger-text {
   color: #64748b;
   font-size: 0.9rem;
   margin-bottom: 15px;
 }
 
-.sett-reset-btn {
+.settings-reset-btn {
   background: #fee2e2;
   color: #dc2626;
   border: 1px solid #fecaca;
@@ -199,14 +201,14 @@
   transition: all 0.3s;
 }
 
-.sett-reset-btn:hover {
+.settings-reset-btn:hover {
   background: #dc2626;
   color: #fff;
   border-color: #dc2626;
 }
 
 /* Loader Styles */
-.sett-loader-overlay {
+.settings-loader-overlay {
   position: fixed;
   top: 0;
   left: 0;
@@ -219,31 +221,31 @@
   z-index: 9999;
 }
 
-.sett-loader-container {
+.settings-loader-container {
   text-align: center;
 }
 
-.sett-spinner {
+.settings-spinner {
   width: 50px;
   height: 50px;
   border: 4px solid #e5e7eb;
   border-top-color: #8E2139;
   border-radius: 50%;
-  animation: sett-spin 1s linear infinite;
+  animation: settings-spin 1s linear infinite;
 }
 
-@keyframes sett-spin {
+@keyframes settings-spin {
   to {
     transform: rotate(360deg);
   }
 }
 
 /* Field wrapper */
-.sett-field {
+.settings-field {
   margin-bottom: 15px;
 }
 
-.sett-field label {
+.settings-field label {
   display: block;
   font-weight: 500;
   margin-bottom: 5px;
@@ -253,84 +255,84 @@
 
 /* Responsive Design */
 @media (max-width: 768px) {
-  .sett-container {
+  .settings-container {
     padding: 15px;
   }
   
-  .sett-section {
+  .settings-section {
     padding: 15px;
   }
   
-  .sett-save-btn {
+  .settings-save-btn {
     padding: 10px 20px;
   }
   
-  .sett-title {
+  .settings-title {
     font-size: 1.3rem;
   }
   
-  .sett-section-title {
+  .settings-section-title {
     font-size: 1rem;
   }
 }
 
 /* Tablet Responsive */
 @media (min-width: 769px) and (max-width: 1024px) {
-  .sett-container {
+  .settings-container {
     max-width: 90%;
   }
 }
 
 /* Dark mode support */
 @media (prefers-color-scheme: dark) {
-  .sett-container {
+  .settings-container {
     background: #1f2937;
   }
   
-  .sett-title {
+  .settings-title {
     color: #f3f4f6;
     border-bottom-color: #374151;
   }
   
-  .sett-section {
+  .settings-section {
     background: #374151;
     border-color: #4b5563;
   }
   
-  .sett-section-title {
+  .settings-section-title {
     color: #f3f4f6;
   }
   
-  .sett-label {
+  .settings-label {
     color: #e5e7eb;
   }
   
-  .sett-input {
+  .settings-input {
     background: #4b5563;
     border-color: #6b7280;
     color: #f3f4f6;
   }
   
-  .sett-input:focus {
+  .settings-input:focus {
     border-color: #8E2139;
   }
   
-  .sett-help-text {
+  .settings-help-text {
     color: #9ca3af;
   }
   
-  .sett-danger-zone {
+  .settings-danger-zone {
     background: #374151;
     border-top-color: #dc2626;
   }
   
-  .sett-danger-text {
+  .settings-danger-text {
     color: #9ca3af;
   }
 }
 
 /* Animation for save button */
-@keyframes sett-pulse {
+@keyframes settings-pulse {
   0% {
     transform: scale(1);
   }
@@ -342,45 +344,45 @@
   }
 }
 
-.sett-save-btn:active:not(:disabled) {
-  animation: sett-pulse 0.2s ease-in-out;
+.settings-save-btn:active:not(:disabled) {
+  animation: settings-pulse 0.2s ease-in-out;
 }
 
 /* Focus visible for accessibility */
-.sett-input:focus-visible,
-.sett-save-btn:focus-visible,
-.sett-reset-btn:focus-visible {
+.settings-input:focus-visible,
+.settings-save-btn:focus-visible,
+.settings-reset-btn:focus-visible {
   outline: 2px solid #8E2139;
   outline-offset: 2px;
 }
 
 /* Placeholder styling */
-.sett-input::placeholder {
+.settings-input::placeholder {
   color: #9ca3af;
   font-size: 13px;
 }
 
 /* Disabled input styling */
-.sett-input:disabled {
+.settings-input:disabled {
   background: #f3f4f6;
   cursor: not-allowed;
 }
 
 /* Scrollbar styling */
-.sett-container::-webkit-scrollbar {
+.settings-container::-webkit-scrollbar {
   width: 8px;
 }
 
-.sett-container::-webkit-scrollbar-track {
+.settings-container::-webkit-scrollbar-track {
   background: #f1f1f1;
   border-radius: 4px;
 }
 
-.sett-container::-webkit-scrollbar-thumb {
+.settings-container::-webkit-scrollbar-thumb {
   background: #888;
   border-radius: 4px;
 }
 
-.sett-container::-webkit-scrollbar-thumb:hover {
+.settings-container::-webkit-scrollbar-thumb:hover {
   background: #555;
 }

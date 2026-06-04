@@ -827,7 +827,18 @@ const initDatabase = async () => {
   )
 `);
 
+// Add this inside your initDatabase() function, after existing settings insertion
 
+// Add Shiprocket settings if not exists
+await pool.query(`
+  INSERT INTO settings (key, value)
+  VALUES 
+    ('shiprocket_email', ''),
+    ('shiprocket_password', ''),
+    ('shiprocket_pickup_pincode', ''),
+    ('shiprocket_webhook_secret', '')
+  ON CONFLICT (key) DO NOTHING
+`);
 
 
 
@@ -4696,22 +4707,85 @@ app.get("/api/admin/dashboard/today-stats", verifyToken, verifyAnyAdmin, async (
 });
 
 // ================= SHIPROCKET INTEGRATION =================
+// ================= SHIPROCKET INTEGRATION (DATABASE DRIVEN) =================
 let shiprocketToken = null;
 let tokenExpiry = null;
+let cachedShiprocketConfig = null;
+let configLastFetched = null;
+
+// Function to get Shiprocket config from database
+const getShiprocketConfig = async () => {
+  // Cache config for 1 minute to reduce DB calls
+  if (cachedShiprocketConfig && configLastFetched && (Date.now() - configLastFetched) < 60000) {
+    return cachedShiprocketConfig;
+  }
+  
+  try {
+    const result = await pool.query(
+      "SELECT key, value FROM settings WHERE key IN ('shiprocket_email', 'shiprocket_password', 'shiprocket_pickup_pincode', 'shiprocket_webhook_secret')"
+    );
+    
+    const config = {};
+    result.rows.forEach(row => {
+      config[row.key] = row.value;
+    });
+    
+    cachedShiprocketConfig = config;
+    configLastFetched = Date.now();
+    
+    return config;
+  } catch (error) {
+    console.error("Failed to fetch Shiprocket config:", error);
+    return {
+      shiprocket_email: process.env.SHIPROCKET_EMAIL || '',
+      shiprocket_password: process.env.SHIPROCKET_PASSWORD || '',
+      shiprocket_pickup_pincode: process.env.SHIPROCKET_PICKUP_PINCODE || '581322',
+      shiprocket_webhook_secret: process.env.SHIPROCKET_WEBHOOK_SECRET || 'JayastraWebhookSecure123'
+    };
+  }
+};
 
 const authenticateShiprocket = async () => {
-  if (shiprocketToken && tokenExpiry && Date.now() < tokenExpiry) return shiprocketToken;
+  // Check if token is still valid (9 days expiry)
+  if (shiprocketToken && tokenExpiry && Date.now() < tokenExpiry) {
+    return shiprocketToken;
+  }
+  
+  // Get credentials from database
+  const config = await getShiprocketConfig();
+  const email = config.shiprocket_email;
+  const password = config.shiprocket_password;
+  
+  if (!email || !password) {
+    console.error("Shiprocket credentials not configured in settings");
+    throw new Error("Shiprocket credentials not configured. Please add them in Settings page.");
+  }
+  
   try {
+    console.log("Authenticating with Shiprocket...");
+    
     const response = await fetch("https://apiv2.shiprocket.in/v1/external/auth/login", {
-      method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email: process.env.SHIPROCKET_EMAIL, password: process.env.SHIPROCKET_PASSWORD })
+      method: "POST",
+      headers: { 
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({ 
+        email: email, 
+        password: password 
+      })
     });
+    
     const data = await response.json();
+    
     if (data.token) {
       shiprocketToken = data.token;
+      // Token expires in 10 days, set expiry to 9 days for safety
       tokenExpiry = Date.now() + (9 * 24 * 60 * 60 * 1000);
+      console.log("✅ Shiprocket authenticated successfully");
       return shiprocketToken;
     } else {
-      throw new Error(data.message || "Invalid Shiprocket Email or Password config");
+      console.error("Shiprocket auth failed:", data.message);
+      throw new Error(data.message || "Invalid Shiprocket credentials");
     }
   } catch (err) {
     console.error("Shiprocket Auth Error:", err);
@@ -5076,7 +5150,8 @@ app.get("/api/shiprocket/pincode/:pincode", async (req, res) => {
     if (!/^[1-9][0-9]{5}$/.test(deliveryPincode)) return res.status(400).json({ success: false, message: "Invalid pincode format" });
 
     const token = await authenticateShiprocket();
-    const pickupPincode = process.env.SHIPROCKET_PICKUP_PINCODE || "581322";
+    const config = await getShiprocketConfig();
+    const pickupPincode = config.shiprocket_pickup_pincode || "581322";
     const weight = req.query.weight || 0.5;
 
     const url = `https://apiv2.shiprocket.in/v1/external/courier/serviceability?pickup_postcode=${pickupPincode}&delivery_postcode=${deliveryPincode}&weight=${weight}&cod=0`;
@@ -5165,10 +5240,32 @@ app.get("/api/shiprocket/shipping-rates", async (req, res) => {
 // Get courier recommendation for COD vs Prepaid
 app.get("/api/shiprocket/courier-recommendation", async (req, res) => {
   try {
-    const { pickup_pincode, delivery_pincode, weight, amount, is_cod } = req.query;
+    const { delivery_pincode, amount, is_cod, weight } = req.query;
     
-    const token = await authenticateShiprocket();
-    const url = `https://apiv2.shiprocket.in/v1/external/courier/serviceability?pickup_postcode=${pickup_pincode}&delivery_postcode=${delivery_pincode}&weight=${weight || 0.5}&cod=${is_cod === 'true' ? 1 : 0}`;
+    if (!delivery_pincode) {
+      return res.status(400).json({ success: false, message: "Delivery pincode is required" });
+    }
+    
+    if (!/^[1-9][0-9]{5}$/.test(delivery_pincode)) {
+      return res.status(400).json({ success: false, message: "Invalid pincode format" });
+    }
+    
+    let token;
+    try {
+      token = await authenticateShiprocket();
+    } catch (authError) {
+      return res.status(401).json({ 
+        success: false, 
+        message: "Shipping service not configured. Please add Shiprocket credentials in Settings." 
+      });
+    }
+    
+    const config = await getShiprocketConfig();
+    const pickupPostcode = config.shiprocket_pickup_pincode || "581322";
+    const codParam = is_cod === 'true' ? 1 : 0;
+    const weightParam = parseFloat(weight) || 0.5;
+    
+    const url = `https://apiv2.shiprocket.in/v1/external/courier/serviceability?pickup_postcode=${pickupPostcode}&delivery_postcode=${delivery_pincode}&weight=${weightParam}&cod=${codParam}`;
     
     const fetchRes = await fetch(url, {
       method: "GET",
@@ -5180,38 +5277,72 @@ app.get("/api/shiprocket/courier-recommendation", async (req, res) => {
     
     const result = await fetchRes.json();
     
+    if (fetchRes.status !== 200) {
+      return res.status(400).json({
+        success: false,
+        serviceable: false,
+        message: result.message || "Failed to fetch courier rates"
+      });
+    }
+    
     if (result.status === 200 && result.data?.available_courier_companies?.length > 0) {
-      // For COD, filter out couriers that don't support COD
       let couriers = result.data.available_courier_companies;
       
       if (is_cod === 'true') {
         couriers = couriers.filter(c => c.cod_available === true);
       }
       
-      // Find cheapest and fastest
+      if (couriers.length === 0) {
+        return res.json({
+          success: true,
+          serviceable: false,
+          message: "No courier available for COD on this pincode"
+        });
+      }
+      
       const cheapest = [...couriers].sort((a, b) => parseFloat(a.rate) - parseFloat(b.rate))[0];
       const fastest = [...couriers].sort((a, b) => a.etd_hours - b.etd_hours)[0];
       
       return res.json({
         success: true,
-        serviceable: couriers.length > 0,
-        recommended_courier: cheapest,
-        fastest_courier: fastest,
-        all_couriers: couriers
+        serviceable: true,
+        recommended_courier: {
+          courier_id: cheapest.courier_id,
+          courier_name: cheapest.courier_name,
+          rate: parseFloat(cheapest.rate),
+          etd_hours: cheapest.etd_hours,
+          estimated_days: Math.ceil(cheapest.etd_hours / 24)
+        },
+        fastest_courier: {
+          courier_id: fastest.courier_id,
+          courier_name: fastest.courier_name,
+          rate: parseFloat(fastest.rate),
+          etd_hours: fastest.etd_hours,
+          estimated_days: Math.ceil(fastest.etd_hours / 24)
+        },
+        all_couriers: couriers.map(c => ({
+          courier_id: c.courier_id,
+          courier_name: c.courier_name,
+          rate: parseFloat(c.rate),
+          etd_hours: c.etd_hours,
+          cod_available: c.cod_available
+        }))
       });
     } else {
       return res.json({
         success: true,
         serviceable: false,
-        message: "No courier available"
+        message: result.message || "No courier available for this pincode"
       });
     }
   } catch (error) {
     console.error("Courier recommendation error:", error);
-    res.status(500).json({ success: false, message: error.message });
+    res.status(500).json({ 
+      success: false, 
+      message: error.message || "Internal server error" 
+    });
   }
 });
-
 // Track shipment by AWB number
 app.get("/api/shiprocket/track/:awb", async (req, res) => {
   try {
@@ -6839,6 +6970,114 @@ app.get("/api/auth/pin-attempts-status", verifyToken, async (req, res) => {
       attemptsLeft: 5,
       isLocked: false
     });
+  }
+});
+
+// ================= SHIPROCKET CONFIGURATION ENDPOINTS =================
+
+// Get Shiprocket settings (for admin panel)
+app.get("/api/admin/shiprocket-settings", verifyToken, verifySuperAdmin, async (req, res) => {
+  try {
+    const result = await pool.query(
+      "SELECT key, value FROM settings WHERE key IN ('shiprocket_email', 'shiprocket_password', 'shiprocket_pickup_pincode', 'shiprocket_webhook_secret')"
+    );
+    
+    const settings = {};
+    result.rows.forEach(row => {
+      // Don't send password in plain text to frontend
+      if (row.key === 'shiprocket_password') {
+        settings[row.key] = row.value ? '********' : '';
+      } else {
+        settings[row.key] = row.value || '';
+      }
+    });
+    
+    res.json({ success: true, settings });
+  } catch (error) {
+    console.error("Failed to fetch Shiprocket settings:", error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// Update Shiprocket settings
+app.put("/api/admin/shiprocket-settings", verifyToken, verifySuperAdmin, async (req, res) => {
+  try {
+    const { shiprocket_email, shiprocket_password, shiprocket_pickup_pincode, shiprocket_webhook_secret } = req.body;
+    
+    // Update each setting
+    const updates = [];
+    
+    if (shiprocket_email !== undefined) {
+      updates.push(pool.query(
+        "INSERT INTO settings (key, value) VALUES ('shiprocket_email', $1) ON CONFLICT (key) DO UPDATE SET value = $1, updated_at = CURRENT_TIMESTAMP",
+        [shiprocket_email]
+      ));
+    }
+    
+    // Only update password if it's not masked (not '********')
+    if (shiprocket_password !== undefined && shiprocket_password !== '********' && shiprocket_password !== '') {
+      updates.push(pool.query(
+        "INSERT INTO settings (key, value) VALUES ('shiprocket_password', $1) ON CONFLICT (key) DO UPDATE SET value = $1, updated_at = CURRENT_TIMESTAMP",
+        [shiprocket_password]
+      ));
+    }
+    
+    if (shiprocket_pickup_pincode !== undefined) {
+      updates.push(pool.query(
+        "INSERT INTO settings (key, value) VALUES ('shiprocket_pickup_pincode', $1) ON CONFLICT (key) DO UPDATE SET value = $1, updated_at = CURRENT_TIMESTAMP",
+        [shiprocket_pickup_pincode]
+      ));
+    }
+    
+    if (shiprocket_webhook_secret !== undefined) {
+      updates.push(pool.query(
+        "INSERT INTO settings (key, value) VALUES ('shiprocket_webhook_secret', $1) ON CONFLICT (key) DO UPDATE SET value = $1, updated_at = CURRENT_TIMESTAMP",
+        [shiprocket_webhook_secret]
+      ));
+    }
+    
+    await Promise.all(updates);
+    
+    // Invalidate cache
+    cachedShiprocketConfig = null;
+    configLastFetched = null;
+    
+    // Reset token so it will re-authenticate with new credentials
+    shiprocketToken = null;
+    tokenExpiry = null;
+    
+    res.json({ success: true, message: "Shiprocket settings updated successfully" });
+  } catch (error) {
+    console.error("Failed to update Shiprocket settings:", error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// Test Shiprocket credentials
+app.post("/api/admin/shiprocket-test", verifyToken, verifySuperAdmin, async (req, res) => {
+  try {
+    const { email, password } = req.body;
+    
+    if (!email || !password) {
+      return res.status(400).json({ success: false, message: "Email and password are required" });
+    }
+    
+    const response = await fetch("https://apiv2.shiprocket.in/v1/external/auth/login", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email, password })
+    });
+    
+    const data = await response.json();
+    
+    if (data.token) {
+      res.json({ success: true, message: "Credentials are valid! Shiprocket API is working." });
+    } else {
+      res.status(401).json({ success: false, message: data.message || "Invalid credentials" });
+    }
+  } catch (error) {
+    console.error("Shiprocket test error:", error);
+    res.status(500).json({ success: false, message: error.message });
   }
 });
 

@@ -1,0 +1,439 @@
+/* ShiprocketSettings.css - All classnames prefixed with shiprocket- */
+
+/* Main Container */
+.shiprocket-container {
+  background: white;
+  padding: 20px;
+  border-radius: 12px;
+  margin-top: 20px;
+  border: 1px solid #e5e7eb;
+}
+
+.shiprocket-title {
+  color: #1f2937;
+  font-size: 1.3rem;
+  font-weight: 600;
+  margin-bottom: 8px;
+}
+
+.shiprocket-description {
+  color: #64748b;
+  margin-bottom: 24px;
+  font-size: 14px;
+}
+
+/* Form Styles */
+.shiprocket-form {
+  margin-top: 20px;
+}
+
+/* Section Styles */
+.shiprocket-section {
+  margin-bottom: 30px;
+  padding: 20px;
+  background: #f9fafb;
+  border-radius: 10px;
+  border: 1px solid #e5e7eb;
+}
+
+.shiprocket-section-title {
+  margin-bottom: 20px;
+  color: #374151;
+  font-size: 1rem;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.shiprocket-section-title i {
+  color: #8E2139;
+}
+
+/* Form Group */
+.shiprocket-form-group {
+  margin-bottom: 15px;
+}
+
+.shiprocket-label {
+  display: block;
+  font-weight: 500;
+  margin-bottom: 5px;
+  font-size: 0.9rem;
+  color: #374151;
+}
+
+/* Input Styles */
+.shiprocket-input {
+  width: 100%;
+  padding: 10px 12px;
+  border-radius: 6px;
+  border: 1px solid #d1d5db;
+  font-size: 14px;
+  transition: all 0.2s;
+  box-sizing: border-box;
+}
+
+.shiprocket-input:focus {
+  outline: none;
+  border-color: #8E2139;
+  box-shadow: 0 0 0 3px rgba(142, 33, 57, 0.1);
+}
+
+.shiprocket-input:hover {
+  border-color: #9ca3af;
+}
+
+/* Password Input Wrapper */
+.shiprocket-password-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.shiprocket-password-wrapper input {
+  flex: 1;
+  padding-right: 45px;
+}
+
+.shiprocket-password-toggle {
+  position: absolute;
+  right: 12px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: #64748b;
+  font-size: 16px;
+  padding: 0;
+  z-index: 1;
+}
+
+.shiprocket-password-toggle:hover {
+  color: #8E2139;
+}
+
+/* Help Text */
+.shiprocket-help-text {
+  font-size: 0.75rem;
+  color: #6b7280;
+  display: block;
+  margin-top: 5px;
+}
+
+/* Form Actions Inline */
+.shiprocket-form-actions-inline {
+  margin-top: 8px;
+}
+
+/* Test Button */
+.shiprocket-test-btn {
+  background: #f1f5f9;
+  border: 1px solid #e2e8f0;
+  padding: 8px 16px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 500;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  transition: all 0.2s;
+  color: #475569;
+}
+
+.shiprocket-test-btn:hover:not(:disabled) {
+  background: #8E2139;
+  border-color: #8E2139;
+  color: white;
+}
+
+.shiprocket-test-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* Button Spinner */
+.shiprocket-btn-spinner {
+  width: 16px;
+  height: 16px;
+  border: 2px solid #e2e8f0;
+  border-top-color: #8E2139;
+  border-radius: 50%;
+  animation: shiprocket-spin 0.6s linear infinite;
+  display: inline-block;
+}
+
+/* Info Box */
+.shiprocket-info-box {
+  background: #f0f9ff;
+  border: 1px solid #bae6fd;
+  border-radius: 12px;
+  padding: 16px;
+  display: flex;
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.shiprocket-info-box i {
+  color: #0284c7;
+  font-size: 20px;
+  margin-top: 2px;
+}
+
+.shiprocket-info-box strong {
+  display: block;
+  margin-bottom: 8px;
+  color: #0c4a6e;
+}
+
+/* Webhook URL Display */
+.shiprocket-webhook-url {
+  display: block;
+  background: #0c4a6e;
+  color: #e0f2fe;
+  padding: 12px;
+  border-radius: 8px;
+  font-family: monospace;
+  font-size: 13px;
+  margin: 10px 0;
+  word-break: break-all;
+}
+
+.shiprocket-webhook-help {
+  font-size: 12px;
+  color: #0369a1;
+  margin-top: 8px;
+}
+
+/* Info Section */
+.shiprocket-info-section {
+  background: #f8fafc;
+  border-radius: 12px;
+  padding: 20px;
+  margin-top: 24px;
+}
+
+.shiprocket-info-section h5 {
+  margin: 0 0 12px 0;
+  color: #1e293b;
+  font-size: 16px;
+}
+
+.shiprocket-info-section ul {
+  margin: 0;
+  padding-left: 20px;
+}
+
+.shiprocket-info-section li {
+  margin: 8px 0;
+  color: #475569;
+  font-size: 13px;
+}
+
+.shiprocket-info-section a {
+  color: #8E2139;
+  text-decoration: none;
+}
+
+.shiprocket-info-section a:hover {
+  text-decoration: underline;
+}
+
+/* Form Actions */
+.shiprocket-form-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 20px;
+}
+
+/* Save Button */
+.shiprocket-save-btn {
+  background: #8E2139;
+  color: white;
+  padding: 10px 24px;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 14px;
+  transition: all 0.3s;
+}
+
+.shiprocket-save-btn:hover:not(:disabled) {
+  background: #6b182b;
+  transform: translateY(-1px);
+}
+
+.shiprocket-save-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* Loader Styles */
+.shiprocket-loader-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(255, 255, 255, 0.9);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+}
+
+.shiprocket-loader-container {
+  text-align: center;
+}
+
+.shiprocket-spinner {
+  width: 50px;
+  height: 50px;
+  border: 4px solid #e5e7eb;
+  border-top-color: #8E2139;
+  border-radius: 50%;
+  animation: shiprocket-spin 1s linear infinite;
+}
+
+/* Keyframe Animations */
+@keyframes shiprocket-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .shiprocket-container {
+    padding: 15px;
+  }
+  
+  .shiprocket-section {
+    padding: 15px;
+  }
+  
+  .shiprocket-save-btn {
+    padding: 10px 20px;
+    width: 100%;
+  }
+  
+  .shiprocket-title {
+    font-size: 1.2rem;
+  }
+  
+  .shiprocket-section-title {
+    font-size: 0.95rem;
+  }
+  
+  .shiprocket-info-box {
+    flex-direction: column;
+  }
+  
+  .shiprocket-webhook-url {
+    font-size: 11px;
+    word-break: break-all;
+  }
+  
+  .shiprocket-form-actions {
+    justify-content: stretch;
+  }
+}
+
+/* Tablet Responsive */
+@media (min-width: 769px) and (max-width: 1024px) {
+  .shiprocket-container {
+    max-width: 100%;
+  }
+}
+
+/* Dark mode support */
+@media (prefers-color-scheme: dark) {
+  .shiprocket-container {
+    background: #1f2937;
+    border-color: #374151;
+  }
+  
+  .shiprocket-title {
+    color: #f3f4f6;
+  }
+  
+  .shiprocket-section {
+    background: #374151;
+    border-color: #4b5563;
+  }
+  
+  .shiprocket-section-title {
+    color: #f3f4f6;
+  }
+  
+  .shiprocket-label {
+    color: #e5e7eb;
+  }
+  
+  .shiprocket-input {
+    background: #4b5563;
+    border-color: #6b7280;
+    color: #f3f4f6;
+  }
+  
+  .shiprocket-input:focus {
+    border-color: #8E2139;
+  }
+  
+  .shiprocket-help-text {
+    color: #9ca3af;
+  }
+  
+  .shiprocket-info-section {
+    background: #374151;
+  }
+  
+  .shiprocket-info-section h5 {
+    color: #f3f4f6;
+  }
+  
+  .shiprocket-info-section li {
+    color: #9ca3af;
+  }
+}
+
+/* Focus visible for accessibility */
+.shiprocket-input:focus-visible,
+.shiprocket-save-btn:focus-visible,
+.shiprocket-test-btn:focus-visible,
+.shiprocket-password-toggle:focus-visible {
+  outline: 2px solid #8E2139;
+  outline-offset: 2px;
+}
+
+/* Placeholder styling */
+.shiprocket-input::placeholder {
+  color: #9ca3af;
+  font-size: 13px;
+}
+
+/* Disabled input styling */
+.shiprocket-input:disabled {
+  background: #f3f4f6;
+  cursor: not-allowed;
+}
+
+/* Scrollbar styling */
+.shiprocket-container::-webkit-scrollbar {
+  width: 8px;
+}
+
+.shiprocket-container::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 4px;
+}
+
+.shiprocket-container::-webkit-scrollbar-thumb {
+  background: #888;
+  border-radius: 4px;
+}
+
+.shiprocket-container::-webkit-scrollbar-thumb:hover {
+  background: #555;
+}
