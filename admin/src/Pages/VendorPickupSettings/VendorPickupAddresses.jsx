@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import axios from '../../utils/axiosConfig'; // Adjust path as needed
+import axios from '../../utils/axiosConfig';
 import { toast } from "react-toastify";
 import "./VendorPickupAddresses.css";
 
@@ -8,8 +8,11 @@ const API_URL = process.env.REACT_APP_API_URL;
 const VendorPickupAddresses = () => {
   const [addresses, setAddresses] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [syncingId, setSyncingId] = useState(null);
+  const [deletingId, setDeletingId] = useState(null);
   const [modalOpen, setModalOpen] = useState(false);
-  const [editingId, setEditingId] = useState(null);
+  const [editingAddress, setEditingAddress] = useState(null);
+  const [deleteConfirm, setDeleteConfirm] = useState(null);
   const [formData, setFormData] = useState({
     location_name: "",
     address_line1: "",
@@ -20,7 +23,6 @@ const VendorPickupAddresses = () => {
     is_default: false,
   });
   const [submitting, setSubmitting] = useState(false);
-  const [deleteConfirm, setDeleteConfirm] = useState(null);
 
   const fetchAddresses = async () => {
     try {
@@ -28,8 +30,9 @@ const VendorPickupAddresses = () => {
       const res = await axios.get(`${API_URL}/vendor/pickup-addresses`, {
         headers: { Authorization: `Bearer ${token}` }
       });
-      setAddresses(res.data.addresses);
+      setAddresses(res.data.addresses || []);
     } catch (err) {
+      console.error("Fetch addresses error:", err);
       toast.error("Failed to load addresses");
     } finally {
       setLoading(false);
@@ -40,34 +43,10 @@ const VendorPickupAddresses = () => {
     fetchAddresses();
   }, []);
 
-  // ========== ADDED: Listen for mobile FAB event to open add address modal ==========
+  // Listen for mobile FAB event
   useEffect(() => {
     const handleOpenAddPickupAddressModal = () => {
-      openModal(null);
-    };
-    
-    window.addEventListener("openAddPickupAddressModal", handleOpenAddPickupAddressModal);
-    
-    return () => {
-      window.removeEventListener("openAddPickupAddressModal", handleOpenAddPickupAddressModal);
-    };
-  }, []); // Empty dependency array - openModal is stable
-  // ========== END OF ADDED CODE ==========
-
-  const openModal = (address = null) => {
-    if (address) {
-      setEditingId(address.id);
-      setFormData({
-        location_name: address.location_name,
-        address_line1: address.address_line1,
-        address_line2: address.address_line2 || "",
-        city: address.city,
-        state: address.state,
-        pincode: address.pincode,
-        is_default: address.is_default,
-      });
-    } else {
-      setEditingId(null);
+      setEditingAddress(null);
       setFormData({
         location_name: "",
         address_line1: "",
@@ -77,13 +56,26 @@ const VendorPickupAddresses = () => {
         pincode: "",
         is_default: false,
       });
-    }
-    setModalOpen(true);
-  };
+      setModalOpen(true);
+    };
+    window.addEventListener("openAddPickupAddressModal", handleOpenAddPickupAddressModal);
+    return () => {
+      window.removeEventListener("openAddPickupAddressModal", handleOpenAddPickupAddressModal);
+    };
+  }, []);
 
-  const closeModal = () => {
-    setModalOpen(false);
-    setEditingId(null);
+  const openEditModal = (address) => {
+    setEditingAddress(address);
+    setFormData({
+      location_name: address.location_name,
+      address_line1: address.address_line1,
+      address_line2: address.address_line2 || "",
+      city: address.city,
+      state: address.state,
+      pincode: address.pincode,
+      is_default: address.is_default,
+    });
+    setModalOpen(true);
   };
 
   const handleChange = (e) => {
@@ -99,20 +91,49 @@ const VendorPickupAddresses = () => {
     setSubmitting(true);
     try {
       const token = localStorage.getItem("token");
-      if (editingId) {
-        await axios.put(`${API_URL}/vendor/pickup-addresses/${editingId}`, formData, {
+      let response;
+      
+      if (editingAddress) {
+        response = await axios.put(`${API_URL}/vendor/pickup-addresses/${editingAddress.id}`, formData, {
           headers: { Authorization: `Bearer ${token}` }
         });
-        toast.success("Address updated");
+        
+        if (response.data.success) {
+          if (response.data.shiprocket_updated) {
+            toast.success(response.data.message || "Address updated and synced!");
+          } else {
+            toast.warning(response.data.message || "Address updated but Shiprocket sync failed");
+          }
+        }
       } else {
-        await axios.post(`${API_URL}/vendor/pickup-addresses`, formData, {
+        response = await axios.post(`${API_URL}/vendor/pickup-addresses`, formData, {
           headers: { Authorization: `Bearer ${token}` }
         });
-        toast.success("Address added");
+        
+        if (response.data.success) {
+          if (response.data.shiprocket_synced) {
+            toast.success(response.data.message || "Address created and synced!");
+          } else {
+            toast.warning(response.data.message || "Address created but Shiprocket sync failed");
+          }
+        }
       }
-      fetchAddresses();
-      closeModal();
+      
+      await fetchAddresses();
+      setModalOpen(false);
+      setEditingAddress(null);
+      setFormData({
+        location_name: "",
+        address_line1: "",
+        address_line2: "",
+        city: "",
+        state: "",
+        pincode: "",
+        is_default: false,
+      });
+      
     } catch (err) {
+      console.error("Submit error:", err);
       toast.error(err.response?.data?.message || "Operation failed");
     } finally {
       setSubmitting(false);
@@ -126,34 +147,89 @@ const VendorPickupAddresses = () => {
         headers: { Authorization: `Bearer ${token}` }
       });
       toast.success("Default address updated");
-      fetchAddresses();
+      await fetchAddresses();
     } catch (err) {
+      console.error("Set default error:", err);
       toast.error("Failed to set default");
+    }
+  };
+
+  const syncWithShiprocket = async (addressId) => {
+    setSyncingId(addressId);
+    try {
+      const token = localStorage.getItem("token");
+      
+      const response = await axios.post(`${API_URL}/vendor/pickup-addresses/${addressId}/sync`, {}, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      
+      if (response.data.success) {
+        toast.success(response.data.message || "Address synced with Shiprocket!");
+        await fetchAddresses();
+      } else {
+        toast.error(response.data.message || "Failed to sync");
+      }
+    } catch (err) {
+      console.error("Sync error:", err);
+      toast.error(err.response?.data?.message || "Failed to sync with Shiprocket");
+    } finally {
+      setSyncingId(null);
     }
   };
 
   const deleteAddress = async () => {
     if (!deleteConfirm) return;
+    setDeletingId(deleteConfirm);
     try {
       const token = localStorage.getItem("token");
-      await axios.delete(`${API_URL}/vendor/pickup-addresses/${deleteConfirm}`, {
+      const response = await axios.delete(`${API_URL}/vendor/pickup-addresses/${deleteConfirm}`, {
         headers: { Authorization: `Bearer ${token}` }
       });
-      toast.success("Address deleted");
-      fetchAddresses();
+      
+      if (response.data.success) {
+        if (response.data.shiprocket_deleted) {
+          toast.success(response.data.message || "Address deleted from both systems!");
+        } else {
+          toast.warning(response.data.message || "Address deleted locally. Shiprocket deletion failed.");
+        }
+        await fetchAddresses();
+      } else {
+        toast.error(response.data.message || "Delete failed");
+      }
       setDeleteConfirm(null);
     } catch (err) {
-      toast.error("Delete failed");
+      console.error("Delete error:", err);
+      toast.error(err.response?.data?.message || "Delete failed");
+    } finally {
+      setDeletingId(null);
     }
   };
 
-  if (loading) return <div className="pickup-loader-overlay"><div className="pickup-spinner"></div></div>;
+  if (loading) {
+    return (
+      <div className="pickup-loader-overlay">
+        <div className="pickup-spinner"></div>
+      </div>
+    );
+  }
 
   return (
     <div className="pickup-container">
       <div className="pickup-header-actions">
         <h4><i className="bi bi-building"></i> Warehouse / Pickup Addresses</h4>
-        <button className="pickup-add-address-btn" onClick={() => openModal()}>
+        <button className="pickup-add-address-btn" onClick={() => {
+          setEditingAddress(null);
+          setFormData({
+            location_name: "",
+            address_line1: "",
+            address_line2: "",
+            city: "",
+            state: "",
+            pincode: "",
+            is_default: false,
+          });
+          setModalOpen(true);
+        }}>
           <i className="bi bi-plus-lg"></i> Add New Address
         </button>
       </div>
@@ -162,7 +238,19 @@ const VendorPickupAddresses = () => {
         <div className="pickup-empty-addresses">
           <i className="bi bi-geo-alt"></i>
           <p>No pickup addresses added yet.</p>
-          <button onClick={() => openModal()}>Create your first address</button>
+          <button onClick={() => {
+            setEditingAddress(null);
+            setFormData({
+              location_name: "",
+              address_line1: "",
+              address_line2: "",
+              city: "",
+              state: "",
+              pincode: "",
+              is_default: false,
+            });
+            setModalOpen(true);
+          }}>Create your first address</button>
         </div>
       ) : (
         <div className="pickup-addresses-grid">
@@ -172,13 +260,45 @@ const VendorPickupAddresses = () => {
                 <div className="pickup-location-name">
                   <i className="bi bi-geo-alt-fill"></i> {addr.location_name}
                   {addr.is_default && <span className="pickup-default-badge">Default</span>}
+                  {addr.shiprocket_synced && addr.shiprocket_pickup_id ? (
+                    <span className="pickup-synced-badge" title={`Shiprocket ID: ${addr.shiprocket_pickup_id}`}>
+                      <i className="bi bi-cloud-check-fill"></i> Synced
+                    </span>
+                  ) : (
+                    <span className="pickup-not-synced-badge" title="Not synced with Shiprocket">
+                      <i className="bi bi-cloud-slash"></i> Not Synced
+                    </span>
+                  )}
                 </div>
                 <div className="pickup-card-actions">
-                  <button className="pickup-icon-btn pickup-edit" onClick={() => openModal(addr)} title="Edit">
+                  <button className="pickup-icon-btn pickup-edit" onClick={() => openEditModal(addr)} title="Edit">
                     <i className="bi bi-pencil"></i>
                   </button>
-                  <button className="pickup-icon-btn pickup-delete" onClick={() => setDeleteConfirm(addr.id)} title="Delete">
-                    <i className="bi bi-trash"></i>
+                  {!addr.shiprocket_synced && (
+                    <button 
+                      className="pickup-icon-btn pickup-sync" 
+                      onClick={() => syncWithShiprocket(addr.id)} 
+                      title="Sync with Shiprocket"
+                      disabled={syncingId === addr.id}
+                    >
+                      {syncingId === addr.id ? (
+                        <div className="small-spinner"></div>
+                      ) : (
+                        <i className="bi bi-cloud-upload"></i>
+                      )}
+                    </button>
+                  )}
+                  <button 
+                    className="pickup-icon-btn pickup-delete" 
+                    onClick={() => setDeleteConfirm(addr.id)} 
+                    title="Delete"
+                    disabled={deletingId === addr.id}
+                  >
+                    {deletingId === addr.id ? (
+                      <div className="small-spinner"></div>
+                    ) : (
+                      <i className="bi bi-trash"></i>
+                    )}
                   </button>
                 </div>
               </div>
@@ -196,13 +316,13 @@ const VendorPickupAddresses = () => {
         </div>
       )}
 
-      {/* LARGE MODAL for Add/Edit */}
+      {/* Add/Edit Modal */}
       {modalOpen && (
-        <div className="pickup-modal-backdrop" onClick={closeModal}>
+        <div className="pickup-modal-backdrop" onClick={() => setModalOpen(false)}>
           <div className="pickup-modal-content pickup-large-modal" onClick={e => e.stopPropagation()}>
             <div className="pickup-modal-header">
-              <h5>{editingId ? "Edit Pickup Address" : "Add Pickup Address"}</h5>
-              <button className="pickup-close-modal" onClick={closeModal}>✕</button>
+              <h5>{editingAddress ? "Edit Pickup Address" : "Add Pickup Address"}</h5>
+              <button className="pickup-close-modal" onClick={() => setModalOpen(false)}>✕</button>
             </div>
             <form onSubmit={handleSubmit}>
               <div className="pickup-form-row-two">
@@ -216,7 +336,7 @@ const VendorPickupAddresses = () => {
                     placeholder="e.g., Main Warehouse, Mumbai Hub"
                     required
                   />
-                  <small>Must match a pickup location name in your Shiprocket account.</small>
+                  <small>This will be used as pickup location name in Shiprocket</small>
                 </div>
                 <div className="pickup-form-group">
                   <label>Pincode *</label>
@@ -256,11 +376,23 @@ const VendorPickupAddresses = () => {
               <div className="pickup-form-row">
                 <div className="pickup-form-group">
                   <label>City *</label>
-                  <input type="text" name="city" value={formData.city} onChange={handleChange} required />
+                  <input 
+                    type="text" 
+                    name="city" 
+                    value={formData.city} 
+                    onChange={handleChange} 
+                    required 
+                  />
                 </div>
                 <div className="pickup-form-group">
                   <label>State *</label>
-                  <input type="text" name="state" value={formData.state} onChange={handleChange} required />
+                  <input 
+                    type="text" 
+                    name="state" 
+                    value={formData.state} 
+                    onChange={handleChange} 
+                    required 
+                  />
                 </div>
               </div>
 
@@ -273,12 +405,13 @@ const VendorPickupAddresses = () => {
                   id="pickup_is_default"
                 />
                 <label htmlFor="pickup_is_default">Set as default pickup address</label>
+                <small>Default address will be used for all Shiprocket shipments</small>
               </div>
 
               <div className="pickup-modal-footer">
-                <button type="button" className="pickup-cancel-btn" onClick={closeModal}>Cancel</button>
+                <button type="button" className="pickup-cancel-btn" onClick={() => setModalOpen(false)}>Cancel</button>
                 <button type="submit" className="pickup-submit-btn" disabled={submitting}>
-                  {submitting ? "Saving..." : (editingId ? "Update" : "Add")}
+                  {submitting ? "Saving..." : (editingAddress ? "Update Address" : "Create Address")}
                 </button>
               </div>
             </form>
@@ -292,10 +425,12 @@ const VendorPickupAddresses = () => {
           <div className="pickup-confirm-modal" onClick={e => e.stopPropagation()}>
             <div className="pickup-confirm-icon">⚠️</div>
             <h5>Delete Address?</h5>
-            <p>Are you sure you want to delete this pickup address? This action cannot be undone.</p>
+            <p>Are you sure you want to delete this pickup address? This will also delete it from Shiprocket if synced.</p>
             <div className="pickup-confirm-actions">
               <button className="pickup-cancel-btn" onClick={() => setDeleteConfirm(null)}>Cancel</button>
-              <button className="pickup-delete-btn" onClick={deleteAddress}>Yes, Delete</button>
+              <button className="pickup-delete-btn" onClick={deleteAddress} disabled={deletingId === deleteConfirm}>
+                {deletingId === deleteConfirm ? "Deleting..." : "Yes, Delete"}
+              </button>
             </div>
           </div>
         </div>

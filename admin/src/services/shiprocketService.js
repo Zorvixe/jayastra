@@ -1,54 +1,61 @@
 // src/admin/services/shiprocketService.js
-import axios from 'axios';
 
 const API_URL = process.env.REACT_APP_API_URL;
 
-class ShiprocketService {
-  /**
-   * Get courier recommendation for an order (Admin use)
-   */
-  async getCourierRecommendation(deliveryPincode, amount, isCOD = false, weight = 0.5) {
+const shiprocketService = {
+  // Get courier recommendation
+  getCourierRecommendation: async (pincode, amount, isCOD, weight = 0.5) => {
     try {
-      const response = await axios.get(`${API_URL}/shiprocket/courier-recommendation`, {
-        params: {
-          delivery_pincode: deliveryPincode,
-          amount: amount,
-          is_cod: isCOD,
-          weight: weight
-        }
-      });
-      return response.data;
+      const response = await fetch(
+        `${API_URL}/shiprocket/courier-recommendation?delivery_pincode=${pincode}&amount=${amount}&is_cod=${isCOD}&weight=${weight}`
+      );
+      const data = await response.json();
+      return data;
     } catch (error) {
-      console.error("Failed to get courier recommendation:", error);
-      return { success: false, serviceable: false };
+      console.error("Courier recommendation error:", error);
+      return { success: false, serviceable: false, message: error.message };
+    }
+  },
+
+  // Check pincode serviceability
+  checkPincodeServiceability: async (pincode, weight = 0.5) => {
+    try {
+      const response = await fetch(
+        `${API_URL}/shiprocket/pincode/${pincode}?weight=${weight}`
+      );
+      const data = await response.json();
+      return data;
+    } catch (error) {
+      console.error("Pincode check error:", error);
+      return { success: false, serviceable: false, message: error.message };
+    }
+  },
+
+  // Track shipment by AWB
+  trackShipment: async (awb) => {
+    try {
+      const response = await fetch(`${API_URL}/shiprocket/track/${awb}`);
+      const data = await response.json();
+      return data;
+    } catch (error) {
+      console.error("Tracking error:", error);
+      return { success: false, message: error.message };
+    }
+  },
+
+  // Get shipping rates
+  getShippingRates: async (deliveryPincode, weight = 0.5, isCOD = false) => {
+    try {
+      const response = await fetch(
+        `${API_URL}/shiprocket/shipping-rates?delivery_pincode=${deliveryPincode}&weight=${weight}&cod=${isCOD}`
+      );
+      const data = await response.json();
+      return data;
+    } catch (error) {
+      console.error("Shipping rates error:", error);
+      return { success: false, rates: [], message: error.message };
     }
   }
+};
 
-  /**
-   * Check if pincode is serviceable
-   */
-  async isPincodeServiceable(pincode) {
-    try {
-      const response = await axios.get(`${API_URL}/shiprocket/pincode/${pincode}`);
-      return response.data;
-    } catch (error) {
-      console.error("Pincode check failed:", error);
-      return { success: false, serviceable: false };
-    }
-  }
-
-  /**
-   * Track shipment by AWB number
-   */
-  async trackShipment(awbCode) {
-    try {
-      const response = await axios.get(`${API_URL}/shiprocket/track/${awbCode}`);
-      return response.data;
-    } catch (error) {
-      console.error("Tracking failed:", error);
-      return { success: false };
-    }
-  }
-}
-
-export default new ShiprocketService();
+export default shiprocketService;

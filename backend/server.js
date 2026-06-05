@@ -568,9 +568,14 @@ const initDatabase = async () => {
         ON CONFLICT DO NOTHING
       `);
 
+    await pool.query(`
+    ALTER TABLE vendor_pickup_addresses 
+    ADD COLUMN IF NOT EXISTS shiprocket_pickup_id VARCHAR(100),
+    ADD COLUMN IF NOT EXISTS shiprocket_synced BOOLEAN DEFAULT false
+  `);
     // 2. addresses
     await pool.query(`
-      CREATE TABLE IF NOT EXISTS addresses (
+      CREATE TABLE IF NOT EXISTS addresses(
         id SERIAL PRIMARY KEY,
         user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
         name VARCHAR(255),
@@ -590,42 +595,42 @@ const initDatabase = async () => {
       ALTER TABLE addresses 
       ADD COLUMN IF NOT EXISTS house_no VARCHAR(255),
       ADD COLUMN IF NOT EXISTS street_area VARCHAR(255),
-      ADD COLUMN IF NOT EXISTS landmark VARCHAR(255);
+        ADD COLUMN IF NOT EXISTS landmark VARCHAR(255);
     `);
 
     // 3. categories
     await pool.query(`
-      CREATE TABLE IF NOT EXISTS categories (
-        id SERIAL PRIMARY KEY,
-        name VARCHAR(255) UNIQUE NOT NULL,
-        description TEXT,
-        image_url VARCHAR(500),
-        is_active BOOLEAN DEFAULT true,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-      )
-    `);
+      CREATE TABLE IF NOT EXISTS categories(
+      id SERIAL PRIMARY KEY,
+      name VARCHAR(255) UNIQUE NOT NULL,
+      description TEXT,
+      image_url VARCHAR(500),
+      is_active BOOLEAN DEFAULT true,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )
+      `);
     await pool.query(`
       ALTER TABLE categories 
       ADD COLUMN IF NOT EXISTS image_url VARCHAR(500),
       ADD COLUMN IF NOT EXISTS display_order INTEGER DEFAULT 0;
     `);
 
-    await pool.query(`ALTER TABLE categories ADD COLUMN IF NOT EXISTS slug VARCHAR(255) UNIQUE;`);
+    await pool.query(`ALTER TABLE categories ADD COLUMN IF NOT EXISTS slug VARCHAR(255) UNIQUE; `);
 
     // 4. sub_categories
     await pool.query(`
-      CREATE TABLE IF NOT EXISTS sub_categories (
-        id SERIAL PRIMARY KEY,
-        name VARCHAR(255) NOT NULL,
-        category_id INTEGER REFERENCES categories(id) ON DELETE CASCADE,
-        description TEXT,
-        is_active BOOLEAN DEFAULT true,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        UNIQUE(name, category_id)
-      )
-    `);
+      CREATE TABLE IF NOT EXISTS sub_categories(
+      id SERIAL PRIMARY KEY,
+      name VARCHAR(255) NOT NULL,
+      category_id INTEGER REFERENCES categories(id) ON DELETE CASCADE,
+      description TEXT,
+      is_active BOOLEAN DEFAULT true,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      UNIQUE(name, category_id)
+    )
+      `);
     await pool.query(`
       ALTER TABLE sub_categories 
       ADD COLUMN IF NOT EXISTS vendor_id INTEGER REFERENCES users(id) ON DELETE CASCADE;
@@ -636,44 +641,44 @@ const initDatabase = async () => {
       ALTER TABLE categories 
       ADD COLUMN IF NOT EXISTS show_in_navbar BOOLEAN DEFAULT true,
       ADD COLUMN IF NOT EXISTS nav_order INTEGER DEFAULT 0
-    `);
+        `);
 
     // 5. products
     await pool.query(`
-      CREATE TABLE IF NOT EXISTS products (
-        id SERIAL PRIMARY KEY,
-        name VARCHAR(255) NOT NULL,
-        description TEXT,
-        old_price DECIMAL(10,2),
-        price DECIMAL(10,2) NOT NULL,
-        category_id INTEGER REFERENCES categories(id) ON DELETE SET NULL,
-        sub_category_id INTEGER REFERENCES sub_categories(id) ON DELETE SET NULL,
-        main_image_url VARCHAR(500),
-        video_url VARCHAR(500),
-        sku VARCHAR(100) UNIQUE,
-        stock_quantity INTEGER DEFAULT 0,
-        is_featured BOOLEAN DEFAULT false,
-        is_active BOOLEAN DEFAULT true,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        vendor_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
-        platform_fee_percent DECIMAL(5,2) DEFAULT 10.00
-      )
-    `);
+      CREATE TABLE IF NOT EXISTS products(
+          id SERIAL PRIMARY KEY,
+          name VARCHAR(255) NOT NULL,
+          description TEXT,
+          old_price DECIMAL(10, 2),
+          price DECIMAL(10, 2) NOT NULL,
+          category_id INTEGER REFERENCES categories(id) ON DELETE SET NULL,
+          sub_category_id INTEGER REFERENCES sub_categories(id) ON DELETE SET NULL,
+          main_image_url VARCHAR(500),
+          video_url VARCHAR(500),
+          sku VARCHAR(100) UNIQUE,
+          stock_quantity INTEGER DEFAULT 0,
+          is_featured BOOLEAN DEFAULT false,
+          is_active BOOLEAN DEFAULT true,
+          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+          updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+          vendor_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+          platform_fee_percent DECIMAL(5, 2) DEFAULT 10.00
+        )
+      `);
     await pool.query(`
       ALTER TABLE products 
       ADD COLUMN IF NOT EXISTS video_url VARCHAR(500),
       ADD COLUMN IF NOT EXISTS color VARCHAR(50),
-      ADD COLUMN IF NOT EXISTS product_code VARCHAR(100) UNIQUE,
-      ADD COLUMN IF NOT EXISTS weight DECIMAL(10,2) DEFAULT 0.7,
-      ADD COLUMN IF NOT EXISTS length DECIMAL(10,2) DEFAULT 30,
-      ADD COLUMN IF NOT EXISTS width DECIMAL(10,2) DEFAULT 20,
-      ADD COLUMN IF NOT EXISTS height DECIMAL(10,2) DEFAULT 5,
-      ADD COLUMN IF NOT EXISTS vendor_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
-      ADD COLUMN IF NOT EXISTS platform_fee_percent DECIMAL(5,2) DEFAULT 10.00
+        ADD COLUMN IF NOT EXISTS product_code VARCHAR(100) UNIQUE,
+          ADD COLUMN IF NOT EXISTS weight DECIMAL(10, 2) DEFAULT 0.7,
+            ADD COLUMN IF NOT EXISTS length DECIMAL(10, 2) DEFAULT 30,
+              ADD COLUMN IF NOT EXISTS width DECIMAL(10, 2) DEFAULT 20,
+                ADD COLUMN IF NOT EXISTS height DECIMAL(10, 2) DEFAULT 5,
+                  ADD COLUMN IF NOT EXISTS vendor_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+                    ADD COLUMN IF NOT EXISTS platform_fee_percent DECIMAL(5, 2) DEFAULT 10.00
     `);
 
-    await pool.query(`CREATE EXTENSION IF NOT EXISTS "pgcrypto";`);
+    await pool.query(`CREATE EXTENSION IF NOT EXISTS "pgcrypto"; `);
     await pool.query(`
           ALTER TABLE products 
           ADD COLUMN IF NOT EXISTS uuid UUID DEFAULT gen_random_uuid() NOT NULL UNIQUE
@@ -683,18 +688,18 @@ const initDatabase = async () => {
 
     // 6. product_images
     await pool.query(`
-      CREATE TABLE IF NOT EXISTS product_images (
-        id SERIAL PRIMARY KEY,
-        product_id INTEGER REFERENCES products(id) ON DELETE CASCADE,
-        image_url VARCHAR(500) NOT NULL,
-        display_order INTEGER DEFAULT 0,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-      )
-    `);
+      CREATE TABLE IF NOT EXISTS product_images(
+                      id SERIAL PRIMARY KEY,
+                      product_id INTEGER REFERENCES products(id) ON DELETE CASCADE,
+                      image_url VARCHAR(500) NOT NULL,
+                      display_order INTEGER DEFAULT 0,
+                      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                    )
+      `);
 
     // 7. cart_items
     await pool.query(`
-      CREATE TABLE IF NOT EXISTS cart_items (
+      CREATE TABLE IF NOT EXISTS cart_items(
         id SERIAL PRIMARY KEY,
         user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
         product_id INTEGER REFERENCES products(id) ON DELETE CASCADE,
@@ -702,28 +707,28 @@ const initDatabase = async () => {
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         UNIQUE(user_id, product_id)
       )
-    `);
+      `);
 
     // 8. wishlist
     await pool.query(`
-      CREATE TABLE IF NOT EXISTS wishlist (
+      CREATE TABLE IF NOT EXISTS wishlist(
         id SERIAL PRIMARY KEY,
         user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
         product_id INTEGER REFERENCES products(id) ON DELETE CASCADE,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         UNIQUE(user_id, product_id)
       )
-    `);
+      `);
 
     // 9. coupons 
     await pool.query(`
-      CREATE TABLE IF NOT EXISTS coupons (
+      CREATE TABLE IF NOT EXISTS coupons(
         id SERIAL PRIMARY KEY,
         code VARCHAR(50) UNIQUE NOT NULL,
-        discount_type VARCHAR(20) CHECK (discount_type IN ('percentage','flat')),
-        discount_value DECIMAL(10,2) NOT NULL,
-        min_order_amount DECIMAL(10,2) DEFAULT 0,
-        max_discount DECIMAL(10,2),
+        discount_type VARCHAR(20) CHECK(discount_type IN('percentage', 'flat')),
+        discount_value DECIMAL(10, 2) NOT NULL,
+        min_order_amount DECIMAL(10, 2) DEFAULT 0,
+        max_discount DECIMAL(10, 2),
         usage_limit INTEGER DEFAULT 0,
         used_count INTEGER DEFAULT 0,
         expiry_date TIMESTAMP,
@@ -732,96 +737,96 @@ const initDatabase = async () => {
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );
     `);
-    await pool.query(`ALTER TABLE coupons ADD COLUMN IF NOT EXISTS is_hidden BOOLEAN DEFAULT false;`);
-    await pool.query(`ALTER TABLE coupons ADD COLUMN IF NOT EXISTS vendor_id INTEGER REFERENCES users(id) ON DELETE CASCADE;`);
+    await pool.query(`ALTER TABLE coupons ADD COLUMN IF NOT EXISTS is_hidden BOOLEAN DEFAULT false; `);
+    await pool.query(`ALTER TABLE coupons ADD COLUMN IF NOT EXISTS vendor_id INTEGER REFERENCES users(id) ON DELETE CASCADE; `);
 
     // 10. orders 
     await pool.query(`
-      CREATE TABLE IF NOT EXISTS orders (
-        id SERIAL PRIMARY KEY,
-        user_id INTEGER REFERENCES users(id),
-        customer_name VARCHAR(255) NOT NULL,
-        email VARCHAR(255),
-        phone VARCHAR(20) NOT NULL,
-        address TEXT NOT NULL,
-        total_amount DECIMAL(10,2) NOT NULL,
-        status VARCHAR(50) DEFAULT 'Pending',
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-      )
-    `);
+      CREATE TABLE IF NOT EXISTS orders(
+      id SERIAL PRIMARY KEY,
+      user_id INTEGER REFERENCES users(id),
+      customer_name VARCHAR(255) NOT NULL,
+      email VARCHAR(255),
+      phone VARCHAR(20) NOT NULL,
+      address TEXT NOT NULL,
+      total_amount DECIMAL(10, 2) NOT NULL,
+      status VARCHAR(50) DEFAULT 'Pending',
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )
+      `);
     await pool.query(`
       ALTER TABLE orders 
-      ADD COLUMN IF NOT EXISTS discount DECIMAL(10,2) DEFAULT 0,
+      ADD COLUMN IF NOT EXISTS discount DECIMAL(10, 2) DEFAULT 0,
       ADD COLUMN IF NOT EXISTS coupon_id INTEGER REFERENCES coupons(id),
-      ADD COLUMN IF NOT EXISTS payment_method VARCHAR(50) DEFAULT 'COD',
-      ADD COLUMN IF NOT EXISTS payment_status VARCHAR(50) DEFAULT 'Pending',
-      ADD COLUMN IF NOT EXISTS order_status VARCHAR(50) DEFAULT 'Placed',
-      ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-      ADD COLUMN IF NOT EXISTS shiprocket_order_id VARCHAR(100),
-      ADD COLUMN IF NOT EXISTS shiprocket_shipment_id VARCHAR(100),
-      ADD COLUMN IF NOT EXISTS awb_code VARCHAR(100),
-      ADD COLUMN IF NOT EXISTS house_no VARCHAR(255),
-      ADD COLUMN IF NOT EXISTS street_area VARCHAR(255),
-      ADD COLUMN IF NOT EXISTS landmark VARCHAR(255),
-      ADD COLUMN IF NOT EXISTS razorpay_order_id VARCHAR(255),
-      ADD COLUMN IF NOT EXISTS razorpay_payment_id VARCHAR(255),
-      ADD COLUMN IF NOT EXISTS city VARCHAR(100),
-      ADD COLUMN IF NOT EXISTS state VARCHAR(100),
-      ADD COLUMN IF NOT EXISTS pincode VARCHAR(10),
-      ADD COLUMN IF NOT EXISTS country VARCHAR(50) DEFAULT 'India';
+        ADD COLUMN IF NOT EXISTS payment_method VARCHAR(50) DEFAULT 'COD',
+          ADD COLUMN IF NOT EXISTS payment_status VARCHAR(50) DEFAULT 'Pending',
+            ADD COLUMN IF NOT EXISTS order_status VARCHAR(50) DEFAULT 'Placed',
+              ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                ADD COLUMN IF NOT EXISTS shiprocket_order_id VARCHAR(100),
+                  ADD COLUMN IF NOT EXISTS shiprocket_shipment_id VARCHAR(100),
+                    ADD COLUMN IF NOT EXISTS awb_code VARCHAR(100),
+                      ADD COLUMN IF NOT EXISTS house_no VARCHAR(255),
+                        ADD COLUMN IF NOT EXISTS street_area VARCHAR(255),
+                          ADD COLUMN IF NOT EXISTS landmark VARCHAR(255),
+                            ADD COLUMN IF NOT EXISTS razorpay_order_id VARCHAR(255),
+                              ADD COLUMN IF NOT EXISTS razorpay_payment_id VARCHAR(255),
+                                ADD COLUMN IF NOT EXISTS city VARCHAR(100),
+                                  ADD COLUMN IF NOT EXISTS state VARCHAR(100),
+                                    ADD COLUMN IF NOT EXISTS pincode VARCHAR(10),
+                                      ADD COLUMN IF NOT EXISTS country VARCHAR(50) DEFAULT 'India';
     `);
 
     // 11. order_items
     await pool.query(`
-      CREATE TABLE IF NOT EXISTS order_items (
-        id SERIAL PRIMARY KEY,
-        order_id INTEGER REFERENCES orders(id) ON DELETE CASCADE,
-        product_id INTEGER REFERENCES products(id),
-        quantity INTEGER NOT NULL,
-        price DECIMAL(10,2) NOT NULL,
-        vendor_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
-        vendor_earning DECIMAL(10,2) DEFAULT 0
-      )
-    `);
+      CREATE TABLE IF NOT EXISTS order_items(
+      id SERIAL PRIMARY KEY,
+      order_id INTEGER REFERENCES orders(id) ON DELETE CASCADE,
+      product_id INTEGER REFERENCES products(id),
+      quantity INTEGER NOT NULL,
+      price DECIMAL(10, 2) NOT NULL,
+      vendor_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+      vendor_earning DECIMAL(10, 2) DEFAULT 0
+    )
+      `);
     await pool.query(`
       ALTER TABLE order_items 
       ADD COLUMN IF NOT EXISTS vendor_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
-      ADD COLUMN IF NOT EXISTS vendor_earning DECIMAL(10,2) DEFAULT 0;
+      ADD COLUMN IF NOT EXISTS vendor_earning DECIMAL(10, 2) DEFAULT 0;
     `);
 
     // PAYOUTS
     await pool.query(`
-      CREATE TABLE IF NOT EXISTS payouts (
-        id SERIAL PRIMARY KEY,
-        vendor_id INTEGER REFERENCES users(id),
-        amount DECIMAL(10,2) NOT NULL,
-        status VARCHAR(50) DEFAULT 'Pending',
-        bank_details TEXT,
-        requested_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        processed_at TIMESTAMP
-      );
+      CREATE TABLE IF NOT EXISTS payouts(
+      id SERIAL PRIMARY KEY,
+      vendor_id INTEGER REFERENCES users(id),
+      amount DECIMAL(10, 2) NOT NULL,
+      status VARCHAR(50) DEFAULT 'Pending',
+      bank_details TEXT,
+      requested_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      processed_at TIMESTAMP
+    );
     `);
 
     await pool.query(`
       ALTER TABLE payouts 
       ADD COLUMN IF NOT EXISTS rejection_reason TEXT,
       ADD COLUMN IF NOT EXISTS cancellation_reason TEXT,
-      ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-    `);
+        ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+          `);
 
     // 12. inventory
     await pool.query(`
-      CREATE TABLE IF NOT EXISTS inventory (
-        id SERIAL PRIMARY KEY,
-        product_id INTEGER REFERENCES products(id) ON DELETE CASCADE,
-        stock_quantity INTEGER DEFAULT 0,
-        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-      )
-    `);
+      CREATE TABLE IF NOT EXISTS inventory(
+            id SERIAL PRIMARY KEY,
+            product_id INTEGER REFERENCES products(id) ON DELETE CASCADE,
+            stock_quantity INTEGER DEFAULT 0,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+          )
+      `);
 
     // 13. banners
     await pool.query(`
-      CREATE TABLE IF NOT EXISTS banners (
+      CREATE TABLE IF NOT EXISTS banners(
         id SERIAL PRIMARY KEY,
         title VARCHAR(255),
         image_url VARCHAR(500),
@@ -830,64 +835,64 @@ const initDatabase = async () => {
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       )
     `);
-    await pool.query(`ALTER TABLE banners ADD COLUMN IF NOT EXISTS position INTEGER DEFAULT 0;`);
-    await pool.query(`ALTER TABLE banners ALTER COLUMN image_url DROP NOT NULL;`);
-    await pool.query(`ALTER TABLE banners ADD COLUMN IF NOT EXISTS subtitle VARCHAR(255);`);
-    await pool.query(`ALTER TABLE banners ADD COLUMN IF NOT EXISTS button_text VARCHAR(255);`);
-    await pool.query(`ALTER TABLE banners ADD COLUMN IF NOT EXISTS video_url VARCHAR(500);`);
-    await pool.query(`ALTER TABLE banners ADD COLUMN IF NOT EXISTS type VARCHAR(50) DEFAULT 'hero';`);
-    await pool.query(`ALTER TABLE banners ADD COLUMN IF NOT EXISTS category_id INTEGER REFERENCES categories(id) ON DELETE SET NULL;`);
-    await pool.query(`ALTER TABLE banners ADD COLUMN IF NOT EXISTS vendor_id INTEGER REFERENCES users(id) ON DELETE CASCADE;`);
+    await pool.query(`ALTER TABLE banners ADD COLUMN IF NOT EXISTS position INTEGER DEFAULT 0; `);
+    await pool.query(`ALTER TABLE banners ALTER COLUMN image_url DROP NOT NULL; `);
+    await pool.query(`ALTER TABLE banners ADD COLUMN IF NOT EXISTS subtitle VARCHAR(255); `);
+    await pool.query(`ALTER TABLE banners ADD COLUMN IF NOT EXISTS button_text VARCHAR(255); `);
+    await pool.query(`ALTER TABLE banners ADD COLUMN IF NOT EXISTS video_url VARCHAR(500); `);
+    await pool.query(`ALTER TABLE banners ADD COLUMN IF NOT EXISTS type VARCHAR(50) DEFAULT 'hero'; `);
+    await pool.query(`ALTER TABLE banners ADD COLUMN IF NOT EXISTS category_id INTEGER REFERENCES categories(id) ON DELETE SET NULL; `);
+    await pool.query(`ALTER TABLE banners ADD COLUMN IF NOT EXISTS vendor_id INTEGER REFERENCES users(id) ON DELETE CASCADE; `);
 
     // 14. reviews
     await pool.query(`
-      CREATE TABLE IF NOT EXISTS reviews (
+      CREATE TABLE IF NOT EXISTS reviews(
         id SERIAL PRIMARY KEY,
         product_id INTEGER REFERENCES products(id) ON DELETE CASCADE,
         user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
-        rating INTEGER CHECK (rating >= 1 AND rating <= 5),
+        rating INTEGER CHECK(rating >= 1 AND rating <= 5),
         comment TEXT,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       )
-    `);
+      `);
     await pool.query(`
       ALTER TABLE reviews 
       ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
       ADD COLUMN IF NOT EXISTS images TEXT[],
-      ADD COLUMN IF NOT EXISTS status VARCHAR(20) DEFAULT 'approved';
+        ADD COLUMN IF NOT EXISTS status VARCHAR(20) DEFAULT 'approved';
     `);
     await pool.query(`
       ALTER TABLE reviews 
       DROP CONSTRAINT IF EXISTS unique_user_product_review,
-      ADD CONSTRAINT unique_user_product_review UNIQUE (user_id, product_id)
-    `);
+      ADD CONSTRAINT unique_user_product_review UNIQUE(user_id, product_id)
+        `);
 
     // 15. returns
     await pool.query(`
-      CREATE TABLE IF NOT EXISTS returns (
-        id SERIAL PRIMARY KEY,
-        order_id INTEGER REFERENCES orders(id) ON DELETE CASCADE,
-        user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
-        video_url VARCHAR(500) NOT NULL,
-        reason TEXT,
-        status VARCHAR(50) DEFAULT 'Pending',
-        admin_comment TEXT,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-      )
-    `);
+      CREATE TABLE IF NOT EXISTS returns(
+          id SERIAL PRIMARY KEY,
+          order_id INTEGER REFERENCES orders(id) ON DELETE CASCADE,
+          user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+          video_url VARCHAR(500) NOT NULL,
+          reason TEXT,
+          status VARCHAR(50) DEFAULT 'Pending',
+          admin_comment TEXT,
+          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+          updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+      `);
 
     // 16. menus & menu_items
     await pool.query(`
-      CREATE TABLE IF NOT EXISTS menus (
+      CREATE TABLE IF NOT EXISTS menus(
         id SERIAL PRIMARY KEY,
         name VARCHAR(255) NOT NULL,
         slug VARCHAR(255) UNIQUE NOT NULL,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       )
-    `);
+      `);
     await pool.query(`
-      CREATE TABLE IF NOT EXISTS menu_items (
+      CREATE TABLE IF NOT EXISTS menu_items(
         id SERIAL PRIMARY KEY,
         menu_id INTEGER REFERENCES menus(id) ON DELETE CASCADE,
         title VARCHAR(255) NOT NULL,
@@ -897,11 +902,11 @@ const initDatabase = async () => {
         is_active BOOLEAN DEFAULT true,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       )
-    `);
+      `);
 
     // 17. stock_notifications
     await pool.query(`
-      CREATE TABLE IF NOT EXISTS stock_notifications (
+      CREATE TABLE IF NOT EXISTS stock_notifications(
         id SERIAL PRIMARY KEY,
         user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
         product_id INTEGER REFERENCES products(id) ON DELETE CASCADE,
@@ -911,101 +916,101 @@ const initDatabase = async () => {
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         UNIQUE(user_id, product_id, email, phone)
       )
-    `);
+      `);
     await pool.query(`
-      DO $$ 
-      BEGIN 
-        IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='stock_notifications' AND column_name='customer_name') THEN
+      DO $$
+    BEGIN 
+        IF NOT EXISTS(SELECT 1 FROM information_schema.columns WHERE table_name = 'stock_notifications' AND column_name = 'customer_name') THEN
           ALTER TABLE stock_notifications ADD COLUMN customer_name VARCHAR(255);
         END IF;
       END $$;
     `);
-    await pool.query(`ALTER TABLE stock_notifications ADD COLUMN IF NOT EXISTS vendor_id INTEGER REFERENCES users(id);`);
+    await pool.query(`ALTER TABLE stock_notifications ADD COLUMN IF NOT EXISTS vendor_id INTEGER REFERENCES users(id); `);
 
 
     await pool.query(`
-      CREATE TABLE IF NOT EXISTS wallet_transactions (
+      CREATE TABLE IF NOT EXISTS wallet_transactions(
+      id SERIAL PRIMARY KEY,
+      vendor_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+      transaction_type VARCHAR(50) NOT NULL, -- 'credit', 'debit'
+        amount DECIMAL(10, 2) NOT NULL,
+      status VARCHAR(50) DEFAULT 'completed',
+      description TEXT,
+      order_id INTEGER REFERENCES orders(id),
+      payout_id INTEGER REFERENCES payouts(id),
+      platform_fee DECIMAL(10, 2) DEFAULT 0,
+      coupon_discount_applied DECIMAL(10, 2) DEFAULT 0,
+      original_amount DECIMAL(10, 2),
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )
+      `);
+
+
+    // Add PIN verification table for users
+    // Add PIN verification table for users
+    await pool.query(`
+  CREATE TABLE IF NOT EXISTS user_pins(
         id SERIAL PRIMARY KEY,
-        vendor_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
-        transaction_type VARCHAR(50) NOT NULL, -- 'credit', 'debit'
-        amount DECIMAL(10,2) NOT NULL,
-        status VARCHAR(50) DEFAULT 'completed',
-        description TEXT,
-        order_id INTEGER REFERENCES orders(id),
-        payout_id INTEGER REFERENCES payouts(id),
-        platform_fee DECIMAL(10,2) DEFAULT 0,
-        coupon_discount_applied DECIMAL(10,2) DEFAULT 0,
-        original_amount DECIMAL(10,2),
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+        pin_hash TEXT NOT NULL,
+        is_active BOOLEAN DEFAULT true,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE(user_id)
       )
-    `);
-
-
-    // Add PIN verification table for users
-    // Add PIN verification table for users
-    await pool.query(`
-  CREATE TABLE IF NOT EXISTS user_pins (
-    id SERIAL PRIMARY KEY,
-    user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
-    pin_hash TEXT NOT NULL,
-    is_active BOOLEAN DEFAULT true,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    UNIQUE(user_id)
-  )
-`);
+      `);
 
     // Add PIN login attempts tracking for security
     await pool.query(`
-  CREATE TABLE IF NOT EXISTS pin_login_attempts (
-    id SERIAL PRIMARY KEY,
-    user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
-    attempt_count INTEGER DEFAULT 0,
-    locked_until TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    UNIQUE(user_id)
-  )
-`);
+  CREATE TABLE IF NOT EXISTS pin_login_attempts(
+        id SERIAL PRIMARY KEY,
+        user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+        attempt_count INTEGER DEFAULT 0,
+        locked_until TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE(user_id)
+      )
+      `);
 
     // Add this inside your initDatabase() function, after existing settings insertion
 
     // Add Shiprocket settings if not exists
     await pool.query(`
-  INSERT INTO settings (key, value)
-  VALUES 
-    ('shiprocket_email', ''),
-    ('shiprocket_password', ''),
-    ('shiprocket_pickup_pincode', ''),
-    ('shiprocket_webhook_secret', '')
-  ON CONFLICT (key) DO NOTHING
-`);
+  INSERT INTO settings(key, value)
+    VALUES
+      ('shiprocket_email', ''),
+      ('shiprocket_password', ''),
+      ('shiprocket_pickup_pincode', ''),
+      ('shiprocket_webhook_secret', '')
+  ON CONFLICT(key) DO NOTHING
+      `);
 
 
 
     // SETTINGS TABLE
     await pool.query(`
-          CREATE TABLE IF NOT EXISTS settings (
-            id SERIAL PRIMARY KEY,
-            key VARCHAR(100) UNIQUE NOT NULL,
-            value TEXT NOT NULL,
-            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-          )
-        `);
+          CREATE TABLE IF NOT EXISTS settings(
+        id SERIAL PRIMARY KEY,
+        key VARCHAR(100) UNIQUE NOT NULL,
+        value TEXT NOT NULL,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+      `);
 
     await pool.query(`
-        INSERT INTO settings (key, value)
-        VALUES ('platform_fee_percent', '10.00')
-        ON CONFLICT (key) DO NOTHING
+        INSERT INTO settings(key, value)
+    VALUES('platform_fee_percent', '10.00')
+        ON CONFLICT(key) DO NOTHING
       `);
 
     // In initDatabase() function, add these settings if not exists
     await pool.query(`
-      INSERT INTO settings (key, value)
-      VALUES 
-        ('razorpay_key_id', ''),
-        ('razorpay_key_secret', '')
-      ON CONFLICT (key) DO NOTHING
-    `);
+      INSERT INTO settings(key, value)
+    VALUES
+      ('razorpay_key_id', ''),
+      ('razorpay_key_secret', '')
+      ON CONFLICT(key) DO NOTHING
+      `);
 
     const defaultSettings = [
       { key: 'online_payment_discount', value: '0' },
@@ -1014,9 +1019,9 @@ const initDatabase = async () => {
 
     for (const setting of defaultSettings) {
       await pool.query(`
-        INSERT INTO settings (key, value)
-        VALUES ($1, $2)
-        ON CONFLICT (key) DO NOTHING
+        INSERT INTO settings(key, value)
+    VALUES($1, $2)
+        ON CONFLICT(key) DO NOTHING
       `, [setting.key, setting.value]);
     }
 
@@ -1037,8 +1042,8 @@ const initDatabase = async () => {
     } else {
       const hashedPassword = await bcrypt.hash(defaultAdminPassword, 10);
       await pool.query(`
-        INSERT INTO users (name, email, password, role, status) 
-        VALUES ($1, $2, $3, $4, $5)
+        INSERT INTO users(name, email, password, role, status)
+    VALUES($1, $2, $3, $4, $5)
       `, ["Super Admin", adminEmail, hashedPassword, "super_admin", "Active"]);
     }
 
@@ -1124,12 +1129,12 @@ app.post("/api/auth/register", async (req, res) => {
     let conditions = [];
 
     if (email) {
-      conditions.push(` LOWER(email) = $${existingParams.length + 1}`);
+      conditions.push(` LOWER(email) = $${existingParams.length + 1} `);
       existingParams.push(email.toLowerCase());
     }
     if (phone) {
       if (conditions.length > 0) existingUserQuery += " OR";
-      conditions.push(` phone = $${existingParams.length + 1}`);
+      conditions.push(` phone = $${existingParams.length + 1} `);
       existingParams.push(phone);
     }
 
@@ -1157,8 +1162,8 @@ app.post("/api/auth/register", async (req, res) => {
 
     // Insert user
     const newUser = await client.query(
-      `INSERT INTO users (name, email, password, phone, first_name, last_name, status, role, created_at) 
-       VALUES ($1, $2, $3, $4, $5, $6, 'Active', 'user', NOW()) 
+      `INSERT INTO users(name, email, password, phone, first_name, last_name, status, role, created_at)
+    VALUES($1, $2, $3, $4, $5, $6, 'Active', 'user', NOW()) 
        RETURNING id, name, email, phone, first_name, last_name, role, status`,
       [name, email || null, hashedPassword, phone || null, first_name, last_name]
     );
@@ -1170,8 +1175,8 @@ app.post("/api/auth/register", async (req, res) => {
     if (setPin && pin) {
       const hashedPin = await bcrypt.hash(pin, 10);
       await client.query(
-        `INSERT INTO user_pins (user_id, pin_hash, is_active, created_at) 
-         VALUES ($1, $2, true, NOW())`,
+        `INSERT INTO user_pins(user_id, pin_hash, is_active, created_at)
+    VALUES($1, $2, true, NOW())`,
         [userId, hashedPin]
       );
       pinSet = true;
@@ -1194,14 +1199,14 @@ app.post("/api/auth/register", async (req, res) => {
           from: process.env.FROM_EMAIL,
           subject: "Welcome to Jayastra Store!",
           html: `
-            <div style="font-family: Arial, sans-serif; padding: 20px;">
+      < div style = "font-family: Arial, sans-serif; padding: 20px;" >
               <h2 style="color: #8E2139;">Welcome ${name}!</h2>
               <p>Thank you for registering with Jayastra Store.</p>
               ${pinSet ? '<p>Your PIN has been set up successfully for quick login.</p>' : ''}
               <p>Start shopping and enjoy exclusive offers!</p>
               <a href="${process.env.FRONTEND_URL}" style="background: #8E2139; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;">Shop Now</a>
-            </div>
-          `,
+            </div >
+  `,
         };
         await sgMail.send(msg);
       } catch (emailErr) {
@@ -1279,9 +1284,9 @@ app.post("/api/auth/simple-login", async (req, res) => {
       const last_name = rest.join(" ");
 
       const newUserRes = await pool.query(
-        `INSERT INTO users (name, phone, first_name, last_name, role, status) 
-         VALUES ($1, $2, $3, $4, 'user', 'Active') 
-         RETURNING *`,
+        `INSERT INTO users(name, phone, first_name, last_name, role, status)
+VALUES($1, $2, $3, $4, 'user', 'Active')
+RETURNING * `,
         [name, cleanPhone, first_name, last_name]
       );
 
@@ -1320,7 +1325,7 @@ app.post("/api/auth/simple-login", async (req, res) => {
         const minutesLeft = Math.ceil((new Date(attempts.locked_until) - new Date()) / (1000 * 60));
         return res.status(429).json({
           success: false,
-          message: `Too many failed attempts. Login with Credentials.`,
+          message: `Too many failed attempts.Login with Credentials.`,
           locked: true,
           minutesLeft
         });
@@ -1375,7 +1380,7 @@ app.post("/api/auth/simple-login", async (req, res) => {
           }
         } else {
           await pool.query(
-            `INSERT INTO pin_login_attempts (user_id, attempt_count) VALUES ($1, $2)`,
+            `INSERT INTO pin_login_attempts(user_id, attempt_count) VALUES($1, $2)`,
             [user.id, 1]
           );
         }
@@ -1500,7 +1505,7 @@ app.post("/api/auth/login", async (req, res) => {
         const minutesLeft = Math.ceil((new Date(attempts.locked_until) - new Date()) / (1000 * 60));
         return res.status(429).json({
           success: false,
-          message: `Too many failed attempts. Login with Credentials.`,
+          message: `Too many failed attempts.Login with Credentials.`,
           locked: true,
           minutesLeft
         });
@@ -1557,7 +1562,7 @@ app.post("/api/auth/login", async (req, res) => {
           }
         } else {
           await pool.query(
-            `INSERT INTO pin_login_attempts (user_id, attempt_count) VALUES ($1, $2)`,
+            `INSERT INTO pin_login_attempts(user_id, attempt_count) VALUES($1, $2)`,
             [user.id, 1]
           );
         }
@@ -1696,9 +1701,9 @@ app.post("/api/auth/google-login", async (req, res) => {
     if (user.rows.length === 0) {
       // Create new user
       const newUser = await pool.query(
-        `INSERT INTO users (name, email, password, first_name, last_name, role, status, provider, created_at) 
-         VALUES ($1, $2, $3, $4, $5, 'user', 'Active', 'google', NOW()) 
-         RETURNING *`,
+        `INSERT INTO users(name, email, password, first_name, last_name, role, status, provider, created_at)
+VALUES($1, $2, $3, $4, $5, 'user', 'Active', 'google', NOW())
+RETURNING * `,
         [name || "User", email.toLowerCase(), "google_auth", first_name, last_name]
       );
       user = newUser;
@@ -1736,8 +1741,8 @@ app.post("/api/auth/google-login", async (req, res) => {
         );
       } else {
         await pool.query(
-          `INSERT INTO user_pins (user_id, pin_hash, is_active, created_at) 
-           VALUES ($1, $2, true, NOW())`,
+          `INSERT INTO user_pins(user_id, pin_hash, is_active, created_at)
+VALUES($1, $2, true, NOW())`,
           [userId, hashedPin]
         );
       }
@@ -1791,8 +1796,8 @@ app.get("/api/admin/wishlist", verifyToken, verifyAnyAdmin, async (req, res) => 
       FROM wishlist w
       JOIN users u ON w.user_id = u.id
       JOIN products p ON w.product_id = p.id
-      WHERE 1=1
-    `;
+      WHERE 1 = 1
+  `;
     let params = [];
     if (req.user.role !== 'super_admin') {
       query += ` AND p.vendor_id = $1`;
@@ -1821,13 +1826,13 @@ app.delete("/api/admin/wishlist/:id", verifyToken, verifyAnyAdmin, async (req, r
 app.get("/api/user/profile", verifyToken, async (req, res) => {
   try {
     const user = await pool.query(
-      `SELECT 
-        id, first_name, last_name, email, phone, gender, 
-        address, city, state, pincode, balance, 
-        store_name, gst_number,
-        pickup_address_line1, pickup_address_line2, 
-        pickup_city, pickup_state, pickup_pincode, 
-        pickup_location_name
+      `SELECT
+id, first_name, last_name, email, phone, gender,
+  address, city, state, pincode, balance,
+  store_name, gst_number,
+  pickup_address_line1, pickup_address_line2,
+  pickup_city, pickup_state, pickup_pincode,
+  pickup_location_name
       FROM users 
       WHERE id = $1`,
       [req.user.id]
@@ -1846,9 +1851,9 @@ app.get("/api/user/profile", verifyToken, async (req, res) => {
 
 app.put("/api/user/profile", verifyToken, async (req, res) => {
   const { first_name, last_name, gender, address, city, state, pincode } = req.body;
-  const fullName = `${first_name} ${last_name}`.trim();
+  const fullName = `${first_name} ${last_name} `.trim();
   const result = await pool.query(
-    `UPDATE users SET first_name=$1, last_name=$2, name=$3, gender=$4, address=$5, city=$6, state=$7, pincode=$8 WHERE id=$9 RETURNING *`,
+    `UPDATE users SET first_name = $1, last_name = $2, name = $3, gender = $4, address = $5, city = $6, state = $7, pincode = $8 WHERE id = $9 RETURNING * `,
     [first_name, last_name, fullName || "User", gender, address, city, state, pincode, req.user.id]
   );
   res.json(result.rows[0]);
@@ -1859,11 +1864,11 @@ app.post("/api/user/address", verifyToken, async (req, res) => {
     const { name, phone, address, city, state, pincode, type } = req.body;
     let finalAddress = address;
     if (!finalAddress && req.body.house_no && req.body.street_area) {
-      finalAddress = `${req.body.house_no}, ${req.body.street_area}`;
+      finalAddress = `${req.body.house_no}, ${req.body.street_area} `;
     }
     if (!name || !phone || !finalAddress) return res.status(400).json({ message: "Required fields missing" });
     const result = await pool.query(
-      `INSERT INTO addresses (user_id, name, phone, address, city, state, pincode, type, house_no, street_area, landmark) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11) RETURNING *`,
+      `INSERT INTO addresses(user_id, name, phone, address, city, state, pincode, type, house_no, street_area, landmark) VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11) RETURNING * `,
       [req.user.id, name, phone, finalAddress, city, state, pincode, type || "HOME", req.body.house_no || "", req.body.street_area || "", req.body.landmark || ""]
     );
     res.json({ success: true, message: "Address saved successfully", address: result.rows[0] });
@@ -1886,10 +1891,10 @@ app.put("/api/user/address/:id", verifyToken, async (req, res) => {
     const { id } = req.params;
     const { name, phone, address, city, state, pincode, type } = req.body;
     let finalAddress = address;
-    if (!finalAddress && req.body.house_no && req.body.street_area) finalAddress = `${req.body.house_no}, ${req.body.street_area}`;
+    if (!finalAddress && req.body.house_no && req.body.street_area) finalAddress = `${req.body.house_no}, ${req.body.street_area} `;
     if (!name || !phone || !finalAddress) return res.status(400).json({ message: "Required fields missing" });
     const result = await pool.query(
-      `UPDATE addresses SET name=$1, phone=$2, address=$3, city=$4, state=$5, pincode=$6, type=$7, house_no=$8, street_area=$9, landmark=$10 WHERE id=$11 AND user_id=$12 RETURNING *`,
+      `UPDATE addresses SET name = $1, phone = $2, address = $3, city = $4, state = $5, pincode = $6, type = $7, house_no = $8, street_area = $9, landmark = $10 WHERE id = $11 AND user_id = $12 RETURNING * `,
       [name, phone, finalAddress, city, state, pincode, type || "HOME", req.body.house_no || "", req.body.street_area || "", req.body.landmark || "", id, req.user.id]
     );
     res.json(result.rows[0]);
@@ -1938,7 +1943,7 @@ app.put("/api/user/profile/all", verifyToken, async (req, res) => {
 
     const addField = (field, value) => {
       if (value !== undefined) {
-        updates.push(`${field} = $${paramCount++}`);
+        updates.push(`${field} = $${paramCount++} `);
         values.push(value);
       }
     };
@@ -1967,7 +1972,7 @@ app.put("/api/user/profile/all", verifyToken, async (req, res) => {
       );
       const newFirstName = first_name || currentUser.rows[0].first_name;
       const newLastName = last_name || currentUser.rows[0].last_name;
-      const fullName = `${newFirstName} ${newLastName}`.trim();
+      const fullName = `${newFirstName} ${newLastName} `.trim();
       addField('name', fullName);
     }
 
@@ -1981,9 +1986,9 @@ app.put("/api/user/profile/all", verifyToken, async (req, res) => {
     const query = `
       UPDATE users 
       SET ${updates.join(", ")} 
-      WHERE id = $${paramCount} 
-      RETURNING *
-    `;
+      WHERE id = $${paramCount}
+RETURNING *
+  `;
 
     const result = await pool.query(query, values);
 
@@ -2003,63 +2008,37 @@ app.put("/api/user/profile/all", verifyToken, async (req, res) => {
 });
 
 // ================= VENDOR PICKUP ADDRESS =================
-app.get("/api/vendor/pickup-address", verifyToken, async (req, res) => {
-  try {
-    const user = await pool.query(
-      `SELECT pickup_address_line1, pickup_address_line2, pickup_city, pickup_state, pickup_pincode, pickup_location_name 
-       FROM users WHERE id = $1`,
-      [req.user.id]
-    );
-    const address = user.rows[0] || {};
-    res.json({ success: true, address });
-  } catch (error) {
-    res.status(500).json({ success: false, message: "Failed to fetch pickup address" });
-  }
-});
+// ================= VENDOR PICKUP ADDRESSES (COMPLETE) =================
 
-app.put("/api/vendor/pickup-address", verifyToken, async (req, res) => {
-  try {
-    const {
-      pickup_address_line1,
-      pickup_address_line2,
-      pickup_city,
-      pickup_state,
-      pickup_pincode,
-      pickup_location_name
-    } = req.body;
-    await pool.query(
-      `UPDATE users SET 
-        pickup_address_line1 = $1,
-        pickup_address_line2 = $2,
-        pickup_city = $3,
-        pickup_state = $4,
-        pickup_pincode = $5,
-        pickup_location_name = $6
-       WHERE id = $7`,
-      [pickup_address_line1, pickup_address_line2, pickup_city, pickup_state, pickup_pincode, pickup_location_name, req.user.id]
-    );
-    res.json({ success: true, message: "Pickup address updated" });
-  } catch (error) {
-    res.status(500).json({ success: false, message: "Update failed" });
-  }
-});
-
+// Get all pickup addresses for the vendor
 app.get("/api/vendor/pickup-addresses", verifyToken, async (req, res) => {
   try {
     const result = await pool.query(
-      `SELECT * FROM vendor_pickup_addresses WHERE vendor_id = $1 ORDER BY is_default DESC, created_at DESC`,
+      `SELECT * FROM vendor_pickup_addresses 
+       WHERE vendor_id = $1 
+       ORDER BY is_default DESC, created_at DESC`,
       [req.user.id]
     );
     res.json({ success: true, addresses: result.rows });
   } catch (error) {
+    console.error("Fetch addresses error:", error);
     res.status(500).json({ success: false, message: "Failed to fetch addresses" });
   }
 });
 
+// Create pickup address and sync with Shiprocket
 app.post("/api/vendor/pickup-addresses", verifyToken, async (req, res) => {
   const client = await pool.connect();
   try {
     const { location_name, address_line1, address_line2, city, state, pincode, is_default } = req.body;
+    
+    if (!location_name || !address_line1 || !city || !state || !pincode) {
+      return res.status(400).json({ 
+        success: false, 
+        message: "Missing required fields" 
+      });
+    }
+
     await client.query("BEGIN");
 
     if (is_default) {
@@ -2070,36 +2049,104 @@ app.post("/api/vendor/pickup-addresses", verifyToken, async (req, res) => {
     }
 
     const result = await client.query(
-      `INSERT INTO vendor_pickup_addresses 
+      `INSERT INTO vendor_pickup_addresses
         (vendor_id, location_name, address_line1, address_line2, city, state, pincode, is_default)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+       VALUES($1, $2, $3, $4, $5, $6, $7, $8)
        RETURNING *`,
-      [req.user.id, location_name, address_line1, address_line2, city, state, pincode, is_default || false]
+      [req.user.id, location_name, address_line1, address_line2 || null, city, state, pincode, is_default || false]
     );
-
+    
+    const newAddress = result.rows[0];
+    
+    // Sync with Shiprocket
+    let shiprocketPickupId = null;
+    let shiprocketError = null;
+    
+    try {
+      const token = await authenticateShiprocket();
+      
+      const payload = {
+        pickup_location: location_name,
+        name: location_name,
+        email: req.user.email || "jayastrastore@gmail.com",
+        phone: req.user.phone || "9652896180",
+        address: address_line1,
+        address_2: address_line2 || "",
+        city: city,
+        state: state,
+        pincode: pincode,
+        country: "India"
+      };
+      
+      const response = await fetch("https://apiv2.shiprocket.in/v1/external/settings/company/pickup", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`
+        },
+        body: JSON.stringify(payload)
+      });
+      
+      const shiprocketResult = await response.json();
+      
+      if (response.ok && (shiprocketResult.success || shiprocketResult.data)) {
+        shiprocketPickupId = shiprocketResult.data?.id || shiprocketResult.data?.pickup_location_id;
+        
+        if (shiprocketPickupId) {
+          await client.query(
+            `UPDATE vendor_pickup_addresses 
+             SET shiprocket_pickup_id = $1, shiprocket_synced = true, updated_at = NOW() 
+             WHERE id = $2`,
+            [shiprocketPickupId.toString(), newAddress.id]
+          );
+          newAddress.shiprocket_pickup_id = shiprocketPickupId;
+          newAddress.shiprocket_synced = true;
+        }
+      } else {
+        shiprocketError = shiprocketResult.message || "Failed to create in Shiprocket";
+      }
+    } catch (err) {
+      shiprocketError = err.message;
+    }
+    
     await client.query("COMMIT");
-    res.json({ success: true, address: result.rows[0] });
+    
+    res.json({ 
+      success: true, 
+      address: newAddress,
+      shiprocket_synced: !!shiprocketPickupId,
+      shiprocket_pickup_id: shiprocketPickupId,
+      shiprocket_error: shiprocketError || null,
+      message: shiprocketPickupId ? "Address created and synced with Shiprocket!" : "Address created but Shiprocket sync failed."
+    });
+    
   } catch (error) {
     await client.query("ROLLBACK");
-    res.status(500).json({ success: false, message: "Failed to create address" });
+    console.error("Create address error:", error);
+    res.status(500).json({ success: false, message: error.message });
   } finally {
     client.release();
   }
 });
 
+// Update pickup address and sync with Shiprocket
 app.put("/api/vendor/pickup-addresses/:id", verifyToken, async (req, res) => {
   const client = await pool.connect();
   try {
     const { id } = req.params;
     const { location_name, address_line1, address_line2, city, state, pincode, is_default } = req.body;
 
+    // Check ownership
     const check = await client.query(
-      `SELECT id FROM vendor_pickup_addresses WHERE id = $1 AND vendor_id = $2`,
+      `SELECT id, shiprocket_pickup_id FROM vendor_pickup_addresses WHERE id = $1 AND vendor_id = $2`,
       [id, req.user.id]
     );
     if (check.rows.length === 0) {
       return res.status(403).json({ success: false, message: "Unauthorized" });
     }
+
+    const oldAddress = check.rows[0];
+    const hasShiprocketId = oldAddress.shiprocket_pickup_id;
 
     await client.query("BEGIN");
 
@@ -2122,37 +2169,129 @@ app.put("/api/vendor/pickup-addresses/:id", verifyToken, async (req, res) => {
          updated_at = NOW()
        WHERE id = $8 AND vendor_id = $9
        RETURNING *`,
-      [location_name, address_line1, address_line2, city, state, pincode, is_default, id, req.user.id]
+      [location_name, address_line1, address_line2 || null, city, state, pincode, is_default || false, id, req.user.id]
     );
-
+    
+    const updatedAddress = result.rows[0];
+    let shiprocketUpdated = false;
+    let shiprocketError = null;
+    
+    // Update in Shiprocket if it has an ID
+    if (hasShiprocketId) {
+      try {
+        const token = await authenticateShiprocket();
+        
+        const payload = {
+          pickup_location: location_name,
+          name: location_name,
+          email: req.user.email || "jayastrastore@gmail.com",
+          phone: req.user.phone || "9652896180",
+          address: address_line1,
+          address_2: address_line2 || "",
+          city: city,
+          state: state,
+          pincode: pincode,
+          country: "India"
+        };
+        
+        // Shiprocket doesn't have a direct PUT endpoint, so we need to update by creating new and deleting old
+        // Or we can use their edit endpoint if available
+        const response = await fetch(`https://apiv2.shiprocket.in/v1/external/settings/company/pickup/${hasShiprocketId}`, {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${token}`
+          },
+          body: JSON.stringify(payload)
+        });
+        
+        if (response.ok) {
+          shiprocketUpdated = true;
+          await client.query(
+            `UPDATE vendor_pickup_addresses SET shiprocket_synced = true WHERE id = $1`,
+            [id]
+          );
+        } else {
+          const errorData = await response.json();
+          shiprocketError = errorData.message || "Failed to update in Shiprocket";
+        }
+      } catch (err) {
+        shiprocketError = err.message;
+      }
+    }
+    
     await client.query("COMMIT");
-    res.json({ success: true, address: result.rows[0] });
+    
+    res.json({ 
+      success: true, 
+      address: updatedAddress,
+      shiprocket_updated: shiprocketUpdated,
+      shiprocket_error: shiprocketError || null,
+      message: shiprocketUpdated ? "Address updated and synced with Shiprocket!" : "Address updated but Shiprocket sync failed."
+    });
+    
   } catch (error) {
     await client.query("ROLLBACK");
+    console.error("Update address error:", error);
     res.status(500).json({ success: false, message: "Update failed" });
   } finally {
     client.release();
   }
 });
 
+// Delete pickup address and remove from Shiprocket
 app.delete("/api/vendor/pickup-addresses/:id", verifyToken, async (req, res) => {
   const client = await pool.connect();
   try {
     const { id } = req.params;
 
     const check = await client.query(
-      `SELECT id, is_default FROM vendor_pickup_addresses WHERE id = $1 AND vendor_id = $2`,
+      `SELECT id, is_default, shiprocket_pickup_id FROM vendor_pickup_addresses WHERE id = $1 AND vendor_id = $2`,
       [id, req.user.id]
     );
     if (check.rows.length === 0) {
       return res.status(403).json({ success: false, message: "Unauthorized" });
     }
 
-    const isDefault = check.rows[0].is_default;
+    const address = check.rows[0];
+    const isDefault = address.is_default;
+    const shiprocketPickupId = address.shiprocket_pickup_id;
 
     await client.query("BEGIN");
+    
+    // Delete from Shiprocket if it exists
+    let shiprocketDeleted = false;
+    let shiprocketError = null;
+    
+    if (shiprocketPickupId) {
+      try {
+        const token = await authenticateShiprocket();
+        
+        const response = await fetch(`https://apiv2.shiprocket.in/v1/external/settings/company/pickup/${shiprocketPickupId}`, {
+          method: "DELETE",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${token}`
+          }
+        });
+        
+        if (response.ok) {
+          shiprocketDeleted = true;
+        } else {
+          const errorData = await response.json();
+          shiprocketError = errorData.message || "Failed to delete from Shiprocket";
+          console.warn("Shiprocket delete warning:", shiprocketError);
+        }
+      } catch (err) {
+        shiprocketError = err.message;
+        console.warn("Shiprocket delete error:", shiprocketError);
+      }
+    }
+    
+    // Delete from database
     await client.query(`DELETE FROM vendor_pickup_addresses WHERE id = $1`, [id]);
 
+    // If this was the default address, set another as default
     if (isDefault) {
       const newDefault = await client.query(
         `SELECT id FROM vendor_pickup_addresses WHERE vendor_id = $1 ORDER BY created_at ASC LIMIT 1`,
@@ -2160,22 +2299,31 @@ app.delete("/api/vendor/pickup-addresses/:id", verifyToken, async (req, res) => 
       );
       if (newDefault.rows.length > 0) {
         await client.query(
-          `UPDATE vendor_pickup_addresses SET is_default = true WHERE id = $2`,
+          `UPDATE vendor_pickup_addresses SET is_default = true WHERE id = $1`,
           [newDefault.rows[0].id]
         );
       }
     }
 
     await client.query("COMMIT");
-    res.json({ success: true, message: "Address deleted" });
+    
+    res.json({ 
+      success: true, 
+      message: shiprocketDeleted ? "Address deleted from both systems" : "Address deleted locally. Shiprocket deletion failed.",
+      shiprocket_deleted: shiprocketDeleted,
+      shiprocket_error: shiprocketError || null
+    });
+    
   } catch (error) {
     await client.query("ROLLBACK");
+    console.error("Delete address error:", error);
     res.status(500).json({ success: false, message: "Delete failed" });
   } finally {
     client.release();
   }
 });
 
+// Set address as default
 app.put("/api/vendor/pickup-addresses/:id/default", verifyToken, async (req, res) => {
   const client = await pool.connect();
   try {
@@ -2203,11 +2351,91 @@ app.put("/api/vendor/pickup-addresses/:id/default", verifyToken, async (req, res
     res.json({ success: true, message: "Default address updated" });
   } catch (error) {
     await client.query("ROLLBACK");
+    console.error("Set default error:", error);
     res.status(500).json({ success: false, message: "Failed to set default" });
   } finally {
     client.release();
   }
 });
+
+// Sync existing address with Shiprocket (manual sync)
+app.post("/api/vendor/pickup-addresses/:id/sync", verifyToken, async (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    const addressResult = await pool.query(
+      `SELECT * FROM vendor_pickup_addresses WHERE id = $1 AND vendor_id = $2`,
+      [id, req.user.id]
+    );
+    
+    if (addressResult.rows.length === 0) {
+      return res.status(404).json({ success: false, message: "Address not found" });
+    }
+    
+    const address = addressResult.rows[0];
+    
+    if (address.shiprocket_synced && address.shiprocket_pickup_id) {
+      return res.json({ success: true, message: "Already synced with Shiprocket" });
+    }
+    
+    const vendorResult = await pool.query(
+      `SELECT email, phone FROM users WHERE id = $1`,
+      [req.user.id]
+    );
+    const vendor = vendorResult.rows[0] || {};
+    
+    const token = await authenticateShiprocket();
+    
+    const payload = {
+      pickup_location: address.location_name,
+      name: address.location_name,
+      email: vendor.email || "jayastrastore@gmail.com",
+      phone: vendor.phone || "9652896180",
+      address: address.address_line1,
+      address_2: address.address_line2 || "",
+      city: address.city,
+      state: address.state,
+      pincode: address.pincode,
+      country: "India"
+    };
+    
+    const response = await fetch("https://apiv2.shiprocket.in/v1/external/settings/company/pickup", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${token}`
+      },
+      body: JSON.stringify(payload)
+    });
+    
+    const result = await response.json();
+    
+    if (response.ok && (result.success || result.data)) {
+      const pickupId = result.data?.id || result.data?.pickup_location_id;
+      
+      await pool.query(
+        `UPDATE vendor_pickup_addresses 
+         SET shiprocket_pickup_id = $1, shiprocket_synced = true, updated_at = NOW() 
+         WHERE id = $2`,
+        [pickupId.toString(), id]
+      );
+      
+      res.json({ 
+        success: true, 
+        message: "Address synced with Shiprocket successfully!",
+        shiprocket_pickup_id: pickupId
+      });
+    } else {
+      let errorMessage = result.message || "Failed to sync with Shiprocket";
+      res.status(400).json({ success: false, message: errorMessage });
+    }
+    
+  } catch (error) {
+    console.error("Sync error:", error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
 
 // Update vendor details (store_name, gst_number, and pickup address)
 app.put("/api/user/profile/vendor", verifyToken, async (req, res) => {
@@ -2227,26 +2455,26 @@ app.put("/api/user/profile/vendor", verifyToken, async (req, res) => {
 
     // Update all vendor fields in one query
     const result = await pool.query(
-      `UPDATE users SET 
-        store_name = COALESCE($1, store_name),
-        gst_number = COALESCE($2, gst_number),
-        pickup_address_line1 = COALESCE($3, pickup_address_line1),
-        pickup_address_line2 = COALESCE($4, pickup_address_line2),
-        pickup_city = COALESCE($5, pickup_city),
-        pickup_state = COALESCE($6, pickup_state),
-        pickup_pincode = COALESCE($7, pickup_pincode),
-        pickup_location_name = COALESCE($8, pickup_location_name),
-        updated_at = CURRENT_TIMESTAMP
+      `UPDATE users SET
+store_name = COALESCE($1, store_name),
+  gst_number = COALESCE($2, gst_number),
+  pickup_address_line1 = COALESCE($3, pickup_address_line1),
+  pickup_address_line2 = COALESCE($4, pickup_address_line2),
+  pickup_city = COALESCE($5, pickup_city),
+  pickup_state = COALESCE($6, pickup_state),
+  pickup_pincode = COALESCE($7, pickup_pincode),
+  pickup_location_name = COALESCE($8, pickup_location_name),
+  updated_at = CURRENT_TIMESTAMP
       WHERE id = $9
-      RETURNING 
-        store_name, 
-        gst_number, 
-        pickup_address_line1, 
-        pickup_address_line2, 
-        pickup_city, 
-        pickup_state, 
-        pickup_pincode, 
-        pickup_location_name`,
+RETURNING
+store_name,
+  gst_number,
+  pickup_address_line1,
+  pickup_address_line2,
+  pickup_city,
+  pickup_state,
+  pickup_pincode,
+  pickup_location_name`,
       [
         store_name,
         gst_number,
@@ -2287,7 +2515,7 @@ app.get("/api/admin/dashboard", verifyToken, verifyAnyAdmin, (req, res) => {
 // ================= USER MANAGEMENT =================
 app.get("/api/admin/users", verifyToken, verifySuperAdmin, async (req, res) => {
   try {
-    const users = await pool.query(`SELECT id,name,email,phone,role,status,created_at FROM users ORDER BY created_at DESC`);
+    const users = await pool.query(`SELECT id, name, email, phone, role, status, created_at FROM users ORDER BY created_at DESC`);
     res.json({ success: true, users: users.rows });
   } catch (err) {
     res.status(500).json({ message: "Failed to fetch users" });
@@ -2399,8 +2627,8 @@ app.post("/api/admin/users/create-admin", verifyToken, verifySuperAdmin, async (
     const last_name = rest.join(" ");
 
     const result = await pool.query(
-      `INSERT INTO users (name, email, password, phone, role, first_name, last_name, status, store_name)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, 'Active', $8)
+      `INSERT INTO users(name, email, password, phone, role, first_name, last_name, status, store_name)
+VALUES($1, $2, $3, $4, $5, $6, $7, 'Active', $8)
        RETURNING id, name, email, phone, role, status`,
       [name, email.toLowerCase(), hashedPassword, phone, finalRole, first_name, last_name, store_name || null]
     );
@@ -2418,7 +2646,7 @@ app.get("/api/admin/vendors", verifyToken, verifySuperAdmin, async (req, res) =>
       FROM users
       WHERE LOWER(role) = 'vendor'
       ORDER BY created_at DESC
-    `);
+  `);
     res.json({ success: true, users: users.rows });
   } catch (err) {
     res.status(500).json({ message: "Failed to fetch vendors" });
@@ -2429,14 +2657,14 @@ app.get("/api/vendor/customers", verifyToken, verifyAnyAdmin, async (req, res) =
   try {
     const users = await pool.query(`
       SELECT u.id, u.name, u.email, u.phone, u.role, u.status, u.created_at,
-             COALESCE(orders.total_orders, 0)::int AS total_orders,
-             COALESCE(orders.total_purchase, 0)::float AS total_purchase
+  COALESCE(orders.total_orders, 0)::int AS total_orders,
+    COALESCE(orders.total_purchase, 0)::float AS total_purchase
       FROM users u
-      LEFT JOIN (
-        SELECT user_id, COUNT(*) AS total_orders, SUM(total_amount) AS total_purchase
+      LEFT JOIN(
+      SELECT user_id, COUNT(*) AS total_orders, SUM(total_amount) AS total_purchase
         FROM orders
         GROUP BY user_id
-      ) orders ON u.id = orders.user_id
+    ) orders ON u.id = orders.user_id
       WHERE LOWER(u.role) = 'user'
       ORDER BY u.created_at DESC
     `);
@@ -2449,7 +2677,7 @@ app.get("/api/vendor/customers", verifyToken, verifyAnyAdmin, async (req, res) =
 // ================= REVIEWS =================
 app.get("/api/admin/reviews", verifyToken, verifyAdminVendorIndividualAccess, async (req, res) => {
   try {
-    let query = `SELECT r.*, u.name as user_name, u.email as user_email, p.name as product_name, p.main_image_url FROM reviews r JOIN users u ON r.user_id = u.id JOIN products p ON r.product_id = p.id WHERE 1=1`;
+    let query = `SELECT r.*, u.name as user_name, u.email as user_email, p.name as product_name, p.main_image_url FROM reviews r JOIN users u ON r.user_id = u.id JOIN products p ON r.product_id = p.id WHERE 1 = 1`;
     let params = [];
     if (req.user.role !== 'super_admin') {
       query += ` AND p.vendor_id = $1`;
@@ -2512,13 +2740,13 @@ app.post("/api/admin/categories", verifyToken, verifyAdminVendorIndividualAccess
       });
     }
 
-    const image_url = req.file ? `/uploads/${req.file.filename}` : null;
+    const image_url = req.file ? `/ uploads / ${req.file.filename} ` : null;
 
     const result = await pool.query(
-      `INSERT INTO categories (name, description, image_url, is_active, display_order) 
-       VALUES ($1, $2, $3, $4, 
-         (SELECT COALESCE(MAX(display_order), -1) + 1 FROM categories)
-       ) RETURNING *`,
+      `INSERT INTO categories(name, description, image_url, is_active, display_order)
+VALUES($1, $2, $3, $4,
+  (SELECT COALESCE(MAX(display_order), -1) + 1 FROM categories)
+       ) RETURNING * `,
       [name.trim(), description || null, image_url, is_active === "true" || is_active === true || is_active === undefined]
     );
 
@@ -2541,8 +2769,8 @@ app.get("/api/admin/categories", verifyToken, verifyAdminVendorIndividualAccess,
     const offset = (page - 1) * limit;
     const search = req.query.search || "";
 
-    let query = `SELECT * FROM categories WHERE 1=1`;
-    let countQuery = `SELECT COUNT(*) FROM categories WHERE 1=1`;
+    let query = `SELECT * FROM categories WHERE 1 = 1`;
+    let countQuery = `SELECT COUNT(*) FROM categories WHERE 1 = 1`;
     let params = [];
     let paramIdx = 1;
 
@@ -2550,13 +2778,13 @@ app.get("/api/admin/categories", verifyToken, verifyAdminVendorIndividualAccess,
     // Categories are global
 
     if (search) {
-      query += ` AND name ILIKE $${paramIdx}`;
-      countQuery += ` AND name ILIKE $${paramIdx}`;
-      params.push(`%${search}%`);
+      query += ` AND name ILIKE $${paramIdx} `;
+      countQuery += ` AND name ILIKE $${paramIdx} `;
+      params.push(`% ${search}% `);
       paramIdx++;
     }
 
-    query += ` ORDER BY display_order ASC, created_at DESC LIMIT $${paramIdx} OFFSET $${paramIdx + 1}`;
+    query += ` ORDER BY display_order ASC, created_at DESC LIMIT $${paramIdx} OFFSET $${paramIdx + 1} `;
 
     const countResult = await pool.query(countQuery, params.slice(0, paramIdx - 1));
     const totalCount = parseInt(countResult.rows[0].count);
@@ -2611,18 +2839,18 @@ app.put("/api/admin/categories/:id", verifyToken, verifyAdminOrSuperAdmin, uploa
         const oldPath = path.join(UPLOAD_BASE_PATH, image_url.replace('/uploads/', ''));
         if (fs.existsSync(oldPath)) fs.unlinkSync(oldPath);
       }
-      image_url = `/uploads/${req.file.filename}`;
+      image_url = `/ uploads / ${req.file.filename} `;
     }
 
     const result = await pool.query(
       `UPDATE categories 
        SET name = COALESCE($1, name),
-           description = COALESCE($2, description),
-           image_url = COALESCE($3, image_url),
-           is_active = COALESCE($4, is_active),
-           updated_at = NOW()
-       WHERE id = $5 
-       RETURNING *`,
+  description = COALESCE($2, description),
+  image_url = COALESCE($3, image_url),
+  is_active = COALESCE($4, is_active),
+  updated_at = NOW()
+       WHERE id = $5
+RETURNING * `,
       [
         name ? name.trim() : null,
         description || null,
@@ -2748,7 +2976,7 @@ app.post("/api/admin/subcategories", verifyToken, verifyAdminVendorIndividualAcc
   try {
     const { name, category_id, description } = req.body;
     const vendor_id = req.user.role === 'super_admin' ? null : req.user.id;
-    const result = await pool.query(`INSERT INTO sub_categories(name, category_id, description, vendor_id) VALUES($1,$2,$3,$4) RETURNING *`, [name, category_id, description, vendor_id]);
+    const result = await pool.query(`INSERT INTO sub_categories(name, category_id, description, vendor_id) VALUES($1, $2, $3, $4) RETURNING * `, [name, category_id, description, vendor_id]);
     res.json({ success: true, subcategory: result.rows[0] });
   } catch (error) {
     res.status(500).json({ error: "Subcategory creation failed" });
@@ -2766,10 +2994,10 @@ app.get("/api/subcategories", async (req, res) => {
 
 app.get("/api/admin/subcategories", verifyToken, verifyAdminVendorIndividualAccess, async (req, res) => {
   try {
-    let query = `SELECT s.*, c.name as category_name FROM sub_categories s LEFT JOIN categories c ON s.category_id = c.id WHERE 1=1`;
+    let query = `SELECT s.*, c.name as category_name FROM sub_categories s LEFT JOIN categories c ON s.category_id = c.id WHERE 1 = 1`;
     let params = [];
     if (req.user.role !== 'super_admin') {
-      query += ` AND (s.vendor_id = $1 OR s.vendor_id IS NULL)`;
+      query += ` AND(s.vendor_id = $1 OR s.vendor_id IS NULL)`;
       params.push(req.user.id);
     }
     query += ` ORDER BY s.created_at DESC`;
@@ -2782,7 +3010,7 @@ app.get("/api/admin/subcategories", verifyToken, verifyAdminVendorIndividualAcce
 
 app.get("/api/categories/:id/subcategories", async (req, res) => {
   try {
-    const result = await pool.query(`SELECT * FROM sub_categories WHERE category_id=$1 AND is_active=true`, [req.params.id]);
+    const result = await pool.query(`SELECT * FROM sub_categories WHERE category_id = $1 AND is_active = true`, [req.params.id]);
     res.json({ success: true, subcategories: result.rows });
   } catch (error) {
     res.status(500).json({ error: "Failed to fetch subcategories" });
@@ -2796,7 +3024,7 @@ app.put("/api/admin/subcategories/:id", verifyToken, verifyAdminVendorIndividual
       if (check.rows.length === 0 || check.rows[0].vendor_id !== req.user.id) return res.status(403).json({ error: "Unauthorized" });
     }
     const { name, description, category_id, is_active } = req.body;
-    const result = await pool.query(`UPDATE sub_categories SET name=$1, description=$2, category_id=$3, is_active=$4, updated_at=NOW() WHERE id=$5 RETURNING *`, [name, description, category_id, is_active, req.params.id]);
+    const result = await pool.query(`UPDATE sub_categories SET name = $1, description = $2, category_id = $3, is_active = $4, updated_at = NOW() WHERE id = $5 RETURNING * `, [name, description, category_id, is_active, req.params.id]);
     res.json({ success: true, subcategory: result.rows[0] });
   } catch (error) {
     res.status(500).json({ error: "Update failed" });
@@ -2847,7 +3075,7 @@ app.get("/api/admin/products/suggest-sku", verifyToken, verifyAdminVendorIndivid
     let found = false;
 
     while (!found) {
-      candidate = `${base}-${counter.toString().padStart(3, '0')}`;
+      candidate = `${base} -${counter.toString().padStart(3, '0')} `;
       const existing = await pool.query("SELECT id FROM products WHERE sku ILIKE $1", [candidate]);
       if (existing.rows.length === 0) {
         found = true;
@@ -2887,7 +3115,7 @@ app.get("/api/admin/products/next-available-code", verifyToken, verifyAdminVendo
     let candidate = "";
 
     while (!found) {
-      candidate = `${basePattern}${counter.toString().padStart(3, '0')}`;
+      candidate = `${basePattern}${counter.toString().padStart(3, '0')} `;
       const existing = await pool.query("SELECT id FROM products WHERE product_code = $1", [candidate]);
       if (existing.rows.length === 0) {
         found = true;
@@ -2914,11 +3142,11 @@ app.post(
       if (!name || !price || !category_id) throw new Error("Name, price and category required");
 
       let main_image_url = null; let video_url = null;
-      if (req.files?.image) { main_image_url = `/uploads/products/images/${req.files.image[0].filename}`; uploadedFiles.push(req.files.image[0].path); }
-      if (req.files?.video) { video_url = `/uploads/products/videos/${req.files.video[0].filename}`; uploadedFiles.push(req.files.video[0].path); }
+      if (req.files?.image) { main_image_url = `/ uploads / products / images / ${req.files.image[0].filename} `; uploadedFiles.push(req.files.image[0].path); }
+      if (req.files?.video) { video_url = `/ uploads / products / videos / ${req.files.video[0].filename} `; uploadedFiles.push(req.files.video[0].path); }
 
       const result = await pool.query(
-        `INSERT INTO products (name, description, old_price, price, category_id, sub_category_id, main_image_url, video_url, sku, stock_quantity, is_featured, color, product_code, weight, length, width, height, vendor_id) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18) RETURNING *`,
+        `INSERT INTO products(name, description, old_price, price, category_id, sub_category_id, main_image_url, video_url, sku, stock_quantity, is_featured, color, product_code, weight, length, width, height, vendor_id) VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18) RETURNING * `,
         [name, description, old_price, price, category_id, sub_category_id, main_image_url, video_url, sku, stock_quantity || 0, is_featured === "true" || is_featured === true, color, product_code, weight || 0.7, length || 30, width || 20, height || 5, req.user.id]
       );
       res.json({ success: true, product: result.rows[0] });
@@ -2984,7 +3212,7 @@ app.get("/api/admin/products/next-id", verifyToken, verifyAdminVendorIndividualA
       if (lastId && lastId.includes("-")) {
         const parts = lastId.split("-");
         const lastNumber = parseInt(parts[1]);
-        if (!isNaN(lastNumber)) nextId = `JAYA-${(lastNumber + 1).toString().padStart(3, '0')}`;
+        if (!isNaN(lastNumber)) nextId = `JAYA - ${(lastNumber + 1).toString().padStart(3, '0')} `;
       }
     }
     res.json({ success: true, nextId });
@@ -3000,27 +3228,27 @@ app.get("/api/admin/products", verifyToken, verifyAdminVendorIndividualAccess, a
     const offset = (page - 1) * limit;
     const { search } = req.query;
 
-    let query = `SELECT p.*, c.name AS category_name FROM products p LEFT JOIN categories c ON p.category_id = c.id WHERE 1=1`;
-    let countQuery = `SELECT COUNT(*) FROM products p WHERE 1=1`;
+    let query = `SELECT p.*, c.name AS category_name FROM products p LEFT JOIN categories c ON p.category_id = c.id WHERE 1 = 1`;
+    let countQuery = `SELECT COUNT(*) FROM products p WHERE 1 = 1`;
     let params = [];
     let paramIdx = 1;
 
     const userRole = req.user.role?.toLowerCase();
     if (userRole !== 'super_admin') {
-      query += ` AND p.vendor_id = $${paramIdx}`;
-      countQuery += ` AND p.vendor_id = $${paramIdx}`;
+      query += ` AND p.vendor_id = $${paramIdx} `;
+      countQuery += ` AND p.vendor_id = $${paramIdx} `;
       params.push(req.user.id);
       paramIdx++;
     }
 
     if (search) {
-      query += ` AND p.name ILIKE $${paramIdx}`;
-      countQuery += ` AND p.name ILIKE $${paramIdx}`;
-      params.push(`%${search}%`);
+      query += ` AND p.name ILIKE $${paramIdx} `;
+      countQuery += ` AND p.name ILIKE $${paramIdx} `;
+      params.push(`% ${search}% `);
       paramIdx++;
     }
 
-    query += ` ORDER BY p.created_at DESC LIMIT $${paramIdx} OFFSET $${paramIdx + 1}`;
+    query += ` ORDER BY p.created_at DESC LIMIT $${paramIdx} OFFSET $${paramIdx + 1} `;
     const totalRes = await pool.query(countQuery, params.slice(0, paramIdx - 1));
     const totalCount = parseInt(totalRes.rows[0].count);
 
@@ -3063,11 +3291,11 @@ app.put(
       const subCategoryId = sub_category_id !== undefined && sub_category_id !== "" ? Number(sub_category_id) : undefined;
 
       let main_image_url = null; let video_url = null;
-      if (req.files?.image) { main_image_url = `/uploads/products/images/${req.files.image[0].filename}`; uploadedFiles.push(req.files.image[0].path); }
-      if (req.files?.video) { video_url = `/uploads/products/videos/${req.files.video[0].filename}`; uploadedFiles.push(req.files.video[0].path); }
+      if (req.files?.image) { main_image_url = `/ uploads / products / images / ${req.files.image[0].filename} `; uploadedFiles.push(req.files.image[0].path); }
+      if (req.files?.video) { video_url = `/ uploads / products / videos / ${req.files.video[0].filename} `; uploadedFiles.push(req.files.video[0].path); }
 
       const updates = []; const values = []; let paramCount = 1;
-      const addField = (field, value) => { if (value !== undefined) { updates.push(`${field} = $${paramCount++}`); values.push(value); } };
+      const addField = (field, value) => { if (value !== undefined) { updates.push(`${field} = $${paramCount++} `); values.push(value); } };
 
       addField('name', name); addField('description', description); addField('old_price', old_price); addField('price', price); addField('stock_quantity', stock_quantity); addField('is_featured', is_featured); addField('is_active', is_active); addField('color', color); addField('sku', sku); addField('product_code', product_code); addField('weight', weight !== undefined && weight !== "" ? Number(weight) : undefined); addField('length', length !== undefined && length !== "" ? Number(length) : undefined); addField('width', width !== undefined && width !== "" ? Number(width) : undefined); addField('height', height !== undefined && height !== "" ? Number(height) : undefined); addField('category_id', categoryId); addField('sub_category_id', subCategoryId);
       if (main_image_url) addField('main_image_url', main_image_url);
@@ -3075,7 +3303,7 @@ app.put(
       updates.push(`updated_at = NOW()`); values.push(id);
 
       if (updates.length > 1) {
-        const query = `UPDATE products SET ${updates.join(", ")} WHERE id = $${paramCount} RETURNING *`;
+        const query = `UPDATE products SET ${updates.join(", ")} WHERE id = $${paramCount} RETURNING * `;
         const result = await pool.query(query, values);
         res.json({ success: true, product: result.rows[0] });
       } else {
@@ -3145,7 +3373,7 @@ app.patch("/api/admin/products/:id/stock", verifyToken, verifyAdminVendorIndivid
     const existing = await pool.query("SELECT vendor_id FROM products WHERE id = $1", [req.params.id]);
     const userRole = req.user.role?.toLowerCase();
     if (userRole !== 'super_admin' && existing.rows[0]?.vendor_id !== req.user.id) return res.status(403).json({ success: false, message: "Unauthorized" });
-    const result = await pool.query(`UPDATE products SET stock_quantity=$1, updated_at=NOW() WHERE id=$2 RETURNING *`, [req.body.stock_quantity, req.params.id]);
+    const result = await pool.query(`UPDATE products SET stock_quantity = $1, updated_at = NOW() WHERE id = $2 RETURNING * `, [req.body.stock_quantity, req.params.id]);
     res.json({ success: true, product: result.rows[0] });
   } catch (error) {
     res.status(500).json({ error: "Stock update failed" });
@@ -3187,7 +3415,7 @@ app.patch("/api/admin/products/:id/price", verifyToken, verifyAdminVendorIndivid
     }
 
     const result = await pool.query(
-      `UPDATE products SET price=$1, old_price=$2, updated_at=NOW() WHERE id=$3 RETURNING *`,
+      `UPDATE products SET price = $1, old_price = $2, updated_at = NOW() WHERE id = $3 RETURNING * `,
       [price, old_price, id]
     );
 
@@ -3208,9 +3436,9 @@ app.post("/api/stock-notification", async (req, res) => {
 
     let existingQuery = "SELECT * FROM stock_notifications WHERE product_id = $1 AND (";
     let conditions = []; let params = [product_id]; let paramIdx = 2;
-    if (user_id) { conditions.push(`user_id = $${paramIdx++}`); params.push(user_id); }
-    if (email) { conditions.push(`email = $${paramIdx++}`); params.push(email); }
-    if (phone) { conditions.push(`phone = $${paramIdx++}`); params.push(phone); }
+    if (user_id) { conditions.push(`user_id = $${paramIdx++} `); params.push(user_id); }
+    if (email) { conditions.push(`email = $${paramIdx++} `); params.push(email); }
+    if (phone) { conditions.push(`phone = $${paramIdx++} `); params.push(phone); }
 
     if (conditions.length > 0) {
       existingQuery += conditions.join(" OR ") + ")";
@@ -3234,7 +3462,7 @@ app.get("/api/stock-notification/admin", verifyToken, verifyAdminVendorIndividua
       SELECT sn.*, p.name as product_name, p.main_image_url, p.product_code as sku
       FROM stock_notifications sn
       JOIN products p ON sn.product_id = p.id
-      WHERE 1=1`;
+      WHERE 1 = 1`;
 
     let params = [];
     const userRole = req.user.role?.toLowerCase();
@@ -3270,10 +3498,10 @@ app.get("/api/stock-notification/check/:productId", verifyToken, async (req, res
     const params = [productId];
     let idx = 2;
 
-    if (userId) { query += `user_id = $${idx++}`; params.push(userId); }
+    if (userId) { query += `user_id = $${idx++} `; params.push(userId); }
     if (userPhone) {
       if (userId) query += " OR ";
-      query += `phone = $${idx++}`;
+      query += `phone = $${idx++} `;
       params.push(userPhone);
     }
     query += ") LIMIT 1";
@@ -3296,8 +3524,8 @@ app.post("/api/admin/products/:id/images", verifyToken, verifyAdminVendorIndivid
     if (userRole !== 'super_admin' && existing.rows[0]?.vendor_id !== req.user.id) return res.status(403).json({ message: "Unauthorized" });
 
     for (let i = 0; i < req.files.length; i++) {
-      const imageUrl = `/uploads/${req.files[i].filename}`;
-      await pool.query(`INSERT INTO product_images(product_id,image_url,display_order) VALUES($1,$2,$3)`, [id, imageUrl, i]);
+      const imageUrl = `/ uploads / ${req.files[i].filename} `;
+      await pool.query(`INSERT INTO product_images(product_id, image_url, display_order) VALUES($1, $2, $3)`, [id, imageUrl, i]);
     }
     res.json({ success: true, message: "Images uploaded successfully" });
   } catch (error) {
@@ -3307,7 +3535,7 @@ app.post("/api/admin/products/:id/images", verifyToken, verifyAdminVendorIndivid
 
 app.get("/api/products/:id/images", async (req, res) => {
   try {
-    const result = await pool.query(`SELECT * FROM product_images WHERE product_id=$1 ORDER BY display_order ASC`, [req.params.id]);
+    const result = await pool.query(`SELECT * FROM product_images WHERE product_id = $1 ORDER BY display_order ASC`, [req.params.id]);
     res.json({ success: true, images: result.rows });
   } catch (error) {
     res.status(500).json({ error: "Failed to fetch images" });
@@ -3327,7 +3555,7 @@ app.patch("/api/admin/product-images/:id/order", verifyToken, verifyAdminVendorI
   try {
     const { id } = req.params;
     const { display_order } = req.body;
-    const result = await pool.query(`UPDATE product_images SET display_order=$1 WHERE id=$2 RETURNING *`, [display_order, id]);
+    const result = await pool.query(`UPDATE product_images SET display_order = $1 WHERE id = $2 RETURNING * `, [display_order, id]);
     res.json({ success: true, image: result.rows[0] });
   } catch (error) {
     res.status(500).json({ error: "Update failed" });
@@ -3339,14 +3567,14 @@ app.get("/api/admin/user-orders/:id", verifyToken, verifySuperAdmin, async (req,
   try {
     const { id } = req.params;
     const result = await pool.query(`
-      SELECT 
-        COUNT(*) as total_orders,
-        COALESCE(SUM(total_amount),0) as total_purchase,
-        COALESCE(SUM(discount),0) as total_discount,
-        MAX(created_at) as last_order_date
+SELECT
+COUNT(*) as total_orders,
+  COALESCE(SUM(total_amount), 0) as total_purchase,
+  COALESCE(SUM(discount), 0) as total_discount,
+  MAX(created_at) as last_order_date
       FROM orders
-      WHERE user_id=$1
-    `, [id]);
+      WHERE user_id = $1
+  `, [id]);
     res.json(result.rows[0]);
   } catch (err) {
     res.status(500).json({ message: "Order stats failed" });
@@ -3361,35 +3589,35 @@ app.get("/api/admin/orders", verifyToken, verifyAdminVendorIndividualAccess, asy
 
     if (userRole === 'super_admin') {
       result = await pool.query(`
-        SELECT o.*, 
-          COALESCE(
-            (SELECT json_agg(json_build_object('id', oi.id, 'name', p.name, 'price', oi.price, 'quantity', oi.quantity, 'image', p.main_image_url, 'vendor_id', p.vendor_id, 'product_code', p.product_code))
+        SELECT o.*,
+  COALESCE(
+    (SELECT json_agg(json_build_object('id', oi.id, 'name', p.name, 'price', oi.price, 'quantity', oi.quantity, 'image', p.main_image_url, 'vendor_id', p.vendor_id, 'product_code', p.product_code))
              FROM order_items oi 
              JOIN products p ON oi.product_id = p.id 
              WHERE oi.order_id = o.id),
-            '[]'::json
+  '[]':: json
           ) as items
         FROM orders o 
         ORDER BY o.created_at DESC
-      `);
+  `);
     } else {
       result = await pool.query(`
-        SELECT o.*, 
-          COALESCE(
-            (SELECT json_agg(json_build_object('id', oi.id, 'name', p.name, 'price', oi.price, 'quantity', oi.quantity, 'image', p.main_image_url, 'vendor_id', p.vendor_id, 'product_code', p.product_code))
+        SELECT o.*,
+  COALESCE(
+    (SELECT json_agg(json_build_object('id', oi.id, 'name', p.name, 'price', oi.price, 'quantity', oi.quantity, 'image', p.main_image_url, 'vendor_id', p.vendor_id, 'product_code', p.product_code))
              FROM order_items oi 
              JOIN products p ON oi.product_id = p.id 
              WHERE oi.order_id = o.id AND p.vendor_id = $1),
-            '[]'::json
+  '[]':: json
           ) as items
         FROM orders o
-        WHERE EXISTS (
-          SELECT 1 FROM order_items oi2
+        WHERE EXISTS(
+    SELECT 1 FROM order_items oi2
           JOIN products p2 ON oi2.product_id = p2.id
           WHERE oi2.order_id = o.id AND p2.vendor_id = $1
-        )
+  )
         ORDER BY o.created_at DESC
-      `, [req.user.id]);
+  `, [req.user.id]);
     }
 
     const orders = result.rows.map(order => ({
@@ -3420,7 +3648,7 @@ app.put("/api/admin/orders/:id/status", verifyToken, verifyAdminVendorIndividual
         JOIN order_items oi ON o.id = oi.order_id
         JOIN products p ON oi.product_id = p.id
         WHERE o.id = $1 AND p.vendor_id = $2
-      `, [req.params.id, req.user.id]);
+  `, [req.params.id, req.user.id]);
       if (orderCheck.rows.length === 0) {
         await client.query("ROLLBACK");
         return res.status(403).json({ success: false, message: "Unauthorized to update this order" });
@@ -3457,13 +3685,13 @@ app.put("/api/admin/orders/:id/status", verifyToken, verifyAdminVendorIndividual
           const couponDiscount = parseFloat(item.order_discount || 0);
 
           await client.query(
-            `INSERT INTO wallet_transactions 
-              (vendor_id, transaction_type, amount, status, description, order_id, platform_fee, coupon_discount_applied, original_amount) 
-             VALUES ($1, 'credit', $2, 'completed', $3, $4, $5, $6, $7)`,
+            `INSERT INTO wallet_transactions
+  (vendor_id, transaction_type, amount, status, description, order_id, platform_fee, coupon_discount_applied, original_amount)
+VALUES($1, 'credit', $2, 'completed', $3, $4, $5, $6, $7)`,
             [
               item.vendor_id,
               parseFloat(item.vendor_earning),
-              `Earnings from Order #${req.params.id} - ${item.product_name}`,
+              `Earnings from Order #${req.params.id} - ${item.product_name} `,
               req.params.id,
               platformFeeAmount,
               couponDiscount,
@@ -3471,7 +3699,7 @@ app.put("/api/admin/orders/:id/status", verifyToken, verifyAdminVendorIndividual
             ]
           );
 
-          console.log(`Added ₹${item.vendor_earning} to vendor ${item.vendor_id}`);
+          console.log(`Added ₹${item.vendor_earning} to vendor ${item.vendor_id} `);
         }
       }
     }
@@ -3489,8 +3717,8 @@ app.put("/api/admin/orders/:id/status", verifyToken, verifyAdminVendorIndividual
 app.get("/api/orders", verifyToken, async (req, res) => {
   try {
     const result = await pool.query(
-      `SELECT o.*, 
-        (SELECT json_agg(json_build_object('id', oi.id, 'product_id', oi.product_id, 'name', p.name, 'image', p.main_image_url, 'quantity', oi.quantity, 'price', oi.price)) 
+      `SELECT o.*,
+  (SELECT json_agg(json_build_object('id', oi.id, 'product_id', oi.product_id, 'name', p.name, 'image', p.main_image_url, 'quantity', oi.quantity, 'price', oi.price)) 
         FROM order_items oi JOIN products p ON oi.product_id = p.id WHERE oi.order_id = o.id) as items
       FROM orders o WHERE o.user_id = $1 ORDER BY o.created_at DESC`,
       [req.user.id]
@@ -3540,28 +3768,28 @@ app.post("/api/orders", verifyToken, async (req, res) => {
 
     // Insert order with all address components
     const orderRes = await client.query(
-      `INSERT INTO orders (
-        user_id, customer_name, email, phone, address, total_amount, 
-        discount, coupon_id, payment_method, payment_status, order_status,
-        house_no, street_area, landmark, city, state, pincode, country
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, 'Pending', 'Placed', 
-        $10, $11, $12, $13, $14, $15, $16) RETURNING id`,
+      `INSERT INTO orders(
+    user_id, customer_name, email, phone, address, total_amount,
+    discount, coupon_id, payment_method, payment_status, order_status,
+    house_no, street_area, landmark, city, state, pincode, country
+  ) VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9, 'Pending', 'Placed',
+    $10, $11, $12, $13, $14, $15, $16) RETURNING id`,
       [
-        req.user.id, 
-        customer_name, 
-        email || null, 
-        phone, 
-        address, 
+        req.user.id,
+        customer_name,
+        email || null,
+        phone,
+        address,
         finalAmount,
-        discountAmount, 
-        coupon_id || null, 
+        discountAmount,
+        coupon_id || null,
         payment_method || 'COD',
-        house_no || '', 
-        street_area || '', 
+        house_no || '',
+        street_area || '',
         landmark || '',
-        city || null, 
-        state || null, 
-        pincode || null, 
+        city || null,
+        state || null,
+        pincode || null,
         country || 'India'
       ]
     );
@@ -3589,8 +3817,8 @@ app.post("/api/orders", verifyToken, async (req, res) => {
       const vendor_earning = (discounted_price * qty) * ((100 - platform_fee_percent) / 100);
 
       await client.query(
-        `INSERT INTO order_items (order_id, product_id, quantity, price, vendor_id, vendor_earning) 
-         VALUES ($1, $2, $3, $4, $5, $6)`,
+        `INSERT INTO order_items(order_id, product_id, quantity, price, vendor_id, vendor_earning)
+VALUES($1, $2, $3, $4, $5, $6)`,
         [orderId, item.product_id || item.id, qty, discounted_price, vendor_id, vendor_earning]
       );
 
@@ -3627,16 +3855,16 @@ app.get("/api/orders/:id", verifyToken, async (req, res) => {
   try {
     const { id } = req.params;
     const result = await pool.query(
-      `SELECT o.*, 
-        (SELECT json_agg(json_build_object(
-            'id', oi.id,
-            'product_id', oi.product_id,
-            'product_code', p.product_code,
-            'name', p.name,
-            'image', p.main_image_url,
-            'quantity', oi.quantity,
-            'price', oi.price
-        )) 
+      `SELECT o.*,
+  (SELECT json_agg(json_build_object(
+    'id', oi.id,
+    'product_id', oi.product_id,
+    'product_code', p.product_code,
+    'name', p.name,
+    'image', p.main_image_url,
+    'quantity', oi.quantity,
+    'price', oi.price
+  )) 
         FROM order_items oi 
         JOIN products p ON oi.product_id = p.id 
         WHERE oi.order_id = o.id) as items
@@ -3657,7 +3885,7 @@ app.post("/api/razorpay/order", verifyToken, async (req, res) => {
   try {
     if (!razorpay) return res.status(500).json({ success: false, message: "Razorpay is not configured on the server" });
     const { amount } = req.body;
-    const order = await razorpay.orders.create({ amount: Math.round(amount * 100), currency: "INR", receipt: `receipt_${Date.now()}`, payment_capture: 1 });
+    const order = await razorpay.orders.create({ amount: Math.round(amount * 100), currency: "INR", receipt: `receipt_${Date.now()} `, payment_capture: 1 });
     res.json({ success: true, order: { id: order.id, amount: order.amount, currency: order.currency } });
   } catch (error) {
     res.status(500).json({ success: false, message: "Failed to create Razorpay order" });
@@ -3675,8 +3903,8 @@ app.post("/api/razorpay/verify", verifyToken, async (req, res) => {
     if (expectedSignature !== razorpay_signature) return res.status(400).json({ success: false, message: "Invalid signature" });
 
     await client.query("BEGIN");
-    const { 
-      customer_name, email, phone, address, total_amount, discount, coupon_id, 
+    const {
+      customer_name, email, phone, address, total_amount, discount, coupon_id,
       cartItems, house_no, street_area, landmark, city, state, pincode, country
     } = orderDetails;
 
@@ -3690,12 +3918,12 @@ app.post("/api/razorpay/verify", verifyToken, async (req, res) => {
     const finalAmount = parseFloat(total_amount);
 
     const orderRes = await client.query(
-      `INSERT INTO orders (
-        user_id, customer_name, email, phone, address, total_amount, 
-        discount, coupon_id, payment_method, payment_status, order_status, 
-        house_no, street_area, landmark, razorpay_order_id, razorpay_payment_id,
-        city, state, pincode, country
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20) RETURNING id`,
+      `INSERT INTO orders(
+    user_id, customer_name, email, phone, address, total_amount,
+    discount, coupon_id, payment_method, payment_status, order_status,
+    house_no, street_area, landmark, razorpay_order_id, razorpay_payment_id,
+    city, state, pincode, country
+  ) VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20) RETURNING id`,
       [
         req.user.id, customer_name, email || null, phone, address, finalAmount,
         discountAmount, coupon_id || null, 'RAZORPAY', 'Completed', 'Placed',
@@ -3727,8 +3955,8 @@ app.post("/api/razorpay/verify", verifyToken, async (req, res) => {
       const vendor_earning = (discounted_price * qty) * ((100 - platform_fee_percent) / 100);
 
       await client.query(
-        `INSERT INTO order_items (order_id, product_id, quantity, price, vendor_id, vendor_earning) 
-         VALUES ($1, $2, $3, $4, $5, $6)`,
+        `INSERT INTO order_items(order_id, product_id, quantity, price, vendor_id, vendor_earning)
+VALUES($1, $2, $3, $4, $5, $6)`,
         [orderId, item.product_id || item.id, qty, discounted_price, vendor_id, vendor_earning]
       );
 
@@ -3769,7 +3997,7 @@ app.post("/api/razorpay/verify", verifyToken, async (req, res) => {
 // Get payouts for vendor/admin - FIXED to only show actual balance
 app.get("/api/admin/payouts", verifyToken, verifyAdminVendorIndividualAccess, async (req, res) => {
   try {
-    let query = `SELECT p.*, u.store_name, u.email, u.name as vendor_name, u.phone as vendor_phone FROM payouts p JOIN users u ON p.vendor_id = u.id WHERE 1=1`;
+    let query = `SELECT p.*, u.store_name, u.email, u.name as vendor_name, u.phone as vendor_phone FROM payouts p JOIN users u ON p.vendor_id = u.id WHERE 1 = 1`;
     let params = [];
     const userRole = req.user.role?.toLowerCase();
     if (userRole !== 'super_admin') {
@@ -3820,8 +4048,8 @@ app.post("/api/admin/payouts/request", verifyToken, verifyAdminVendorIndividualA
 
     // Create payout request
     const payoutRes = await client.query(
-      `INSERT INTO payouts (vendor_id, amount, bank_details, status, requested_at) 
-       VALUES ($1, $2, $3, 'Pending', NOW()) RETURNING id`,
+      `INSERT INTO payouts(vendor_id, amount, bank_details, status, requested_at)
+VALUES($1, $2, $3, 'Pending', NOW()) RETURNING id`,
       [vendorId, amount, bank_details]
     );
 
@@ -3829,9 +4057,9 @@ app.post("/api/admin/payouts/request", verifyToken, verifyAdminVendorIndividualA
 
     // Log wallet transaction for debit
     await client.query(
-      `INSERT INTO wallet_transactions 
-        (vendor_id, transaction_type, amount, status, description, payout_id, original_amount) 
-       VALUES ($1, 'debit', $2, 'pending', $3, $4, $5)`,
+      `INSERT INTO wallet_transactions
+  (vendor_id, transaction_type, amount, status, description, payout_id, original_amount)
+VALUES($1, 'debit', $2, 'pending', $3, $4, $5)`,
       [
         vendorId,
         amount,
@@ -3894,12 +4122,12 @@ app.put("/api/admin/payouts/:id/approve", verifyToken, verifySuperAdmin, async (
 app.get("/api/admin/payouts/summary", verifyToken, verifySuperAdmin, async (req, res) => {
   try {
     const summary = await pool.query(`
-      SELECT 
-        COALESCE(SUM(CASE WHEN status = 'Pending' THEN amount ELSE 0 END), 0) as total_pending,
-        COALESCE(SUM(CASE WHEN status = 'Paid' THEN amount ELSE 0 END), 0) as total_paid,
-        COALESCE(SUM(amount), 0) as total_requested
+SELECT
+COALESCE(SUM(CASE WHEN status = 'Pending' THEN amount ELSE 0 END), 0) as total_pending,
+  COALESCE(SUM(CASE WHEN status = 'Paid' THEN amount ELSE 0 END), 0) as total_paid,
+  COALESCE(SUM(amount), 0) as total_requested
       FROM payouts
-    `);
+  `);
     res.json({ success: true, summary: summary.rows[0] });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
@@ -3919,13 +4147,13 @@ app.get("/api/admin/payouts/vendor-summary/:vendorId", verifyToken, verifySuperA
 
     // Get payout summary
     const summary = await pool.query(`
-      SELECT 
-        COALESCE(SUM(CASE WHEN status = 'Pending' THEN amount ELSE 0 END), 0) as total_pending,
-        COALESCE(SUM(CASE WHEN status = 'Paid' THEN amount ELSE 0 END), 0) as total_paid,
-        COALESCE(SUM(amount), 0) as total_requested
+SELECT
+COALESCE(SUM(CASE WHEN status = 'Pending' THEN amount ELSE 0 END), 0) as total_pending,
+  COALESCE(SUM(CASE WHEN status = 'Paid' THEN amount ELSE 0 END), 0) as total_paid,
+  COALESCE(SUM(amount), 0) as total_requested
       FROM payouts
       WHERE vendor_id = $1
-    `, [vendorId]);
+  `, [vendorId]);
 
     res.json({
       success: true,
@@ -3944,12 +4172,12 @@ app.get("/api/admin/vendor-balances", verifyToken, verifySuperAdmin, async (req,
   try {
     // Get all vendors with their current balance
     const result = await pool.query(`
-      SELECT 
-        u.id, 
-        u.name, 
-        u.email, 
-        u.store_name, 
-        COALESCE(u.balance, 0) as balance
+SELECT
+u.id,
+  u.name,
+  u.email,
+  u.store_name,
+  COALESCE(u.balance, 0) as balance
       FROM users u
       WHERE u.role = 'vendor'
       ORDER BY u.name ASC
@@ -3969,8 +4197,8 @@ app.post("/api/admin/coupons", verifyToken, verifyAdminVendorIndividualAccess, a
     const { code, discount_type, discount_value, min_order_amount = 0, max_discount = null, usage_limit = 0, expiry_date = null, is_hidden = false } = req.body;
 
     const result = await pool.query(
-      `INSERT INTO coupons (code, discount_type, discount_value, min_order_amount, max_discount, usage_limit, expiry_date, is_hidden, vendor_id)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9) RETURNING *`,
+      `INSERT INTO coupons(code, discount_type, discount_value, min_order_amount, max_discount, usage_limit, expiry_date, is_hidden, vendor_id)
+VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING * `,
       [code, discount_type, discount_value, min_order_amount, max_discount, usage_limit, expiry_date, is_hidden, vendor_id]
     );
     res.json({ success: true, coupon: result.rows[0] });
@@ -4005,7 +4233,7 @@ app.put("/api/admin/coupons/:id", verifyToken, verifyAdminVendorIndividualAccess
     }
     const { code, discount_type, discount_value, min_order_amount = 0, max_discount = null, usage_limit = 0, expiry_date = null, is_active = true, is_hidden = false } = req.body;
     const result = await pool.query(
-      `UPDATE coupons SET code=$1, discount_type=$2, discount_value=$3, min_order_amount=$4, max_discount=$5, usage_limit=$6, expiry_date=$7, is_active=$8, is_hidden=$9 WHERE id=$10 RETURNING *`,
+      `UPDATE coupons SET code = $1, discount_type = $2, discount_value = $3, min_order_amount = $4, max_discount = $5, usage_limit = $6, expiry_date = $7, is_active = $8, is_hidden = $9 WHERE id = $10 RETURNING * `,
       [code, discount_type, discount_value, min_order_amount, max_discount, usage_limit, expiry_date, is_active, is_hidden, req.params.id]
     );
     res.json({ success: true, coupon: result.rows[0] });
@@ -4031,7 +4259,7 @@ app.delete("/api/admin/coupons/:id", verifyToken, verifyAdminVendorIndividualAcc
 
 app.get("/api/coupons", async (req, res) => {
   try {
-    const result = await pool.query(`SELECT * FROM coupons WHERE is_active=true AND is_hidden=false AND (expiry_date IS NULL OR expiry_date > NOW())`);
+    const result = await pool.query(`SELECT * FROM coupons WHERE is_active = true AND is_hidden = false AND(expiry_date IS NULL OR expiry_date > NOW())`);
     res.json({ success: true, coupons: result.rows });
   } catch (error) { res.status(500).json({ success: false, message: error.message }); }
 });
@@ -4131,7 +4359,7 @@ app.post("/api/coupons/apply", verifyToken, async (req, res) => {
 app.post("/api/coupons/auto-apply", verifyToken, async (req, res) => {
   try {
     const { totalAmount } = req.body;
-    const result = await pool.query(`SELECT * FROM coupons WHERE is_active = true AND (expiry_date IS NULL OR expiry_date > NOW())`);
+    const result = await pool.query(`SELECT * FROM coupons WHERE is_active = true AND(expiry_date IS NULL OR expiry_date > NOW())`);
     if (result.rows.length === 0) return res.json({ success: true, message: "No coupons available", discount: 0, finalAmount: totalAmount });
 
     let bestCoupon = null;
@@ -4162,20 +4390,20 @@ app.post("/api/reviews", verifyToken, upload.array("images", 5), async (req, res
 
     let imagePaths = [];
     if (req.files && req.files.length > 0) {
-      imagePaths = req.files.map(file => `/uploads/${file.filename}`);
+      imagePaths = req.files.map(file => `/ uploads / ${file.filename} `);
     }
 
     const result = await pool.query(
-      `INSERT INTO reviews (product_id, user_id, rating, comment, images, status)
-       VALUES ($1,$2,$3,$4,$5,'pending')
-       ON CONFLICT (user_id, product_id)
+      `INSERT INTO reviews(product_id, user_id, rating, comment, images, status)
+VALUES($1, $2, $3, $4, $5, 'pending')
+       ON CONFLICT(user_id, product_id)
        DO UPDATE SET
-         rating = EXCLUDED.rating,
-         comment = EXCLUDED.comment,
-         images = EXCLUDED.images,
-         status = 'pending',
-         updated_at = CURRENT_TIMESTAMP
-       RETURNING *`,
+rating = EXCLUDED.rating,
+  comment = EXCLUDED.comment,
+  images = EXCLUDED.images,
+  status = 'pending',
+  updated_at = CURRENT_TIMESTAMP
+RETURNING * `,
       [Number(product_id), userId, Number(rating), comment, imagePaths]
     );
 
@@ -4193,7 +4421,7 @@ app.get("/api/reviews/:productId", async (req, res) => {
       `SELECT r.*, u.name
        FROM reviews r
        JOIN users u ON r.user_id = u.id
-       WHERE r.product_id=$1 AND r.status='approved'
+       WHERE r.product_id = $1 AND r.status = 'approved'
        ORDER BY r.created_at DESC`,
       [productId]
     );
@@ -4227,11 +4455,11 @@ app.delete("/api/reviews/:id", verifyToken, async (req, res) => {
 app.get("/api/reviews/summary/:productId", async (req, res) => {
   try {
     const result = await pool.query(
-      `SELECT 
-        COUNT(*)::INT as total_reviews,
-        COALESCE(ROUND(AVG(rating),1),0)::FLOAT as avg_rating
+      `SELECT
+COUNT(*):: INT as total_reviews,
+  COALESCE(ROUND(AVG(rating), 1), 0):: FLOAT as avg_rating
        FROM reviews
-       WHERE product_id=$1 AND status='approved'`,
+       WHERE product_id = $1 AND status = 'approved'`,
       [req.params.productId]
     );
     res.json(result.rows[0]);
@@ -4244,7 +4472,7 @@ app.get("/api/reviews/mine/:productId", verifyToken, async (req, res) => {
   try {
     const { productId } = req.params;
     const userId = req.user.id;
-    const result = await pool.query(`SELECT r.*, u.name FROM reviews r JOIN users u ON r.user_id = u.id WHERE r.product_id=$1 AND r.user_id=$2`, [productId, userId]);
+    const result = await pool.query(`SELECT r.*, u.name FROM reviews r JOIN users u ON r.user_id = u.id WHERE r.product_id = $1 AND r.user_id = $2`, [productId, userId]);
     res.json({ success: true, review: result.rows[0] || null });
   } catch (error) {
     res.status(500).json({ message: "Failed to fetch your review" });
@@ -4260,8 +4488,8 @@ app.put("/api/reviews/:id", verifyToken, async (req, res) => {
     if (check.rows.length === 0) return res.status(403).json({ message: "Forbidden" });
 
     const result = await pool.query(
-      `UPDATE reviews SET rating=$1, comment=$2, status='pending', updated_at=NOW()
-       WHERE id=$3 AND user_id=$4 RETURNING *`,
+      `UPDATE reviews SET rating = $1, comment = $2, status = 'pending', updated_at = NOW()
+       WHERE id = $3 AND user_id = $4 RETURNING * `,
       [rating, comment, id, userId]
     );
     res.json({ success: true, review: result.rows[0] });
@@ -4278,8 +4506,8 @@ app.post("/api/admin/banner", verifyToken, verifyAdminVendorIndividualAccess, up
     const vendor_id = req.user.role === 'super_admin' ? null : req.user.id;
 
     let image_url = null, video_url = null;
-    if (req.files?.image) { image_url = `/uploads/banners/${req.files.image[0].filename}`; uploadedFiles.push(req.files.image[0].path); }
-    if (req.files?.video) { video_url = `/uploads/banners/${req.files.video[0].filename}`; uploadedFiles.push(req.files.video[0].path); }
+    if (req.files?.image) { image_url = `/ uploads / banners / ${req.files.image[0].filename} `; uploadedFiles.push(req.files.image[0].path); }
+    if (req.files?.video) { video_url = `/ uploads / banners / ${req.files.video[0].filename} `; uploadedFiles.push(req.files.video[0].path); }
 
     let position = req.body.position ? parseInt(req.body.position) : null;
     if (!position) {
@@ -4291,10 +4519,10 @@ app.post("/api/admin/banner", verifyToken, verifyAdminVendorIndividualAccess, up
     if (!category_id || category_id === 'null' || category_id === '') cleanCategoryId = null;
 
     const result = await pool.query(
-      `INSERT INTO banners 
-         (title, subtitle, button_text, link, image_url, video_url, type, category_id, is_active, position, vendor_id)
-         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)
-         RETURNING *`,
+      `INSERT INTO banners
+  (title, subtitle, button_text, link, image_url, video_url, type, category_id, is_active, position, vendor_id)
+VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+RETURNING * `,
       [title, subtitle, button_text, link, image_url, video_url, type || 'hero', cleanCategoryId, is_active === "true" || is_active === true, position, vendor_id]
     );
 
@@ -4323,12 +4551,12 @@ app.put("/api/admin/banner/:id", verifyToken, verifyAdminVendorIndividualAccess,
 
     // Only update image if a new file was uploaded
     if (req.files?.image && req.files.image.length > 0) {
-      image_url = `/uploads/banners/${req.files.image[0].filename}`;
+      image_url = `/ uploads / banners / ${req.files.image[0].filename} `;
     }
 
     // Only update video if a new file was uploaded
     if (req.files?.video && req.files.video.length > 0) {
-      video_url = `/uploads/banners/${req.files.video[0].filename}`;
+      video_url = `/ uploads / banners / ${req.files.video[0].filename} `;
     }
 
     let cleanCategoryId = category_id;
@@ -4345,49 +4573,49 @@ app.put("/api/admin/banner/:id", verifyToken, verifyAdminVendorIndividualAccess,
 
     // Only add fields that are actually provided in the request
     if (title !== undefined) {
-      updates.push(`title = $${paramCount++}`);
+      updates.push(`title = $${paramCount++} `);
       values.push(title || null);
     }
     if (subtitle !== undefined) {
-      updates.push(`subtitle = $${paramCount++}`);
+      updates.push(`subtitle = $${paramCount++} `);
       values.push(subtitle || null);
     }
     if (button_text !== undefined) {
-      updates.push(`button_text = $${paramCount++}`);
+      updates.push(`button_text = $${paramCount++} `);
       values.push(button_text || null);
     }
     if (link !== undefined) {
-      updates.push(`link = $${paramCount++}`);
+      updates.push(`link = $${paramCount++} `);
       values.push(link || null);
     }
     if (is_active !== undefined) {
-      updates.push(`is_active = $${paramCount++}`);
+      updates.push(`is_active = $${paramCount++} `);
       values.push(is_active === "true" || is_active === true);
     }
     if (type !== undefined) {
-      updates.push(`type = $${paramCount++}`);
+      updates.push(`type = $${paramCount++} `);
       values.push(type || 'hero');
     }
     if (cleanCategoryId !== undefined) {
-      updates.push(`category_id = $${paramCount++}`);
+      updates.push(`category_id = $${paramCount++} `);
       values.push(cleanCategoryId);
     }
     if (position !== undefined && position !== '') {
-      updates.push(`position = $${paramCount++}`);
+      updates.push(`position = $${paramCount++} `);
       values.push(parseInt(position));
     }
 
     // Always include media URLs
-    updates.push(`image_url = $${paramCount++}`);
+    updates.push(`image_url = $${paramCount++} `);
     values.push(image_url);
-    updates.push(`video_url = $${paramCount++}`);
+    updates.push(`video_url = $${paramCount++} `);
     values.push(video_url);
 
     updates.push(`updated_at = NOW()`);
     values.push(id);
 
     if (updates.length > 1) {
-      const query = `UPDATE banners SET ${updates.join(", ")} WHERE id = $${paramCount} RETURNING *`;
+      const query = `UPDATE banners SET ${updates.join(", ")} WHERE id = $${paramCount} RETURNING * `;
       const result = await pool.query(query, values);
 
       // Clear any old files if new ones were uploaded (optional cleanup)
@@ -4412,7 +4640,7 @@ app.put("/api/admin/banner/:id", verifyToken, verifyAdminVendorIndividualAccess,
 
 app.get("/api/banners", async (req, res) => {
   try {
-    const result = await pool.query(`SELECT * FROM banners WHERE is_active=true ORDER BY position ASC`);
+    const result = await pool.query(`SELECT * FROM banners WHERE is_active = true ORDER BY position ASC`);
     res.json({ banners: result.rows });
   } catch (err) {
     res.status(500).json({ message: "Fetch banners failed" });
@@ -4445,7 +4673,7 @@ app.put("/api/admin/banner/:id/toggle", verifyToken, verifyAdminVendorIndividual
     const check = await pool.query("SELECT vendor_id FROM banners WHERE id=$1", [req.params.id]);
     if (check.rows.length === 0 || check.rows[0].vendor_id !== req.user.id) return res.status(403).json({ message: "Unauthorized" });
   }
-  await pool.query(`UPDATE banners SET is_active = NOT is_active WHERE id=$1`, [req.params.id]);
+  await pool.query(`UPDATE banners SET is_active = NOT is_active WHERE id = $1`, [req.params.id]);
   res.json({ success: true });
 });
 
@@ -4453,7 +4681,7 @@ app.put("/api/admin/banners/reorder", verifyToken, verifyAdminOrSuperAdmin, asyn
   try {
     const banners = req.body;
     for (let banner of banners) {
-      await pool.query(`UPDATE banners SET position=$1 WHERE id=$2`, [banner.position, banner.id]);
+      await pool.query(`UPDATE banners SET position = $1 WHERE id = $2`, [banner.position, banner.id]);
     }
     res.json({ success: true });
   } catch (err) {
@@ -4467,7 +4695,7 @@ app.post("/api/cart", verifyToken, async (req, res) => {
     const { product_id, quantity } = req.body;
     const userId = req.user.id;
     const result = await pool.query(
-      `INSERT INTO cart_items (user_id, product_id, quantity) VALUES ($1,$2,$3) ON CONFLICT (user_id, product_id) DO UPDATE SET quantity = cart_items.quantity + EXCLUDED.quantity RETURNING *`,
+      `INSERT INTO cart_items(user_id, product_id, quantity) VALUES($1, $2, $3) ON CONFLICT(user_id, product_id) DO UPDATE SET quantity = cart_items.quantity + EXCLUDED.quantity RETURNING * `,
       [userId, product_id, quantity || 1]
     );
     res.json({ success: true, item: result.rows[0] });
@@ -4489,12 +4717,12 @@ app.get("/api/cart", verifyToken, async (req, res) => {
 
 app.put("/api/cart/:id", verifyToken, async (req, res) => {
   const { quantity } = req.body;
-  await pool.query(`UPDATE cart_items SET quantity=$1 WHERE id=$2`, [quantity, req.params.id]);
+  await pool.query(`UPDATE cart_items SET quantity = $1 WHERE id = $2`, [quantity, req.params.id]);
   res.json({ success: true });
 });
 
 app.delete("/api/cart/:id", verifyToken, async (req, res) => {
-  await pool.query(`DELETE FROM cart_items WHERE id=$1`, [req.params.id]);
+  await pool.query(`DELETE FROM cart_items WHERE id = $1`, [req.params.id]);
   res.json({ success: true });
 });
 
@@ -4504,12 +4732,12 @@ app.post("/api/wishlist", verifyToken, async (req, res) => {
     const { product_id } = req.body;
     const userId = req.user.id;
     if (!product_id) return res.status(400).json({ message: "Product ID is required" });
-    const exists = await pool.query(`SELECT * FROM wishlist WHERE user_id=$1 AND product_id=$2`, [userId, product_id]);
+    const exists = await pool.query(`SELECT * FROM wishlist WHERE user_id = $1 AND product_id = $2`, [userId, product_id]);
     if (exists.rows.length > 0) {
-      await pool.query(`DELETE FROM wishlist WHERE user_id=$1 AND product_id=$2`, [userId, product_id]);
+      await pool.query(`DELETE FROM wishlist WHERE user_id = $1 AND product_id = $2`, [userId, product_id]);
       return res.json({ message: "Removed from wishlist", type: "removed" });
     }
-    await pool.query(`INSERT INTO wishlist (user_id, product_id) VALUES ($1,$2)`, [userId, product_id]);
+    await pool.query(`INSERT INTO wishlist(user_id, product_id) VALUES($1, $2)`, [userId, product_id]);
     res.json({ message: "Added to wishlist", type: "added" });
   } catch (error) {
     if (error.code === '23503') return res.status(400).json({ message: "Product no longer exists or invalid user session." });
@@ -4536,12 +4764,12 @@ app.post("/api/user/orders/:id/return", verifyToken, uploadReturnVideo.single("v
     const { reason } = req.body;
     if (!req.file) throw new Error("Unboxing video is required for returns");
     uploadedFilePath = req.file.path;
-    const videoUrl = `/uploads/returns/${req.file.filename}`;
+    const videoUrl = `/ uploads / returns / ${req.file.filename} `;
 
     const orderCheck = await pool.query("SELECT * FROM orders WHERE id=$1 AND user_id=$2 AND order_status='Delivered'", [orderId, req.user.id]);
     if (orderCheck.rows.length === 0) throw new Error("Order not found or not eligible for return");
 
-    const result = await pool.query(`INSERT INTO returns (order_id, user_id, video_url, reason) VALUES ($1, $2, $3, $4) RETURNING *`, [orderId, req.user.id, videoUrl, reason]);
+    const result = await pool.query(`INSERT INTO returns(order_id, user_id, video_url, reason) VALUES($1, $2, $3, $4) RETURNING * `, [orderId, req.user.id, videoUrl, reason]);
     res.json({ success: true, returnRequest: result.rows[0] });
   } catch (error) {
     if (uploadedFilePath && fs.existsSync(uploadedFilePath)) fs.unlinkSync(uploadedFilePath);
@@ -4562,18 +4790,18 @@ app.get("/api/user/returns", verifyToken, async (req, res) => {
 app.get("/api/admin/returns", verifyToken, verifyAdminVendorIndividualAccess, async (req, res) => {
   try {
     let query = `
-       SELECT DISTINCT ON (r.id) 
-         r.*, 
-         o.customer_name, 
-         o.phone, 
-         u.name as user_name,
-         oi.vendor_id
+       SELECT DISTINCT ON(r.id)
+r.*,
+  o.customer_name,
+  o.phone,
+  u.name as user_name,
+  oi.vendor_id
        FROM returns r
        JOIN orders o ON r.order_id = o.id
        JOIN users u ON r.user_id = u.id
        LEFT JOIN order_items oi ON o.id = oi.order_id
-       WHERE 1=1
-    `;
+       WHERE 1 = 1
+  `;
     let params = [];
 
     if (req.user.role !== 'super_admin') {
@@ -4612,7 +4840,7 @@ app.put("/api/admin/returns/:id/status", verifyToken, verifyAdminVendorIndividua
 
     const result = await pool.query(
       `UPDATE returns SET status = $1, admin_comment = $2, updated_at = NOW() 
-       WHERE id = $3 RETURNING *`,
+       WHERE id = $3 RETURNING * `,
       [status, admin_comment, returnId]
     );
 
@@ -4642,23 +4870,23 @@ app.get("/api/admin/reports", verifyToken, verifyAdminVendorIndividualAccess, as
     const vId = req.user.id;
 
     const salesTrendRes = await pool.query(`
-      SELECT 
-        TO_CHAR(o.created_at, 'Dy') as date, 
-        SUM(COALESCE(oi.vendor_earning, oi.price * oi.quantity))::float as revenue, 
-        COUNT(DISTINCT o.id)::int as orders 
+SELECT
+TO_CHAR(o.created_at, 'Dy') as date,
+  SUM(COALESCE(oi.vendor_earning, oi.price * oi.quantity)):: float as revenue,
+    COUNT(DISTINCT o.id):: int as orders 
       FROM orders o
       JOIN order_items oi ON o.id = oi.order_id
       WHERE o.created_at > (NOW() - ($1 || ' days')::INTERVAL)
       ${isVendor ? 'AND oi.vendor_id = $2' : ''}
       GROUP BY date, DATE_TRUNC('day', o.created_at)
       ORDER BY DATE_TRUNC('day', o.created_at) ASC;
-    `, isVendor ? [days, vId] : [days]);
+`, isVendor ? [days, vId] : [days]);
 
     const topProductsRes = await pool.query(`
-      SELECT 
-        p.name, 
-        SUM(oi.quantity)::int as sold, 
-        SUM(COALESCE(oi.vendor_earning, oi.price * oi.quantity))::float as revenue 
+SELECT
+p.name,
+  SUM(oi.quantity):: int as sold,
+    SUM(COALESCE(oi.vendor_earning, oi.price * oi.quantity)):: float as revenue 
       FROM order_items oi 
       JOIN products p ON oi.product_id = p.id 
       JOIN orders o ON oi.order_id = o.id
@@ -4667,16 +4895,16 @@ app.get("/api/admin/reports", verifyToken, verifyAdminVendorIndividualAccess, as
       GROUP BY p.name 
       ORDER BY revenue DESC 
       LIMIT 10;
-    `, isVendor ? [days, vId] : [days]);
+`, isVendor ? [days, vId] : [days]);
 
     const summaryRes = await pool.query(`
-      SELECT 
-        COALESCE(SUM(COALESCE(vendor_earning, price * quantity)), 0)::float as total_revenue,
-        COUNT(DISTINCT order_id)::int as total_orders
+SELECT
+COALESCE(SUM(COALESCE(vendor_earning, price * quantity)), 0):: float as total_revenue,
+  COUNT(DISTINCT order_id):: int as total_orders
       FROM order_items
-      WHERE order_id IN (SELECT id FROM orders WHERE created_at > (NOW() - ($1 || ' days')::INTERVAL))
+      WHERE order_id IN(SELECT id FROM orders WHERE created_at > (NOW() - ($1 || ' days'):: INTERVAL))
       ${isVendor ? 'AND vendor_id = $2' : ''}
-    `, isVendor ? [days, vId] : [days]);
+`, isVendor ? [days, vId] : [days]);
 
     res.json({
       success: true,
@@ -4806,8 +5034,8 @@ app.get("/api/admin/dashboard/today-stats", verifyToken, verifyAnyAdmin, async (
     const nowStr = new Date().toISOString();
 
     let orderQuery = `
-      SELECT COUNT(DISTINCT o.id) as order_count, 
-             SUM(CASE WHEN o.order_status = 'Delivered' THEN o.total_amount ELSE 0 END) as earnings
+      SELECT COUNT(DISTINCT o.id) as order_count,
+  SUM(CASE WHEN o.order_status = 'Delivered' THEN o.total_amount ELSE 0 END) as earnings
       FROM orders o
       LEFT JOIN order_items oi ON o.id = oi.order_id
       WHERE o.created_at BETWEEN $1 AND $2
@@ -5015,7 +5243,7 @@ const extractAddressComponents = async (order) => {
       /,\s*([A-Za-z\s]+?)\s*,\s*[A-Za-z\s]+?\s*\d{6}/,
       /\s+([A-Za-z\s]+?)\s*[-–]\s*\d{6}/
     ];
-    
+
     for (const pattern of patterns) {
       const match = fullAddress.match(pattern);
       if (match && match[1] && match[1].trim()) {
@@ -5023,7 +5251,7 @@ const extractAddressComponents = async (order) => {
         break;
       }
     }
-    
+
     // If still no city, try splitting by commas
     if (!city && fullAddress.includes(',')) {
       const parts = fullAddress.split(',');
@@ -5067,7 +5295,7 @@ const extractAddressComponents = async (order) => {
 
   // Ensure address is not empty
   if (!fullAddress || fullAddress === '') {
-    fullAddress = `${houseNo ? houseNo + ', ' : ''}${streetArea ? streetArea : ''}${city ? ', ' + city : ''}${state ? ', ' + state : ''} ${pincode}`;
+    fullAddress = `${houseNo ? houseNo + ', ' : ''}${streetArea ? streetArea : ''}${city ? ', ' + city : ''}${state ? ', ' + state : ''} ${pincode} `;
   }
 
   // Clean up address - remove any undefined or null values
@@ -5104,10 +5332,14 @@ const extractAddressComponents = async (order) => {
 };
 
 
+// Updated push endpoint - uses each vendor's own pickup location
+// ================= SHIPROCKET ORDER PUSH (UPDATED WITH BETTER PICKUP HANDLING) =================
+
 app.post("/api/admin/orders/:id/shiprocket", verifyToken, verifyAdminVendorIndividualAccess, async (req, res) => {
   try {
     const orderId = req.params.id;
 
+    // Check authorization for non-super admins
     if (req.user.role !== 'super_admin') {
       const orderCheck = await pool.query(
         `SELECT DISTINCT o.id FROM orders o
@@ -5120,29 +5352,30 @@ app.post("/api/admin/orders/:id/shiprocket", verifyToken, verifyAdminVendorIndiv
       }
     }
 
+    // Get order details
     const orderRes = await pool.query(`SELECT * FROM orders WHERE id = $1`, [orderId]);
     if (orderRes.rows.length === 0) {
       return res.status(404).json({ success: false, message: "Order not found" });
     }
     const order = orderRes.rows[0];
 
+    // Check if already pushed
     if (order.shiprocket_order_id) {
       return res.status(400).json({ success: false, message: "Order already pushed to Shiprocket" });
     }
 
-    // Extract address components
+    // Extract and validate address components
     const addressComponents = await extractAddressComponents(order);
     
-    // Validate required fields
     const missingFields = [];
     if (!addressComponents.city || addressComponents.city === 'Unknown City') missingFields.push('City');
     if (!addressComponents.state || addressComponents.state === 'Unknown State') missingFields.push('State');
     if (!addressComponents.pincode || addressComponents.pincode === '500001') missingFields.push('Pincode');
     
-    if (missingFields.length > 0 && (addressComponents.city === 'Unknown City' || addressComponents.state === 'Unknown State' || addressComponents.pincode === '500001')) {
+    if (missingFields.length > 0) {
       return res.status(400).json({ 
         success: false, 
-        message: `Missing or incomplete address details. Please update the order with proper ${missingFields.join(', ')} before pushing to Shiprocket.`,
+        message: `Missing delivery address: ${missingFields.join(', ')}. Please update order address first.`,
         missingFields
       });
     }
@@ -5157,11 +5390,14 @@ app.post("/api/admin/orders/:id/shiprocket", verifyToken, verifyAdminVendorIndiv
     }
     const vendorId = vendorIdResult.rows[0].vendor_id;
 
-    // Get vendor's default pickup address
+    // Get vendor's default pickup address with Shiprocket ID
     let pickupAddress = null;
+    let shiprocketPickupId = null;
+    let pickupLocationName = null;
 
+    // First try to get from vendor_pickup_addresses table
     const pickupRes = await pool.query(
-      `SELECT location_name, address_line1, address_line2, city, state, pincode 
+      `SELECT id, location_name, address_line1, address_line2, city, state, pincode, shiprocket_pickup_id, shiprocket_synced
        FROM vendor_pickup_addresses 
        WHERE vendor_id = $1 AND is_default = true 
        LIMIT 1`,
@@ -5170,7 +5406,11 @@ app.post("/api/admin/orders/:id/shiprocket", verifyToken, verifyAdminVendorIndiv
 
     if (pickupRes.rows.length > 0) {
       pickupAddress = pickupRes.rows[0];
+      shiprocketPickupId = pickupAddress.shiprocket_pickup_id;
+      pickupLocationName = pickupAddress.location_name;
+      console.log("Using pickup from vendor_pickup_addresses:", pickupAddress.location_name);
     } else {
+      // Fallback to user's pickup details from users table
       const userPickupRes = await pool.query(
         `SELECT pickup_location_name, pickup_address_line1, pickup_address_line2, pickup_city, pickup_state, pickup_pincode 
          FROM users 
@@ -5181,77 +5421,168 @@ app.post("/api/admin/orders/:id/shiprocket", verifyToken, verifyAdminVendorIndiv
       const userPickup = userPickupRes.rows[0];
       if (userPickup && userPickup.pickup_pincode) {
         pickupAddress = {
-          location_name: userPickup.pickup_location_name || "Default Location",
+          id: null,
+          location_name: userPickup.pickup_location_name || "Default Warehouse",
           address_line1: userPickup.pickup_address_line1 || "",
           address_line2: userPickup.pickup_address_line2 || "",
           city: userPickup.pickup_city || "",
           state: userPickup.pickup_state || "",
-          pincode: userPickup.pickup_pincode
+          pincode: userPickup.pickup_pincode,
+          shiprocket_pickup_id: null,
+          shiprocket_synced: false
         };
+        pickupLocationName = pickupAddress.location_name;
+        console.log("Using pickup from users table:", pickupAddress.location_name);
       }
     }
 
+    // Validate pickup address exists
     if (!pickupAddress || !pickupAddress.pincode) {
       return res.status(400).json({
         success: false,
-        message: "Vendor has not set a default pickup address. Please add and set a default in Shipping Settings."
+        message: "Vendor has not set a default pickup address. Please go to Profile -> Pickup Addresses and add/set a default address.",
+        suggestion: "Add a pickup address and set it as default in your profile settings."
       });
     }
 
+    // Ensure pickup location exists in Shiprocket
+    if (!shiprocketPickupId) {
+      console.log("No Shiprocket pickup ID found, creating new pickup location...");
+      
+      const token = await authenticateShiprocket();
+      
+      // Get vendor contact info
+      const vendorRes = await pool.query(
+        `SELECT email, phone, name FROM users WHERE id = $1`,
+        [vendorId]
+      );
+      const vendor = vendorRes.rows[0] || {};
+      
+      const createPayload = {
+        pickup_location: pickupAddress.location_name,
+        name: pickupAddress.location_name,
+        email: vendor.email || "jayastrastore@gmail.com",
+        phone: vendor.phone || "9652896180",
+        address: pickupAddress.address_line1,
+        address_2: pickupAddress.address_line2 || "",
+        city: pickupAddress.city,
+        state: pickupAddress.state,
+        pincode: pickupAddress.pincode,
+        country: "India"
+      };
+      
+      console.log("Creating pickup location with payload:", JSON.stringify(createPayload, null, 2));
+      
+      const createResponse = await fetch("https://apiv2.shiprocket.in/v1/external/settings/company/pickup", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`
+        },
+        body: JSON.stringify(createPayload)
+      });
+      
+      const createResult = await createResponse.json();
+      console.log("Shiprocket create pickup response:", JSON.stringify(createResult, null, 2));
+      
+      if (createResponse.ok && (createResult.success || createResult.data)) {
+        shiprocketPickupId = createResult.data?.id || createResult.data?.pickup_location_id;
+        
+        // Save the ID to database
+        if (pickupAddress.id) {
+          await pool.query(
+            `UPDATE vendor_pickup_addresses 
+             SET shiprocket_pickup_id = $1, shiprocket_synced = true, updated_at = NOW() 
+             WHERE id = $2`,
+            [shiprocketPickupId.toString(), pickupAddress.id]
+          );
+        } else {
+          // Create a record in vendor_pickup_addresses for future use
+          await pool.query(
+            `INSERT INTO vendor_pickup_addresses 
+             (vendor_id, location_name, address_line1, address_line2, city, state, pincode, is_default, shiprocket_pickup_id, shiprocket_synced)
+             VALUES ($1, $2, $3, $4, $5, $6, $7, true, $8, true)`,
+            [vendorId, pickupAddress.location_name, pickupAddress.address_line1, pickupAddress.address_line2, 
+             pickupAddress.city, pickupAddress.state, pickupAddress.pincode, shiprocketPickupId]
+          );
+        }
+        console.log(`✅ Pickup location created in Shiprocket with ID: ${shiprocketPickupId}`);
+      } else {
+        const errorMsg = createResult.message || "Failed to create pickup location";
+        console.error("Shiprocket create pickup failed:", errorMsg);
+        return res.status(400).json({
+          success: false,
+          message: `Cannot push order: ${errorMsg}`,
+          suggestion: "Please verify your pickup address details are correct and try again, or contact support."
+        });
+      }
+    }
+
+    // Get order items with product details
     const itemsRes = await pool.query(
-      `SELECT oi.*, p.name, p.sku, p.weight, p.length, p.width, p.height
+      `SELECT oi.*, p.name, p.sku, p.weight, p.length, p.width, p.height, p.product_code
        FROM order_items oi
        JOIN products p ON oi.product_id = p.id
        WHERE oi.order_id = $1`,
       [orderId]
     );
 
+    if (itemsRes.rows.length === 0) {
+      return res.status(400).json({ success: false, message: "No items found in order" });
+    }
+
+    // Prepare order items for Shiprocket
     const orderItems = itemsRes.rows.map(item => ({
       name: item.name.substring(0, 100),
-      sku: item.sku || `SKU-${item.product_id}`,
-      units: item.quantity,
+      sku: item.sku || item.product_code || `SKU-${item.product_id}`,
+      units: parseInt(item.quantity),
       selling_price: parseFloat(item.price),
       discount: "",
       tax: ""
     }));
 
-    const pkgWeight = itemsRes.rows.reduce((sum, item) => sum + (parseFloat(item.weight || 0.5) * item.quantity), 0.5);
+    // Calculate package dimensions
+    const pkgWeight = itemsRes.rows.reduce((sum, item) => sum + (parseFloat(item.weight || 0.5) * parseInt(item.quantity)), 0.5);
     const maxLen = Math.max(...itemsRes.rows.map(i => parseFloat(i.length || 10)), 10);
     const maxWid = Math.max(...itemsRes.rows.map(i => parseFloat(i.width || 10)), 10);
-    const maxHei = itemsRes.rows.reduce((sum, item) => sum + (parseFloat(item.height || 5) * item.quantity), 5);
+    const maxHei = itemsRes.rows.reduce((sum, item) => sum + (parseFloat(item.height || 5) * parseInt(item.quantity)), 5);
 
+    // Authenticate for order creation
     const token = await authenticateShiprocket();
 
-    // Build billing address using extracted components
+    // Build billing address
     let billingAddress = addressComponents.fullAddress;
     if (!billingAddress || billingAddress === 'Address not specified') {
       billingAddress = `${addressComponents.houseNo ? addressComponents.houseNo + ', ' : ''}${addressComponents.streetArea ? addressComponents.streetArea : ''}`;
     }
     
-    // Ensure billing address is not empty
     if (!billingAddress || billingAddress === '') {
       billingAddress = "Address not specified";
     }
     
     billingAddress = billingAddress.substring(0, 200);
 
+    // Determine payment method
+    const isPrepaid = order.payment_method === 'Prepaid' || order.payment_method === 'RAZORPAY' || order.payment_method === 'Online';
+    
+    // Create Shiprocket order payload
     const payload = {
       order_id: `JAYASTRA-${order.id}`,
       order_date: new Date(order.created_at).toISOString().split('T')[0] + " 10:00",
-      pickup_location: pickupAddress.location_name || "Default",
+      pickup_location_id: shiprocketPickupId,
       billing_customer_name: (order.customer_name || "Customer").substring(0, 100),
-      billing_last_name: "JAYA",
+      billing_last_name: "",
       billing_address: billingAddress,
       billing_address_2: (addressComponents.landmark || "").substring(0, 100),
       billing_city: addressComponents.city,
       billing_pincode: addressComponents.pincode,
       billing_state: addressComponents.state,
       billing_country: addressComponents.country,
-      billing_email: (order.email || "jayastrastore@gmail.com").substring(0, 100),
-      billing_phone: (order.phone || "9652896180").substring(0, 20),
+      billing_email: (order.email || "customer@example.com").substring(0, 100),
+      billing_phone: (order.phone || "9999999999").substring(0, 20),
       shipping_is_billing: true,
       order_items: orderItems,
-      payment_method: (order.payment_method === 'Prepaid' || order.payment_method === 'RAZORPAY' || order.payment_method === 'Online') ? 'Prepaid' : 'COD',
+      payment_method: isPrepaid ? 'Prepaid' : 'COD',
       sub_total: parseFloat(order.total_amount),
       length: Math.max(maxLen, 10),
       breadth: Math.max(maxWid, 10),
@@ -5259,8 +5590,9 @@ app.post("/api/admin/orders/:id/shiprocket", verifyToken, verifyAdminVendorIndiv
       weight: Math.max(pkgWeight, 0.5)
     };
 
-    console.log("Shiprocket payload:", JSON.stringify(payload, null, 2));
+    console.log("Shiprocket order payload:", JSON.stringify(payload, null, 2));
 
+    // Create order in Shiprocket
     const fetchRes = await fetch("https://apiv2.shiprocket.in/v1/external/orders/create/adhoc", {
       method: "POST",
       headers: {
@@ -5271,18 +5603,21 @@ app.post("/api/admin/orders/:id/shiprocket", verifyToken, verifyAdminVendorIndiv
     });
 
     const result = await fetchRes.json();
-    console.log("Shiprocket response:", JSON.stringify(result, null, 2));
+    console.log("Shiprocket order creation response:", JSON.stringify(result, null, 2));
 
     if (fetchRes.ok && (result.order_id || result.shipment_id)) {
       const srOrderId = result.order_id ? result.order_id.toString() : null;
       const srShipmentId = result.shipment_id ? result.shipment_id.toString() : null;
       
+      // Update local order with Shiprocket IDs
       await pool.query(
-        `UPDATE orders SET shiprocket_order_id = $1, shiprocket_shipment_id = $2, updated_at = NOW() WHERE id = $3`,
+        `UPDATE orders 
+         SET shiprocket_order_id = $1, shiprocket_shipment_id = $2, updated_at = NOW() 
+         WHERE id = $3`,
         [srOrderId, srShipmentId, orderId]
       );
 
-      // Try to get AWB automatically
+      // Try to auto-generate AWB
       if (srShipmentId) {
         try {
           const awbRes = await fetch("https://apiv2.shiprocket.in/v1/external/courier/assign/awb", {
@@ -5302,30 +5637,45 @@ app.post("/api/admin/orders/:id/shiprocket", verifyToken, verifyAdminVendorIndiv
         }
       }
 
-      return res.json({ success: true, message: "Order pushed to Shiprocket successfully!", data: result });
+      return res.json({ 
+        success: true, 
+        message: "Order successfully pushed to Shiprocket! 🚀",
+        pickup_location_used: pickupLocationName,
+        data: result 
+      });
     } else {
-      console.error("Shiprocket push failed:", result);
-
-      // Provide more specific error message
+      console.error("Shiprocket order creation failed:", result);
+      
       let errorMessage = result.message || "Failed to push to Shiprocket";
       if (result.errors) {
-        errorMessage = Object.values(result.errors).flat().join(", ");
+        if (Array.isArray(result.errors)) {
+          errorMessage = result.errors.join(", ");
+        } else if (typeof result.errors === 'object') {
+          errorMessage = Object.values(result.errors).flat().join(", ");
+        }
       }
 
-      // Handle common address errors
-      if (errorMessage.toLowerCase().includes("address") || errorMessage.toLowerCase().includes("city") || errorMessage.toLowerCase().includes("state")) {
-        errorMessage = `Missing or invalid address details. Please ensure the order has complete city, state, and pincode information. Current values - City: "${addressComponents.city}", State: "${addressComponents.state}", Pincode: "${addressComponents.pincode}"`;
+      // Handle specific error cases
+      if (errorMessage.toLowerCase().includes("pickup") && errorMessage.toLowerCase().includes("not found")) {
+        errorMessage = "Pickup location not found in Shiprocket. Please sync your pickup address again.";
+      } else if (errorMessage.toLowerCase().includes("pincode")) {
+        errorMessage = "Invalid pincode. Please verify the delivery address pincode.";
       }
 
       return res.status(400).json({
         success: false,
         message: errorMessage,
-        errors: result.errors
+        errors: result.errors,
+        pickup_location_used: pickupLocationName
       });
     }
   } catch (error) {
     console.error("Shiprocket push error:", error);
-    res.status(500).json({ success: false, message: error.message || "Server error pushing order" });
+    res.status(500).json({ 
+      success: false, 
+      message: error.message || "Server error pushing order",
+      suggestion: "Please try again or contact support if issue persists."
+    });
   }
 });
 
@@ -5347,7 +5697,7 @@ app.post("/api/admin/orders/:id/awb", verifyToken, verifyAdminVendorIndividualAc
     const token = await authenticateShiprocket();
 
     const fetchRes = await fetch("https://apiv2.shiprocket.in/v1/external/courier/assign/awb", {
-      method: "POST", headers: { "Content-Type": "application/json", "Authorization": `Bearer ${token}` }, body: JSON.stringify({ shipment_id: shipmentId, courier_id: "", status: "" })
+      method: "POST", headers: { "Content-Type": "application/json", "Authorization": `Bearer ${token} ` }, body: JSON.stringify({ shipment_id: shipmentId, courier_id: "", status: "" })
     });
 
     const result = await fetchRes.json();

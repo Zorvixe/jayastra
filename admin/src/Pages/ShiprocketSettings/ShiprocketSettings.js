@@ -250,37 +250,6 @@ const ShiprocketSettings = () => {
           </div>
         </div>
 
-        {/* Webhook URL Section */}
-        {/* Webhook URL Section */}
-        <div className="shiprocket-section">
-          <h5 className="shiprocket-section-title">
-            <i className="bi bi-link"></i> Webhook Configuration
-          </h5>
-
-          <div className="shiprocket-info-box">
-            <i className="bi bi-info-circle-fill"></i>
-            <div>
-              <strong>Webhook URL to configure in Shiprocket Dashboard:</strong>
-              <code className="shiprocket-webhook-url">
-                {`${window.location.origin}/api/webhooks/order-tracking`}
-              </code>
-              <p className="shiprocket-webhook-help">
-                Go to Shiprocket Dashboard → Settings → API → Webhooks. Add this URL and set the
-                header <strong>x-api-key</strong> with your webhook secret above.
-              </p>
-              <button
-                type="button"
-                className="shiprocket-test-webhook-btn"
-                onClick={handleTestWebhook}
-                disabled={testingWebhook}
-                style={{ marginTop: "10px" }}
-              >
-                {testingWebhook ? "Testing..." : "Test Webhook Endpoint"}
-              </button>
-            </div>
-          </div>
-        </div>
-
         <div className="shiprocket-form-actions">
           <button type="submit" className="shiprocket-save-btn" disabled={saving}>
             <i className="bi bi-check-circle"></i> {saving ? "Saving..." : "Save Settings"}
