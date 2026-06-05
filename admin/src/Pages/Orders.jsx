@@ -3,7 +3,7 @@ import React, { useEffect, useState } from "react";
 import axios from '../utils/axiosConfig';
 import { toast } from "react-toastify";
 
-import shiprocketService from '../services/shiprocketService';
+import shipmozoService from '../services/shipmozoService';
 
 import "./Order.css";
 
@@ -288,23 +288,23 @@ const Orders = () => {
     }
   };
 
-  // ================= PUSH TO SHIPROCKET =================
-  const executePushToShiprocket = async () => {
+  // ================= PUSH TO SHIPMOZO =================
+  const executePushToShipmozo = async () => {
     if (!confirmPushOrderId) return;
     try {
       setPushLoading(true);
       setLoading(true);
-      const res = await axios.post(`${API_URL}/admin/orders/${confirmPushOrderId}/shiprocket`, {}, {
+      const res = await axios.post(`${API_URL}/admin/orders/${confirmPushOrderId}/shipmozo`, {}, {
         headers: { Authorization: `Bearer ${token}` }
       });
       if (res.data.success) {
-        toast.success("Order successfully pushed to Shiprocket! 🚀");
+        toast.success(res.data.message || "Order successfully pushed to Shipmozo! 🚀");
         await fetchOrders(true);
         setConfirmPushOrderId(null);
       }
     } catch (err) {
       console.error(err);
-      const errorMsg = err.response?.data?.message || "Failed to push to Shiprocket";
+      const errorMsg = err.response?.data?.message || "Failed to push to Shipmozo";
       toast.error(errorMsg);
       setConfirmPushOrderId(null);
     } finally {
@@ -313,7 +313,7 @@ const Orders = () => {
     }
   };
 
-  // ================= SHIPROCKET GENERATORS =================
+  // ================= SHIPMOZO GENERATORS =================
   const generateAWB = async (orderId) => {
     try {
       setLoading(true);
@@ -349,7 +349,7 @@ const Orders = () => {
     }
   };
 
-  const downloadShiprocketInvoice = async (orderId) => {
+  const downloadShipmozoInvoice = async (orderId) => {
     try {
       setLoading(true);
       const res = await axios.post(`${API_URL}/admin/orders/${orderId}/invoice`, {}, {
@@ -361,14 +361,14 @@ const Orders = () => {
         toast.error("Invoice URL not available");
       }
     } catch (err) {
-      toast.error(err.response?.data?.message || "Failed to download Shiprocket invoice");
+      toast.error(err.response?.data?.message || "Failed to download Shipmozo invoice");
     } finally {
       setLoading(false);
     }
   };
 
-  // Check if order has complete address for Shiprocket
-  const canPushToShiprocket = (order) => {
+  // Check if order has complete address for Shipmozo
+  const canPushToShipmozo = (order) => {
     // Check if order has the required address components
     const hasCity = order.city && order.city !== '' && order.city !== 'City' && order.city !== 'city';
     const hasState = order.state && order.state !== '' && order.state !== 'State' && order.state !== 'state';
@@ -403,7 +403,7 @@ const Orders = () => {
         return sum + (itemWeight * item.quantity);
       }, 0) || 0.5;
 
-      const result = await shiprocketService.getCourierRecommendation(
+      const result = await shipmozoService.getCourierRecommendation(
         pincode,
         order.total_amount,
         order.payment_method === 'COD',
@@ -411,7 +411,7 @@ const Orders = () => {
       );
 
       if (result.serviceable && result.recommended_courier) {
-        toast.success(`✅ Recommended: ${result.recommended_courier.courier_name} - ₹${result.recommended_courier.rate} (Est. ${Math.ceil(result.recommended_courier.etd_hours / 24)} days)`);
+        toast.success(`✅ Recommended: ${result.recommended_courier.courier_name} - ₹${result.recommended_courier.rate} (Est. ${result.recommended_courier.estimated_days || 5} days)`);
       } else {
         toast.warning(result.message || "No courier available for this pincode");
       }
@@ -885,8 +885,8 @@ const Orders = () => {
                   {selectedOrder.awb_code && (
                     <p><strong>AWB:</strong> {selectedOrder.awb_code}</p>
                   )}
-                  {selectedOrder.shiprocket_order_id && (
-                    <p><strong>SR Order ID:</strong> {selectedOrder.shiprocket_order_id}</p>
+                  {selectedOrder.shipmozo_order_id && (
+                    <p><strong>Shipmozo Order ID:</strong> {selectedOrder.shipmozo_order_id}</p>
                   )}
                 </div>
               </div>
@@ -928,16 +928,10 @@ const Orders = () => {
                 <i className="bi bi-search"></i> Check Courier
               </button>
 
-              <button
-                className="invoice-btn-admin edit-address-btn"
-                onClick={() => setShowAddressEditModal(true)}
-                disabled={loading}
-              >
-                <i className="bi bi-geo-alt"></i> Edit Address
-              </button>
+             
 
               {(() => {
-                const pushCheck = canPushToShiprocket(selectedOrder);
+                const pushCheck = canPushToShipmozo(selectedOrder);
                 return (
                   <button
                     className="invoice-btn-admin push-btn"
@@ -948,8 +942,8 @@ const Orders = () => {
                         toast.error(pushCheck.reason);
                       }
                     }}
-                    disabled={selectedOrder.shiprocket_order_id || pushLoading || !pushCheck.canPush}
-                    title={!pushCheck.canPush ? pushCheck.reason : "Push to Shiprocket"}
+                    disabled={selectedOrder.shipmozo_order_id || pushLoading || !pushCheck.canPush}
+                    title={!pushCheck.canPush ? pushCheck.reason : "Push to Shipmozo"}
                   >
                     {pushLoading && confirmPushOrderId === selectedOrder.id ? (
                       <>
@@ -959,14 +953,14 @@ const Orders = () => {
                     ) : (
                       <>
                         <i className="bi bi-box-seam"></i>
-                        {selectedOrder.shiprocket_order_id ? "Pushed to Shiprocket" : "Push to Shiprocket"}
+                        {selectedOrder.shipmozo_order_id ? "Pushed to Shipmozo" : "Push to Shipmozo"}
                       </>
                     )}
                   </button>
                 );
               })()}
 
-              {selectedOrder.shiprocket_order_id && !selectedOrder.awb_code && (
+              {selectedOrder.shipmozo_order_id && !selectedOrder.awb_code && (
                 <button
                   className="invoice-btn-admin generate-awb-btn"
                   onClick={() => generateAWB(selectedOrder.id)}
@@ -988,11 +982,11 @@ const Orders = () => {
 
               {selectedOrder.awb_code && (
                 <button
-                  className="invoice-btn-admin shiprocket-invoice-btn"
-                  onClick={() => downloadShiprocketInvoice(selectedOrder.id)}
+                  className="invoice-btn-admin shipmozo-invoice-btn"
+                  onClick={() => downloadShipmozoInvoice(selectedOrder.id)}
                   disabled={loading}
                 >
-                  <i className="bi bi-receipt"></i> SR Invoice
+                  <i className="bi bi-receipt"></i> Shipmozo Invoice
                 </button>
               )}
 
@@ -1031,16 +1025,16 @@ const Orders = () => {
         </div>
       )}
 
-      {/* Push to Shiprocket Confirmation Modal */}
+      {/* Push to Shipmozo Confirmation Modal */}
       {confirmPushOrderId && (
         <div className="custom-confirm-overlay" onClick={() => setConfirmPushOrderId(null)}>
           <div className="custom-confirm-box" onClick={(e) => e.stopPropagation()}>
             <div className="confirm-icon">🚀</div>
             <h5>Push to Logistics</h5>
-            <p>Are you sure you want to push Order #ORD{confirmPushOrderId} to Shiprocket? A shipment will be initiated.</p>
+            <p>Are you sure you want to push Order #ORD{confirmPushOrderId} to Shipmozo? A shipment will be initiated.</p>
             <div className="confirm-actions">
               <button className="confirm-cancel-btn" onClick={() => setConfirmPushOrderId(null)} disabled={pushLoading}>Cancel</button>
-              <button className="confirm-execute-btn" onClick={executePushToShiprocket} disabled={pushLoading}>
+              <button className="confirm-execute-btn" onClick={executePushToShipmozo} disabled={pushLoading}>
                 {pushLoading ? "Pushing..." : "Yes, Push Now"}
               </button>
             </div>

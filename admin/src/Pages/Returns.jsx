@@ -171,7 +171,7 @@ const Returns = () => {
                             </thead>
                             <tbody>
                                 {returns.length === 0 ? (
-                                    <td><td colSpan={userRole === 'super_admin' ? 8 : 7} className="return-empty">No return requests found</td></td>
+                                    <tr><td colSpan={userRole === 'super_admin' ? 8 : 7} className="return-empty">No return requests found</td></tr>
                                 ) : (
                                     returns.map(r => (
                                         <tr key={r.id} className={`return-row ${selectedRequest?.id === r.id ? 'active' : ''}`}>
@@ -272,6 +272,10 @@ const Returns = () => {
                                 placeholder="Explain why you approve or reject this return..."
                                 rows="4"
                             />
+                            <small className="remark-hint">
+                                <i className="bi bi-info-circle"></i> 
+                                This comment will be visible to the customer
+                            </small>
                         </div>
 
                         <div className="return-action-buttons">

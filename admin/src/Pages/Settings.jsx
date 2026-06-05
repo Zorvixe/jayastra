@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from "react";
 import axios from 'axios';
 import { toast } from 'react-toastify';
-import SettingshipRocket from "./ShiprocketSettings/ShiprocketSettings";
+import ShipmozoSettings from "./ShipmozoSettings/ShipmozoSettings";
 import "./Settings.css";
 
 const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
@@ -45,7 +45,6 @@ const Settings = () => {
           razorpay_key_secret: s.razorpay_key_secret || "",
           platform_fee_percent: parseFloat(s.platform_fee_percent || 10)
         });
-        toast.success("Settings loaded successfully");
       }
     } catch (err) {
       console.error("Failed to fetch settings", err);
@@ -309,7 +308,7 @@ const Settings = () => {
 
       </form>
 
-      <SettingshipRocket />
+      <ShipmozoSettings />
 
       {/* ================= DANGER ZONE ================= */}
       <div className="settings-danger-zone">
