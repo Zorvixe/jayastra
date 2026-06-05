@@ -781,3 +781,340 @@
 @keyframes spin {
   to { transform: rotate(360deg); }
 }
+
+/* Address Edit Modal */
+.address-edit-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 2000;
+  backdrop-filter: blur(4px);
+}
+
+.address-edit-modal {
+  background: white;
+  border-radius: 16px;
+  width: 90%;
+  max-width: 600px;
+  max-height: 90vh;
+  overflow: hidden;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+  animation: slideUp 0.3s ease;
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.address-edit-modal .modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px 20px;
+  border-bottom: 1px solid #e2e8f0;
+  background: #f8fafc;
+}
+
+.address-edit-modal .modal-header h4 {
+  margin: 0;
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: #1e293b;
+}
+
+.address-edit-modal .close-btn {
+  background: none;
+  border: none;
+  font-size: 20px;
+  cursor: pointer;
+  color: #94a3b8;
+  transition: color 0.2s;
+}
+
+.address-edit-modal .close-btn:hover {
+  color: #ef4444;
+}
+
+.address-edit-modal .modal-body {
+  padding: 20px;
+  max-height: 60vh;
+  overflow-y: auto;
+}
+
+.address-edit-modal .form-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 15px;
+  margin-bottom: 15px;
+}
+
+.address-edit-modal .form-group {
+  margin-bottom: 15px;
+}
+
+.address-edit-modal .form-group label {
+  display: block;
+  font-size: 13px;
+  font-weight: 500;
+  color: #475569;
+  margin-bottom: 6px;
+}
+
+.address-edit-modal .form-group .required {
+  color: #ef4444;
+}
+
+.address-edit-modal .form-group input,
+.address-edit-modal .form-group textarea {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  font-size: 14px;
+  transition: all 0.2s;
+}
+
+.address-edit-modal .form-group input:focus,
+.address-edit-modal .form-group textarea:focus {
+  outline: none;
+  border-color: #8E2139;
+  box-shadow: 0 0 0 3px rgba(142, 33, 57, 0.1);
+}
+
+.address-edit-modal .modal-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  padding: 16px 20px;
+  border-top: 1px solid #e2e8f0;
+  background: #f8fafc;
+}
+
+.address-edit-modal .btn-cancel {
+  padding: 10px 20px;
+  background: #f1f5f9;
+  border: none;
+  border-radius: 8px;
+  color: #475569;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.address-edit-modal .btn-cancel:hover {
+  background: #e2e8f0;
+}
+
+.address-edit-modal .btn-save {
+  padding: 10px 24px;
+  background: #8E2139;
+  border: none;
+  border-radius: 8px;
+  color: white;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.address-edit-modal .btn-save:hover {
+  background: #6b192b;
+}
+
+.address-edit-modal .btn-save:disabled {
+  background: #cbd5e1;
+  cursor: not-allowed;
+}
+
+/* Edit Address Button in Modal Footer */
+.edit-address-btn {
+  background: #f59e0b !important;
+  color: white !important;
+}
+
+.edit-address-btn:hover {
+  background: #d97706 !important;
+}/* Address Edit Modal Styles */
+.address-edit-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 2000;
+  backdrop-filter: blur(4px);
+}
+
+.address-edit-modal {
+  background: white;
+  border-radius: 16px;
+  width: 90%;
+  max-width: 600px;
+  max-height: 90vh;
+  overflow: hidden;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+  animation: slideUp 0.3s ease;
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.address-edit-modal .modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px 20px;
+  border-bottom: 1px solid #e2e8f0;
+  background: #f8fafc;
+}
+
+.address-edit-modal .modal-header h4 {
+  margin: 0;
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: #1e293b;
+}
+
+.address-edit-modal .close-btn {
+  background: none;
+  border: none;
+  font-size: 20px;
+  cursor: pointer;
+  color: #94a3b8;
+  transition: color 0.2s;
+}
+
+.address-edit-modal .close-btn:hover {
+  color: #ef4444;
+}
+
+.address-edit-modal .modal-body {
+  padding: 20px;
+  max-height: 55vh;
+  overflow-y: auto;
+}
+
+.address-edit-modal .form-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 15px;
+  margin-bottom: 15px;
+}
+
+.address-edit-modal .form-group {
+  margin-bottom: 15px;
+}
+
+.address-edit-modal .form-group label {
+  display: block;
+  font-size: 13px;
+  font-weight: 500;
+  color: #475569;
+  margin-bottom: 6px;
+}
+
+.address-edit-modal .form-group .required {
+  color: #ef4444;
+}
+
+.address-edit-modal .form-group input,
+.address-edit-modal .form-group textarea {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  font-size: 14px;
+  transition: all 0.2s;
+}
+
+.address-edit-modal .form-group input:focus,
+.address-edit-modal .form-group textarea:focus {
+  outline: none;
+  border-color: #8E2139;
+  box-shadow: 0 0 0 3px rgba(142, 33, 57, 0.1);
+}
+
+.address-edit-modal .help-text {
+  display: block;
+  font-size: 11px;
+  color: #94a3b8;
+  margin-top: 4px;
+}
+
+.address-edit-modal .modal-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  padding: 16px 20px;
+  border-top: 1px solid #e2e8f0;
+  background: #f8fafc;
+}
+
+.address-edit-modal .btn-cancel {
+  padding: 10px 20px;
+  background: #f1f5f9;
+  border: none;
+  border-radius: 8px;
+  color: #475569;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.address-edit-modal .btn-cancel:hover {
+  background: #e2e8f0;
+}
+
+.address-edit-modal .btn-save {
+  padding: 10px 24px;
+  background: #8E2139;
+  border: none;
+  border-radius: 8px;
+  color: white;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.address-edit-modal .btn-save:hover {
+  background: #6b192b;
+}
+
+.address-edit-modal .btn-save:disabled {
+  background: #cbd5e1;
+  cursor: not-allowed;
+}
+
+/* Edit Address Button in Modal Footer */
+.edit-address-btn {
+  background: #f59e0b !important;
+  color: white !important;
+}
+
+.edit-address-btn:hover {
+  background: #d97706 !important;
+}

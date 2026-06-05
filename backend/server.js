@@ -4861,7 +4861,6 @@ const getShiprocketConfig = async (returnRealPassword = false) => {
 
     result.rows.forEach(row => {
       if (row.key === 'shiprocket_password') {
-        // Store actual password in memory, not masked
         config[row.key] = row.value || '';
       } else {
         config[row.key] = row.value || '';
@@ -4898,6 +4897,7 @@ const clearShiprocketCache = () => {
   tokenExpiry = null;
   console.log("Shiprocket cache cleared");
 };
+
 const authenticateShiprocket = async (retryCount = 0) => {
   // Check if token is still valid (9 days expiry)
   if (shiprocketToken && tokenExpiry && Date.now() < tokenExpiry) {
@@ -4976,6 +4976,133 @@ const authenticateShiprocket = async (retryCount = 0) => {
   }
 };
 
+// Helper function to extract address components from order
+const extractAddressComponents = async (order) => {
+  let fullAddress = order.address || '';
+  let houseNo = order.house_no || '';
+  let streetArea = order.street_area || '';
+  let landmark = order.landmark || '';
+  let city = order.city || '';
+  let state = order.state || '';
+  let pincode = order.pincode || '';
+  let country = order.country || 'India';
+
+  // If we have house_no and street_area but no full address, construct it
+  if ((!fullAddress || fullAddress === '') && (houseNo || streetArea)) {
+    const parts = [];
+    if (houseNo) parts.push(houseNo);
+    if (streetArea) parts.push(streetArea);
+    if (landmark) parts.push(landmark);
+    if (city) parts.push(city);
+    if (state) parts.push(state);
+    if (pincode) parts.push(pincode);
+    fullAddress = parts.join(', ');
+  }
+
+  // Try to extract pincode from full address if not already present
+  if (!pincode && fullAddress) {
+    const pinMatch = fullAddress.match(/\b\d{6}\b/);
+    if (pinMatch) {
+      pincode = pinMatch[0];
+    }
+  }
+
+  // Try to extract city from full address if not already present
+  if (!city && fullAddress) {
+    // Try common patterns
+    const patterns = [
+      /city[:\s]+([A-Za-z\s]+)/i,
+      /,\s*([A-Za-z\s]+?)\s*,\s*[A-Za-z\s]+?\s*\d{6}/,
+      /\s+([A-Za-z\s]+?)\s*[-–]\s*\d{6}/
+    ];
+    
+    for (const pattern of patterns) {
+      const match = fullAddress.match(pattern);
+      if (match && match[1] && match[1].trim()) {
+        city = match[1].trim();
+        break;
+      }
+    }
+    
+    // If still no city, try splitting by commas
+    if (!city && fullAddress.includes(',')) {
+      const parts = fullAddress.split(',');
+      if (parts.length >= 3) {
+        city = parts[parts.length - 3]?.trim() || '';
+      } else if (parts.length >= 2) {
+        city = parts[parts.length - 2]?.trim() || '';
+      }
+    }
+  }
+
+  // Try to extract state from full address if not already present
+  if (!state && fullAddress) {
+    const stateMatch = fullAddress.match(/state[:\s]+([A-Za-z\s]+)/i);
+    if (stateMatch && stateMatch[1]) {
+      state = stateMatch[1].trim();
+    } else if (fullAddress.includes(',')) {
+      const parts = fullAddress.split(',');
+      if (parts.length >= 2) {
+        const possibleState = parts[parts.length - 2]?.trim() || '';
+        // Check if it's a state (not a city with pincode)
+        if (possibleState && !possibleState.match(/\d/) && possibleState.length > 2) {
+          state = possibleState;
+        }
+      }
+    }
+  }
+
+  // Ensure all required fields have valid values
+  if (!city || city === '' || city === 'City' || city === 'city' || city === 'NA' || city === 'n/a') {
+    city = "Unknown City";
+  }
+
+  if (!state || state === '' || state === 'State' || state === 'state' || state === 'NA' || state === 'n/a') {
+    state = "Unknown State";
+  }
+
+  if (!pincode || pincode === '' || !/^\d{6}$/.test(pincode)) {
+    pincode = "500001"; // Default pincode
+  }
+
+  // Ensure address is not empty
+  if (!fullAddress || fullAddress === '') {
+    fullAddress = `${houseNo ? houseNo + ', ' : ''}${streetArea ? streetArea : ''}${city ? ', ' + city : ''}${state ? ', ' + state : ''} ${pincode}`;
+  }
+
+  // Clean up address - remove any undefined or null values
+  fullAddress = fullAddress.replace(/undefined/g, '').replace(/null/g, '').replace(/,\s*,/g, ',').replace(/,\s+$/g, '').trim();
+
+  if (!fullAddress || fullAddress === '') {
+    fullAddress = "Address not specified";
+  }
+
+  // Limit address length
+  fullAddress = fullAddress.substring(0, 200);
+
+  console.log("Extracted Address Components:", {
+    fullAddress,
+    houseNo,
+    streetArea,
+    landmark,
+    city,
+    state,
+    pincode,
+    country
+  });
+
+  return {
+    fullAddress,
+    houseNo: houseNo || '',
+    streetArea: streetArea || '',
+    landmark: landmark || '',
+    city: city || 'Unknown City',
+    state: state || 'Unknown State',
+    pincode: pincode || '500001',
+    country: country || 'India'
+  };
+};
+
 
 app.post("/api/admin/orders/:id/shiprocket", verifyToken, verifyAdminVendorIndividualAccess, async (req, res) => {
   try {
@@ -5001,6 +5128,23 @@ app.post("/api/admin/orders/:id/shiprocket", verifyToken, verifyAdminVendorIndiv
 
     if (order.shiprocket_order_id) {
       return res.status(400).json({ success: false, message: "Order already pushed to Shiprocket" });
+    }
+
+    // Extract address components
+    const addressComponents = await extractAddressComponents(order);
+    
+    // Validate required fields
+    const missingFields = [];
+    if (!addressComponents.city || addressComponents.city === 'Unknown City') missingFields.push('City');
+    if (!addressComponents.state || addressComponents.state === 'Unknown State') missingFields.push('State');
+    if (!addressComponents.pincode || addressComponents.pincode === '500001') missingFields.push('Pincode');
+    
+    if (missingFields.length > 0 && (addressComponents.city === 'Unknown City' || addressComponents.state === 'Unknown State' || addressComponents.pincode === '500001')) {
+      return res.status(400).json({ 
+        success: false, 
+        message: `Missing or incomplete address details. Please update the order with proper ${missingFields.join(', ')} before pushing to Shiprocket.`,
+        missingFields
+      });
     }
 
     // Get vendor ID from order items
@@ -5078,84 +5222,18 @@ app.post("/api/admin/orders/:id/shiprocket", verifyToken, verifyAdminVendorIndiv
 
     const token = await authenticateShiprocket();
 
-    // ========== IMPROVED ADDRESS PARSING ==========
-    // Parse the full address to extract components
-    let fullAddress = order.address || '';
-    let houseNo = order.house_no || '';
-    let streetArea = order.street_area || '';
-    let landmark = order.landmark || '';
-    let city = order.city || '';
-    let state = order.state || '';
-    let pincode = '';
-
-    // Extract pincode from address if not already present
-    const pinMatch = fullAddress.match(/\b\d{6}\b/);
-    if (pinMatch) {
-      pincode = pinMatch[0];
+    // Build billing address using extracted components
+    let billingAddress = addressComponents.fullAddress;
+    if (!billingAddress || billingAddress === 'Address not specified') {
+      billingAddress = `${addressComponents.houseNo ? addressComponents.houseNo + ', ' : ''}${addressComponents.streetArea ? addressComponents.streetArea : ''}`;
     }
-
-    // Try to extract city and state from address if not provided
-    if (!city && fullAddress) {
-      // Common pattern: "... City, State - Pincode"
-      const parts = fullAddress.split(',');
-      if (parts.length >= 2) {
-        const lastPart = parts[parts.length - 1].trim();
-        const cityStateMatch = lastPart.match(/([A-Za-z\s]+)\s*-\s*(\d{6})/);
-        if (cityStateMatch) {
-          city = cityStateMatch[1].trim();
-        } else if (parts.length >= 3) {
-          city = parts[parts.length - 2].trim();
-        }
-      }
+    
+    // Ensure billing address is not empty
+    if (!billingAddress || billingAddress === '') {
+      billingAddress = "Address not specified";
     }
-
-    if (!state && fullAddress) {
-      const stateMatch = fullAddress.match(/([A-Za-z\s]+)\s*\d{6}/);
-      if (stateMatch && stateMatch[1]) {
-        state = stateMatch[1].trim();
-      } else if (city && fullAddress.includes(city)) {
-        const afterCity = fullAddress.split(city)[1];
-        if (afterCity) {
-          const stateMatch2 = afterCity.match(/([A-Za-z\s]+)/);
-          if (stateMatch2) {
-            state = stateMatch2[1].trim();
-          }
-        }
-      }
-    }
-
-    // Ensure all required fields have values
-    if (!city || city === '' || city === 'City') {
-      city = "Unknown City";
-    }
-
-    if (!state || state === '' || state === 'State') {
-      state = "Unknown State";
-    }
-
-    if (!pincode || pincode === '') {
-      pincode = "500001"; // Default pincode
-    }
-
-    // Build complete address string
-    let billingAddress = '';
-    if (houseNo) billingAddress += houseNo;
-    if (streetArea) billingAddress += (billingAddress ? ', ' : '') + streetArea;
-    if (!billingAddress && fullAddress) billingAddress = fullAddress.split(',')[0];
-    if (!billingAddress) billingAddress = "Address not specified";
-
-    // Limit address length
+    
     billingAddress = billingAddress.substring(0, 200);
-
-    console.log("Parsed Address Details:", {
-      billingAddress,
-      city,
-      state,
-      pincode,
-      houseNo,
-      streetArea,
-      landmark
-    });
 
     const payload = {
       order_id: `JAYASTRA-${order.id}`,
@@ -5164,11 +5242,11 @@ app.post("/api/admin/orders/:id/shiprocket", verifyToken, verifyAdminVendorIndiv
       billing_customer_name: (order.customer_name || "Customer").substring(0, 100),
       billing_last_name: "JAYA",
       billing_address: billingAddress,
-      billing_address_2: (landmark || "").substring(0, 100),
-      billing_city: city,
-      billing_pincode: pincode,
-      billing_state: state,
-      billing_country: "India",
+      billing_address_2: (addressComponents.landmark || "").substring(0, 100),
+      billing_city: addressComponents.city,
+      billing_pincode: addressComponents.pincode,
+      billing_state: addressComponents.state,
+      billing_country: addressComponents.country,
       billing_email: (order.email || "jayastrastore@gmail.com").substring(0, 100),
       billing_phone: (order.phone || "9652896180").substring(0, 20),
       shipping_is_billing: true,
@@ -5193,31 +5271,35 @@ app.post("/api/admin/orders/:id/shiprocket", verifyToken, verifyAdminVendorIndiv
     });
 
     const result = await fetchRes.json();
+    console.log("Shiprocket response:", JSON.stringify(result, null, 2));
 
-    if (fetchRes.ok && result.order_id) {
+    if (fetchRes.ok && (result.order_id || result.shipment_id)) {
+      const srOrderId = result.order_id ? result.order_id.toString() : null;
+      const srShipmentId = result.shipment_id ? result.shipment_id.toString() : null;
+      
       await pool.query(
         `UPDATE orders SET shiprocket_order_id = $1, shiprocket_shipment_id = $2, updated_at = NOW() WHERE id = $3`,
-        [result.order_id.toString(), result.shipment_id?.toString() || null, orderId]
+        [srOrderId, srShipmentId, orderId]
       );
 
       // Try to get AWB automatically
-      try {
-        if (result.shipment_id) {
+      if (srShipmentId) {
+        try {
           const awbRes = await fetch("https://apiv2.shiprocket.in/v1/external/courier/assign/awb", {
             method: "POST",
             headers: {
               "Content-Type": "application/json",
               "Authorization": `Bearer ${token}`
             },
-            body: JSON.stringify({ shipment_id: result.shipment_id })
+            body: JSON.stringify({ shipment_id: srShipmentId })
           });
           const awbData = await awbRes.json();
           if (awbData.awb_code) {
             await pool.query(`UPDATE orders SET awb_code = $1 WHERE id = $2`, [awbData.awb_code, orderId]);
           }
+        } catch (awbErr) {
+          console.warn("Auto AWB assignment failed:", awbErr.message);
         }
-      } catch (awbErr) {
-        console.warn("Auto AWB assignment failed:", awbErr.message);
       }
 
       return res.json({ success: true, message: "Order pushed to Shiprocket successfully!", data: result });
@@ -5232,7 +5314,7 @@ app.post("/api/admin/orders/:id/shiprocket", verifyToken, verifyAdminVendorIndiv
 
       // Handle common address errors
       if (errorMessage.toLowerCase().includes("address") || errorMessage.toLowerCase().includes("city") || errorMessage.toLowerCase().includes("state")) {
-        errorMessage = "Missing or invalid address details. Please ensure the order has complete city, state, and pincode information.";
+        errorMessage = `Missing or invalid address details. Please ensure the order has complete city, state, and pincode information. Current values - City: "${addressComponents.city}", State: "${addressComponents.state}", Pincode: "${addressComponents.pincode}"`;
       }
 
       return res.status(400).json({
@@ -5343,8 +5425,6 @@ app.post("/api/admin/orders/:id/invoice", verifyToken, verifyAdminVendorIndividu
   }
 });
 
-// Update order address details (Admin only)
-// Update order address - Admin only
 app.put("/api/admin/orders/:id/address", verifyToken, verifyAdminOrSuperAdmin, async (req, res) => {
   try {
     const { id } = req.params;
@@ -5356,6 +5436,7 @@ app.put("/api/admin/orders/:id/address", verifyToken, verifyAdminOrSuperAdmin, a
       const parts = [];
       if (house_no) parts.push(house_no);
       if (street_area) parts.push(street_area);
+      if (landmark) parts.push(landmark);
       if (city) parts.push(city);
       if (state) parts.push(state);
       if (pincode) parts.push(pincode);
@@ -5387,7 +5468,6 @@ app.put("/api/admin/orders/:id/address", verifyToken, verifyAdminOrSuperAdmin, a
     res.status(500).json({ success: false, message: error.message });
   }
 });
-
 // ================= SHIPROCKET WEBHOOK (SECURE VERSION) =================
 // ================= SHIPROCKET WEBHOOK (SECURE VERSION) =================
 

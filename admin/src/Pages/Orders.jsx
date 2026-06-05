@@ -1,3 +1,4 @@
+// src/admin/pages/Orders.js
 import React, { useEffect, useState } from "react";
 import axios from '../utils/axiosConfig';
 import { toast } from "react-toastify";
@@ -5,7 +6,6 @@ import { toast } from "react-toastify";
 import shiprocketService from '../services/shiprocketService';
 
 import "./Order.css";
-
 
 const API_URL = process.env.REACT_APP_API_URL;
 
@@ -19,8 +19,173 @@ const getImageUrl = (imagePath) => {
   return `${baseUrl}${cleanPath}`;
 };
 
-const Orders = () => {
+// Helper function to escape HTML to prevent XSS
+const escapeHtml = (text) => {
+  if (!text) return '';
+  const div = document.createElement('div');
+  div.textContent = text;
+  return div.innerHTML;
+};
 
+// Address Edit Modal Component
+const AddressEditModal = ({ order, isOpen, onClose, onUpdate }) => {
+  const [addressForm, setAddressForm] = useState({
+    house_no: "",
+    street_area: "",
+    landmark: "",
+    city: "",
+    state: "",
+    pincode: "",
+    address: ""
+  });
+  const [updating, setUpdating] = useState(false);
+
+  useEffect(() => {
+    if (order && isOpen) {
+      setAddressForm({
+        house_no: order.house_no || "",
+        street_area: order.street_area || "",
+        landmark: order.landmark || "",
+        city: order.city || "",
+        state: order.state || "",
+        pincode: order.pincode || "",
+        address: order.address || ""
+      });
+    }
+  }, [order, isOpen]);
+
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    setAddressForm(prev => ({ ...prev, [name]: value }));
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    
+    // Validate required fields
+    if (!addressForm.city.trim()) {
+      toast.error("City is required");
+      return;
+    }
+    if (!addressForm.state.trim()) {
+      toast.error("State is required");
+      return;
+    }
+    if (!addressForm.pincode.trim() || !/^\d{6}$/.test(addressForm.pincode)) {
+      toast.error("Valid 6-digit pincode is required");
+      return;
+    }
+    
+    setUpdating(true);
+    const success = await onUpdate(order.id, addressForm);
+    setUpdating(false);
+    if (success) onClose();
+  };
+
+  if (!isOpen || !order) return null;
+
+  return (
+    <div className="address-edit-modal-overlay" onClick={onClose}>
+      <div className="address-edit-modal" onClick={e => e.stopPropagation()}>
+        <div className="modal-header">
+          <h4>Edit Shipping Address - Order #{order.id}</h4>
+          <button className="close-btn" onClick={onClose}>✕</button>
+        </div>
+        <form onSubmit={handleSubmit}>
+          <div className="modal-body">
+            <div className="form-row">
+              <div className="form-group">
+                <label>House/Flat No</label>
+                <input 
+                  type="text" 
+                  name="house_no" 
+                  value={addressForm.house_no} 
+                  onChange={handleChange} 
+                  placeholder="House No / Building" 
+                />
+              </div>
+              <div className="form-group">
+                <label>Street/Area</label>
+                <input 
+                  type="text" 
+                  name="street_area" 
+                  value={addressForm.street_area} 
+                  onChange={handleChange} 
+                  placeholder="Street name / Area" 
+                />
+              </div>
+            </div>
+            <div className="form-group">
+              <label>Landmark (Optional)</label>
+              <input 
+                type="text" 
+                name="landmark" 
+                value={addressForm.landmark} 
+                onChange={handleChange} 
+                placeholder="Nearby landmark" 
+              />
+            </div>
+            <div className="form-row">
+              <div className="form-group">
+                <label>City <span className="required">*</span></label>
+                <input 
+                  type="text" 
+                  name="city" 
+                  value={addressForm.city} 
+                  onChange={handleChange} 
+                  placeholder="City" 
+                  required 
+                />
+              </div>
+              <div className="form-group">
+                <label>State <span className="required">*</span></label>
+                <input 
+                  type="text" 
+                  name="state" 
+                  value={addressForm.state} 
+                  onChange={handleChange} 
+                  placeholder="State" 
+                  required 
+                />
+              </div>
+              <div className="form-group">
+                <label>Pincode <span className="required">*</span></label>
+                <input 
+                  type="text" 
+                  name="pincode" 
+                  value={addressForm.pincode} 
+                  onChange={handleChange} 
+                  placeholder="6-digit pincode" 
+                  maxLength="6" 
+                  required 
+                />
+              </div>
+            </div>
+            <div className="form-group">
+              <label>Full Address</label>
+              <textarea 
+                name="address" 
+                value={addressForm.address} 
+                onChange={handleChange} 
+                rows="2" 
+                placeholder="Complete address" 
+              />
+              <small className="help-text">This will be auto-generated from components above if left empty.</small>
+            </div>
+          </div>
+          <div className="modal-footer">
+            <button type="button" className="btn-cancel" onClick={onClose}>Cancel</button>
+            <button type="submit" className="btn-save" disabled={updating}>
+              {updating ? "Saving..." : "Save Address"}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+};
+
+const Orders = () => {
   const [selectedOrder, setSelectedOrder] = useState(null);
   const [orders, setOrders] = useState([]);
   const [previewImage, setPreviewImage] = useState(null);
@@ -29,6 +194,7 @@ const Orders = () => {
   const [initialLoading, setInitialLoading] = useState(true);
   const [statusUpdatingId, setStatusUpdatingId] = useState(null);
   const [pushLoading, setPushLoading] = useState(false);
+  const [showAddressEditModal, setShowAddressEditModal] = useState(false);
 
   // Date filter state - default to today
   const [filterDate, setFilterDate] = useState(new Date().toISOString().split('T')[0]);
@@ -58,21 +224,23 @@ const Orders = () => {
     }
   };
 
+  // Auto-refresh orders every 10 seconds
   useEffect(() => {
     fetchOrders();
     const interval = setInterval(() => {
       fetchOrders(true);
     }, 10000);
     return () => clearInterval(interval);
-  }, [filterDate]);
+  }, []);
 
+  // Filter orders by date
   const filteredOrders = orders.filter(order => {
     if (!filterDate) return true;
     const orderDate = new Date(order.created_at).toISOString().split('T')[0];
     return orderDate === filterDate;
   });
 
-  // ================= UPDATE STATUS =================
+  // ================= UPDATE ORDER STATUS =================
   const updateOrderStatus = async (id, status) => {
     try {
       setStatusUpdatingId(id);
@@ -93,6 +261,33 @@ const Orders = () => {
     }
   };
 
+  // ================= UPDATE ORDER ADDRESS =================
+  const updateOrderAddress = async (orderId, addressData) => {
+    try {
+      setLoading(true);
+      const response = await axios.put(`${API_URL}/admin/orders/${orderId}/address`, addressData, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      
+      if (response.data.success) {
+        toast.success("Address updated successfully!");
+        await fetchOrders(true);
+        // Update selected order if open
+        if (selectedOrder && selectedOrder.id === orderId) {
+          setSelectedOrder(response.data.order);
+        }
+        return true;
+      }
+      return false;
+    } catch (err) {
+      console.error("Address update error:", err);
+      toast.error(err.response?.data?.message || "Failed to update address");
+      return false;
+    } finally {
+      setLoading(false);
+    }
+  };
+
   // ================= PUSH TO SHIPROCKET =================
   const executePushToShiprocket = async () => {
     if (!confirmPushOrderId) return;
@@ -104,12 +299,13 @@ const Orders = () => {
       });
       if (res.data.success) {
         toast.success("Order successfully pushed to Shiprocket! 🚀");
-        fetchOrders(true);
+        await fetchOrders(true);
         setConfirmPushOrderId(null);
       }
     } catch (err) {
       console.error(err);
-      toast.error(err.response?.data?.message || "Failed to push to Shiprocket");
+      const errorMsg = err.response?.data?.message || "Failed to push to Shiprocket";
+      toast.error(errorMsg);
       setConfirmPushOrderId(null);
     } finally {
       setPushLoading(false);
@@ -126,7 +322,7 @@ const Orders = () => {
       });
       if (res.data.success) {
         toast.success("AWB Generated Successfully!");
-        fetchOrders(true);
+        await fetchOrders(true);
       }
     } catch (err) {
       toast.error(err.response?.data?.message || "Failed to generate AWB");
@@ -172,40 +368,30 @@ const Orders = () => {
   };
 
   // Check if order has complete address for Shiprocket
- const canPushToShiprocket = (order) => {
-  // Check if order has the required address components
-  const hasCity = order.city && order.city !== '' && order.city !== 'City';
-  const hasState = order.state && order.state !== '' && order.state !== 'State';
-  const hasPincode = order.pincode && order.pincode.toString().length === 6;
-  
-  if (!hasCity || !hasState || !hasPincode) {
-    const missing = [];
-    if (!hasCity) missing.push('City');
-    if (!hasState) missing.push('State');
-    if (!hasPincode) missing.push('Pincode (6 digits)');
+  const canPushToShiprocket = (order) => {
+    // Check if order has the required address components
+    const hasCity = order.city && order.city !== '' && order.city !== 'City' && order.city !== 'city';
+    const hasState = order.state && order.state !== '' && order.state !== 'State' && order.state !== 'state';
+    const hasPincode = order.pincode && order.pincode.toString().length === 6;
     
-    return {
-      canPush: false,
-      reason: `Missing delivery address details (${missing.join(', ')}). Please update the order address first.`
-    };
-  }
+    if (!hasCity || !hasState || !hasPincode) {
+      const missing = [];
+      if (!hasCity) missing.push('City');
+      if (!hasState) missing.push('State');
+      if (!hasPincode) missing.push('Pincode (6 digits)');
+      
+      return {
+        canPush: false,
+        reason: `Missing delivery address details (${missing.join(', ')}). Please update the order address first.`
+      };
+    }
 
-  return { canPush: true, reason: null };
-};
-
-  // Helper function to escape HTML to prevent XSS
-  const escapeHtml = (text) => {
-    if (!text) return '';
-    const div = document.createElement('div');
-    div.textContent = text;
-    return div.innerHTML;
+    return { canPush: true, reason: null };
   };
 
-  // Add this function to your Orders component
+  // Check courier availability
   const checkCourierAvailability = async (order) => {
-    const pinMatch = order.address?.match(/\b\d{6}\b/);
-    const pincode = pinMatch ? pinMatch[0] : null;
-
+    const pincode = order.pincode;
     if (!pincode) {
       toast.warning("No pincode found in address");
       return;
@@ -225,7 +411,7 @@ const Orders = () => {
       );
 
       if (result.serviceable && result.recommended_courier) {
-        toast.success(`Recommended: ${result.recommended_courier.courier_name} - ₹${result.recommended_courier.rate} (Est. ${Math.ceil(result.recommended_courier.etd_hours / 24)} days)`);
+        toast.success(`✅ Recommended: ${result.recommended_courier.courier_name} - ₹${result.recommended_courier.rate} (Est. ${Math.ceil(result.recommended_courier.etd_hours / 24)} days)`);
       } else {
         toast.warning(result.message || "No courier available for this pincode");
       }
@@ -234,8 +420,7 @@ const Orders = () => {
     }
   };
 
-  // ================= PRINT LOCAL INVOICE (FIXED VERSION WITH BANNER) =================
-  // ================= PRINT LOCAL INVOICE (FIXED VERSION WITH BANNER) =================
+  // ================= PRINT LOCAL INVOICE =================
   const handlePrint = (order) => {
     const printWindow = window.open("", "_blank", "width=800,height=900");
 
@@ -244,15 +429,7 @@ const Orders = () => {
     const subtotal = totalAmount + discount;
 
     // Use the correct URL for logo from public folder
-    // Since the logo is in public folder, it's served from the root of your React app
     const bannerUrl = `${window.location.origin}/jayastra_banner.png`;
-
-    // Also create a fallback data URL in case the image fails to load
-    const fallbackLogo = `
-    <svg width="200" height="50" viewBox="0 0 200 50" xmlns="http://www.w3.org/2000/svg">
-      <text x="0" y="35" font-family="Arial, sans-serif" font-size="28" font-weight="bold" fill="#8E2139">JAYASTRA</text>
-    </svg>
-  `;
 
     const html = `
     <!DOCTYPE html>
@@ -445,7 +622,7 @@ const Orders = () => {
               <div>
                 <h5>BILLED TO:</h5>
                 <p><strong>${escapeHtml(order.customer_name)}</strong></p>
-                <p>${escapeHtml(order.address)}</p>
+                <p>${escapeHtml(order.address || '')}</p>
                 <p>📞 ${order.phone || 'N/A'}</p>
                 <p>✉️ ${order.email || 'N/A'}</p>
               </div>
@@ -471,10 +648,10 @@ const Orders = () => {
               </thead>
               <tbody>
                 ${order.items && order.items.map((item, index) => {
-      const price = parseFloat(item.price) || 0;
-      const quantity = parseInt(item.quantity) || 0;
-      const itemTotal = price * quantity;
-      return `
+                  const price = parseFloat(item.price) || 0;
+                  const quantity = parseInt(item.quantity) || 0;
+                  const itemTotal = price * quantity;
+                  return `
                     <tr>
                       <td>${index + 1}</td>
                       <td>${escapeHtml(item.product_code || 'N/A')}</td>
@@ -484,7 +661,7 @@ const Orders = () => {
                       <td>₹${itemTotal.toFixed(2)}</td>
                     </tr>
                   `;
-    }).join('')}
+                }).join('')}
               </tbody>
             </table>
 
@@ -677,7 +854,7 @@ const Orders = () => {
         </table>
       </div>
 
-      {/* ================= MODAL ================= */}
+      {/* ================= ORDER DETAILS MODAL ================= */}
       {selectedOrder && (
         <div className="order-modal-overlay">
           <div className="order-modal-card">
@@ -695,6 +872,9 @@ const Orders = () => {
                   <p><strong>Phone:</strong> {selectedOrder.phone}</p>
                   <p><strong>Email:</strong> {selectedOrder.email || 'N/A'}</p>
                   <p><strong>Address:</strong> {selectedOrder.address}</p>
+                  {selectedOrder.city && <p><strong>City:</strong> {selectedOrder.city}</p>}
+                  {selectedOrder.state && <p><strong>State:</strong> {selectedOrder.state}</p>}
+                  {selectedOrder.pincode && <p><strong>Pincode:</strong> {selectedOrder.pincode}</p>}
                 </div>
                 <div className="order-summary-box">
                   <h5>Order Summary</h5>
@@ -746,6 +926,14 @@ const Orders = () => {
                 style={{ background: '#10b981', color: 'white' }}
               >
                 <i className="bi bi-search"></i> Check Courier
+              </button>
+
+              <button
+                className="invoice-btn-admin edit-address-btn"
+                onClick={() => setShowAddressEditModal(true)}
+                disabled={loading}
+              >
+                <i className="bi bi-geo-alt"></i> Edit Address
               </button>
 
               {(() => {
@@ -815,14 +1003,20 @@ const Orders = () => {
               >
                 <i className="bi bi-printer"></i> Local Invoice
               </button>
-
-
             </div>
-
           </div>
         </div>
       )}
 
+      {/* Address Edit Modal */}
+      <AddressEditModal
+        order={selectedOrder}
+        isOpen={showAddressEditModal}
+        onClose={() => setShowAddressEditModal(false)}
+        onUpdate={updateOrderAddress}
+      />
+
+      {/* Image Preview Lightbox */}
       {previewImage && (
         <div className="admin-lightbox-overlay" onClick={() => setPreviewImage(null)}>
           <div className="lightbox-content">
@@ -837,6 +1031,7 @@ const Orders = () => {
         </div>
       )}
 
+      {/* Push to Shiprocket Confirmation Modal */}
       {confirmPushOrderId && (
         <div className="custom-confirm-overlay" onClick={() => setConfirmPushOrderId(null)}>
           <div className="custom-confirm-box" onClick={(e) => e.stopPropagation()}>
