@@ -104,10 +104,10 @@ const ShiprocketSettings = () => {
 
   const handleTestWebhook = async () => {
     setTestingWebhook(true);
-    
+
     try {
-      const response = await axios.get(`${API_URL}/webhooks/shiprocket`);
-      
+      const response = await axios.get(`${API_URL}/webhooks/order-tracking`);
+
       if (response.data.success) {
         toast.success("✅ Webhook endpoint is reachable!");
       } else {
@@ -251,6 +251,7 @@ const ShiprocketSettings = () => {
         </div>
 
         {/* Webhook URL Section */}
+        {/* Webhook URL Section */}
         <div className="shiprocket-section">
           <h5 className="shiprocket-section-title">
             <i className="bi bi-link"></i> Webhook Configuration
@@ -261,7 +262,7 @@ const ShiprocketSettings = () => {
             <div>
               <strong>Webhook URL to configure in Shiprocket Dashboard:</strong>
               <code className="shiprocket-webhook-url">
-                {`${window.location.origin}/api/webhooks/shiprocket`}
+                {`${window.location.origin}/api/webhooks/order-tracking`}
               </code>
               <p className="shiprocket-webhook-help">
                 Go to Shiprocket Dashboard → Settings → API → Webhooks. Add this URL and set the

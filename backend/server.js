@@ -103,13 +103,14 @@ app.use(
   })
 );
 
-app.post("/api/webhooks/shiprocket", express.raw({ type: 'application/json' }), async (req, res) => {
+// ================= SHIPROCKET WEBHOOK (RENAMED - NO RESTRICTED KEYWORDS) =================
+app.post("/api/webhooks/order-tracking", express.raw({ type: 'application/json' }), async (req, res) => {
   try {
     // Get the webhook secret from database
     const config = await getShiprocketConfig(true);
     const webhookSecret = config.shiprocket_webhook_secret || process.env.SHIPROCKET_WEBHOOK_SECRET || "JayastraWebhookSecure123";
-
-    // Get signature from headers - Shiprocket uses 'x-api-key' as per your settings
+    
+    // Get signature from headers - Shiprocket uses 'x-api-key'
     const apiKey = req.headers['x-api-key'];
     const rawBody = req.body.toString();
 
@@ -137,7 +138,7 @@ app.post("/api/webhooks/shiprocket", express.raw({ type: 'application/json' }), 
       return res.status(400).json({ success: false, message: "Invalid JSON" });
     }
 
-    console.log("📦 Shiprocket Webhook payload:", JSON.stringify(payload, null, 2));
+    console.log("📦 Webhook payload:", JSON.stringify(payload, null, 2));
 
     const { shipment_id, order_id, status, awb_code, event } = payload;
 
@@ -147,7 +148,7 @@ app.post("/api/webhooks/shiprocket", express.raw({ type: 'application/json' }), 
     // Map Shiprocket status to your order status
     if (eventType) {
       const s = eventType.toLowerCase();
-
+      
       if (s.includes("pickup") || s.includes("manifest") || s === "pickup_generated") {
         dbStatus = "Processing";
       } else if (s.includes("ship") || s === "shipped" || s.includes("transit")) {
@@ -182,19 +183,17 @@ app.post("/api/webhooks/shiprocket", express.raw({ type: 'application/json' }), 
 
       if (condition) {
         const result = await pool.query(query + condition, params);
-
+        
         if (result.rowCount > 0) {
           console.log(`✅ Updated order status to ${dbStatus} for ${conditionParam}`);
-
-          // If delivered and payment is COD, mark payment as completed
+          
           if (dbStatus === "Delivered") {
             await pool.query(
               `UPDATE orders SET payment_status = 'Completed' WHERE ${condition}`,
               params
             );
           }
-
-          // Emit socket event for real-time updates
+          
           io.emit('order_status_updated', {
             order_id: conditionParam,
             status: dbStatus,
@@ -215,13 +214,20 @@ app.post("/api/webhooks/shiprocket", express.raw({ type: 'application/json' }), 
       console.log(`✅ Updated AWB ${awb_code} for shipment ${shipment_id}`);
     }
 
-    // Always return 200 to acknowledge receipt
     res.status(200).json({ success: true, message: "Webhook processed" });
   } catch (error) {
     console.error("❌ Webhook error:", error);
-    // Still return 200 to prevent Shiprocket from retrying
     res.status(200).json({ success: false, message: error.message });
   }
+});
+
+// Test endpoint for webhook
+app.get("/api/webhooks/order-tracking", (req, res) => {
+  res.status(200).json({ 
+    success: true, 
+    message: "Webhook endpoint is working. Use POST method for webhook events.",
+    timestamp: new Date().toISOString()
+  });
 });
 
 app.post("/api/razorpay/webhook", express.raw({ type: 'application/json' }), async (req, res) => {
@@ -279,7 +285,7 @@ app.post("/api/razorpay/webhook", express.raw({ type: 'application/json' }), asy
 });
 
 // Test endpoint for webhook (GET request to verify the endpoint is working)
-app.get("/api/webhooks/shiprocket", (req, res) => {
+app.get("/api/webhooks/order-tracking", (req, res) => {
   res.status(200).json({ 
     success: true, 
     message: "Webhook endpoint is working. Use POST method for webhook events.",
