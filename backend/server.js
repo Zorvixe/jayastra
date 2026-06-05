@@ -109,7 +109,7 @@ app.post("/api/webhooks/order-tracking", express.raw({ type: 'application/json' 
     // Get the webhook secret from database
     const config = await getShiprocketConfig(true);
     const webhookSecret = config.shiprocket_webhook_secret || process.env.SHIPROCKET_WEBHOOK_SECRET || "JayastraWebhookSecure123";
-    
+
     // Get signature from headers - Shiprocket uses 'x-api-key'
     const apiKey = req.headers['x-api-key'];
     const rawBody = req.body.toString();
@@ -148,7 +148,7 @@ app.post("/api/webhooks/order-tracking", express.raw({ type: 'application/json' 
     // Map Shiprocket status to your order status
     if (eventType) {
       const s = eventType.toLowerCase();
-      
+
       if (s.includes("pickup") || s.includes("manifest") || s === "pickup_generated") {
         dbStatus = "Processing";
       } else if (s.includes("ship") || s === "shipped" || s.includes("transit")) {
@@ -183,17 +183,17 @@ app.post("/api/webhooks/order-tracking", express.raw({ type: 'application/json' 
 
       if (condition) {
         const result = await pool.query(query + condition, params);
-        
+
         if (result.rowCount > 0) {
           console.log(`✅ Updated order status to ${dbStatus} for ${conditionParam}`);
-          
+
           if (dbStatus === "Delivered") {
             await pool.query(
               `UPDATE orders SET payment_status = 'Completed' WHERE ${condition}`,
               params
             );
           }
-          
+
           io.emit('order_status_updated', {
             order_id: conditionParam,
             status: dbStatus,
@@ -223,8 +223,8 @@ app.post("/api/webhooks/order-tracking", express.raw({ type: 'application/json' 
 
 // Test endpoint for webhook
 app.get("/api/webhooks/order-tracking", (req, res) => {
-  res.status(200).json({ 
-    success: true, 
+  res.status(200).json({
+    success: true,
     message: "Webhook endpoint is working. Use POST method for webhook events.",
     timestamp: new Date().toISOString()
   });
@@ -286,8 +286,8 @@ app.post("/api/razorpay/webhook", express.raw({ type: 'application/json' }), asy
 
 // Test endpoint for webhook (GET request to verify the endpoint is working)
 app.get("/api/webhooks/order-tracking", (req, res) => {
-  res.status(200).json({ 
-    success: true, 
+  res.status(200).json({
+    success: true,
     message: "Webhook endpoint is working. Use POST method for webhook events.",
     timestamp: new Date().toISOString()
   });
@@ -764,7 +764,11 @@ const initDatabase = async () => {
       ADD COLUMN IF NOT EXISTS street_area VARCHAR(255),
       ADD COLUMN IF NOT EXISTS landmark VARCHAR(255),
       ADD COLUMN IF NOT EXISTS razorpay_order_id VARCHAR(255),
-      ADD COLUMN IF NOT EXISTS razorpay_payment_id VARCHAR(255);
+      ADD COLUMN IF NOT EXISTS razorpay_payment_id VARCHAR(255),
+      ADD COLUMN IF NOT EXISTS city VARCHAR(100),
+      ADD COLUMN IF NOT EXISTS state VARCHAR(100),
+      ADD COLUMN IF NOT EXISTS pincode VARCHAR(10),
+      ADD COLUMN IF NOT EXISTS country VARCHAR(50) DEFAULT 'India';
     `);
 
     // 11. order_items
@@ -3513,72 +3517,21 @@ app.post("/api/orders", verifyToken, async (req, res) => {
       coupon_id,
       payment_method,
       cartItems,
-      address_id  // NEW: ID of selected address from addresses table
+      house_no,
+      street_area,
+      landmark,
+      city,
+      state,
+      pincode,
+      country
     } = req.body;
 
     if (!cartItems || cartItems.length === 0) throw new Error("Cart is empty");
 
-    // Fetch complete address details from addresses table if address_id is provided
-    let city = null, state = null, pincode = null, house_no = null, street_area = null, landmark = null;
-    
-    if (address_id) {
-      const addressRes = await client.query(
-        `SELECT house_no, street_area, landmark, city, state, pincode, address as full_address 
-         FROM addresses WHERE id = $1 AND user_id = $2`,
-        [address_id, req.user.id]
-      );
-      if (addressRes.rows.length > 0) {
-        const addr = addressRes.rows[0];
-        house_no = addr.house_no;
-        street_area = addr.street_area;
-        landmark = addr.landmark;
-        city = addr.city;
-        state = addr.state;
-        pincode = addr.pincode;
-        // If address not provided in request, use the full address from addresses table
-        if (!address) {
-          address = addr.full_address;
-        }
-      }
-    }
-    
-    // If still missing city/state/pincode, try to get from user's default profile
-    if (!city || !state || !pincode) {
-      const userRes = await client.query(
-        `SELECT city, state, pincode, address FROM users WHERE id = $1`,
-        [req.user.id]
-      );
-      if (userRes.rows.length > 0) {
-        const user = userRes.rows[0];
-        if (!city) city = user.city;
-        if (!state) state = user.state;
-        if (!pincode) pincode = user.pincode;
-        if (!address) address = user.address;
-      }
-    }
-    
-    // If still missing, try to extract from address string
-    if ((!city || !state || !pincode) && address) {
-      // Extract pincode
-      const pinMatch = address.match(/\b\d{6}\b/);
-      if (pinMatch && !pincode) pincode = pinMatch[0];
-      
-      // Try to extract city and state
-      const parts = address.split(',');
-      if (parts.length >= 2) {
-        if (!city) city = parts[parts.length - 2]?.trim();
-        if (parts.length >= 3 && !state) {
-          const lastPart = parts[parts.length - 1]?.trim();
-          const stateMatch = lastPart?.match(/^([A-Za-z\s]+)/);
-          if (stateMatch) state = stateMatch[1].trim();
-        }
-      }
-    }
-
     // Calculate original total and discount
     const originalTotal = cartItems.reduce((sum, item) => {
       const price = parseFloat(item.price);
-      const qty = parseInt(item.qty || item.quantity || 1);
+      const qty = parseInt(item.quantity || 1);
       return sum + (price * qty);
     }, 0);
 
@@ -3589,15 +3542,27 @@ app.post("/api/orders", verifyToken, async (req, res) => {
     const orderRes = await client.query(
       `INSERT INTO orders (
         user_id, customer_name, email, phone, address, total_amount, 
-        discount, coupon_id, payment_method, 
-        house_no, street_area, landmark,
-        city, state, pincode
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15) RETURNING id`,
+        discount, coupon_id, payment_method, payment_status, order_status,
+        house_no, street_area, landmark, city, state, pincode, country
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, 'Pending', 'Placed', 
+        $10, $11, $12, $13, $14, $15, $16) RETURNING id`,
       [
-        req.user.id, customer_name, email, phone, address, finalAmount,
-        discountAmount, coupon_id || null, payment_method || 'COD',
-        house_no || '', street_area || '', landmark || '',
-        city, state, pincode
+        req.user.id, 
+        customer_name, 
+        email || null, 
+        phone, 
+        address, 
+        finalAmount,
+        discountAmount, 
+        coupon_id || null, 
+        payment_method || 'COD',
+        house_no || '', 
+        street_area || '', 
+        landmark || '',
+        city || null, 
+        state || null, 
+        pincode || null, 
+        country || 'India'
       ]
     );
     const orderId = orderRes.rows[0].id;
@@ -3611,7 +3576,7 @@ app.post("/api/orders", verifyToken, async (req, res) => {
       const vendor_id = prodRes.rows[0]?.vendor_id || null;
       const original_price = parseFloat(prodRes.rows[0]?.price || item.price);
       const platform_fee_percent = parseFloat(prodRes.rows[0]?.platform_fee_percent || 10);
-      const qty = parseInt(item.qty || item.quantity || 1);
+      const qty = parseInt(item.quantity || 1);
 
       let discounted_price = original_price;
       if (discountAmount > 0 && originalTotal > 0) {
@@ -3712,48 +3677,12 @@ app.post("/api/razorpay/verify", verifyToken, async (req, res) => {
     await client.query("BEGIN");
     const { 
       customer_name, email, phone, address, total_amount, discount, coupon_id, 
-      cartItems, address_id
+      cartItems, house_no, street_area, landmark, city, state, pincode, country
     } = orderDetails;
-
-    // Fetch complete address details from addresses table
-    let city = null, state = null, pincode = null, house_no = null, street_area = null, landmark = null;
-    
-    if (address_id) {
-      const addressRes = await client.query(
-        `SELECT house_no, street_area, landmark, city, state, pincode, address as full_address 
-         FROM addresses WHERE id = $1 AND user_id = $2`,
-        [address_id, req.user.id]
-      );
-      if (addressRes.rows.length > 0) {
-        const addr = addressRes.rows[0];
-        house_no = addr.house_no;
-        street_area = addr.street_area;
-        landmark = addr.landmark;
-        city = addr.city;
-        state = addr.state;
-        pincode = addr.pincode;
-        if (!address) address = addr.full_address;
-      }
-    }
-    
-    // Fallback to user profile
-    if (!city || !state || !pincode) {
-      const userRes = await client.query(
-        `SELECT city, state, pincode, address FROM users WHERE id = $1`,
-        [req.user.id]
-      );
-      if (userRes.rows.length > 0) {
-        const user = userRes.rows[0];
-        if (!city) city = user.city;
-        if (!state) state = user.state;
-        if (!pincode) pincode = user.pincode;
-        if (!address) address = user.address;
-      }
-    }
 
     const originalTotal = cartItems.reduce((sum, item) => {
       const price = parseFloat(item.price);
-      const qty = parseInt(item.qty || item.quantity || 1);
+      const qty = parseInt(item.quantity || 1);
       return sum + (price * qty);
     }, 0);
 
@@ -3765,19 +3694,18 @@ app.post("/api/razorpay/verify", verifyToken, async (req, res) => {
         user_id, customer_name, email, phone, address, total_amount, 
         discount, coupon_id, payment_method, payment_status, order_status, 
         house_no, street_area, landmark, razorpay_order_id, razorpay_payment_id,
-        city, state, pincode
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19) RETURNING id`,
+        city, state, pincode, country
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20) RETURNING id`,
       [
-        req.user.id, customer_name, email, phone, address, finalAmount,
-        discountAmount, coupon_id, 'RAZORPAY', 'Completed', 'Placed',
+        req.user.id, customer_name, email || null, phone, address, finalAmount,
+        discountAmount, coupon_id || null, 'RAZORPAY', 'Completed', 'Placed',
         house_no || '', street_area || '', landmark || '',
         razorpay_order_id, razorpay_payment_id,
-        city, state, pincode
+        city || null, state || null, pincode || null, country || 'India'
       ]
     );
     const orderId = orderRes.rows[0].id;
 
-    // Insert order items (same as above)
     for (let item of cartItems) {
       const prodRes = await client.query(
         "SELECT vendor_id, price, platform_fee_percent FROM products WHERE id = $1",
@@ -3786,7 +3714,7 @@ app.post("/api/razorpay/verify", verifyToken, async (req, res) => {
       const vendor_id = prodRes.rows[0]?.vendor_id || null;
       const original_price = parseFloat(prodRes.rows[0]?.price || item.price);
       const platform_fee_percent = parseFloat(prodRes.rows[0]?.platform_fee_percent || 10);
-      const qty = parseInt(item.qty || item.quantity || 1);
+      const qty = parseInt(item.quantity || 1);
 
       let discounted_price = original_price;
       if (discountAmount > 0 && originalTotal > 0) {
@@ -5087,7 +5015,7 @@ app.post("/api/admin/orders/:id/shiprocket", verifyToken, verifyAdminVendorIndiv
 
     // Get vendor's default pickup address
     let pickupAddress = null;
-    
+
     const pickupRes = await pool.query(
       `SELECT location_name, address_line1, address_line2, city, state, pincode 
        FROM vendor_pickup_addresses 
@@ -5095,7 +5023,7 @@ app.post("/api/admin/orders/:id/shiprocket", verifyToken, verifyAdminVendorIndiv
        LIMIT 1`,
       [vendorId]
     );
-    
+
     if (pickupRes.rows.length > 0) {
       pickupAddress = pickupRes.rows[0];
     } else {
@@ -5105,7 +5033,7 @@ app.post("/api/admin/orders/:id/shiprocket", verifyToken, verifyAdminVendorIndiv
          WHERE id = $1`,
         [vendorId]
       );
-      
+
       const userPickup = userPickupRes.rows[0];
       if (userPickup && userPickup.pickup_pincode) {
         pickupAddress = {
@@ -5118,7 +5046,7 @@ app.post("/api/admin/orders/:id/shiprocket", verifyToken, verifyAdminVendorIndiv
         };
       }
     }
-    
+
     if (!pickupAddress || !pickupAddress.pincode) {
       return res.status(400).json({
         success: false,
@@ -5159,13 +5087,13 @@ app.post("/api/admin/orders/:id/shiprocket", verifyToken, verifyAdminVendorIndiv
     let city = order.city || '';
     let state = order.state || '';
     let pincode = '';
-    
+
     // Extract pincode from address if not already present
     const pinMatch = fullAddress.match(/\b\d{6}\b/);
     if (pinMatch) {
       pincode = pinMatch[0];
     }
-    
+
     // Try to extract city and state from address if not provided
     if (!city && fullAddress) {
       // Common pattern: "... City, State - Pincode"
@@ -5180,7 +5108,7 @@ app.post("/api/admin/orders/:id/shiprocket", verifyToken, verifyAdminVendorIndiv
         }
       }
     }
-    
+
     if (!state && fullAddress) {
       const stateMatch = fullAddress.match(/([A-Za-z\s]+)\s*\d{6}/);
       if (stateMatch && stateMatch[1]) {
@@ -5195,30 +5123,30 @@ app.post("/api/admin/orders/:id/shiprocket", verifyToken, verifyAdminVendorIndiv
         }
       }
     }
-    
+
     // Ensure all required fields have values
     if (!city || city === '' || city === 'City') {
       city = "Unknown City";
     }
-    
+
     if (!state || state === '' || state === 'State') {
       state = "Unknown State";
     }
-    
+
     if (!pincode || pincode === '') {
       pincode = "500001"; // Default pincode
     }
-    
+
     // Build complete address string
     let billingAddress = '';
     if (houseNo) billingAddress += houseNo;
     if (streetArea) billingAddress += (billingAddress ? ', ' : '') + streetArea;
     if (!billingAddress && fullAddress) billingAddress = fullAddress.split(',')[0];
     if (!billingAddress) billingAddress = "Address not specified";
-    
+
     // Limit address length
     billingAddress = billingAddress.substring(0, 200);
-    
+
     console.log("Parsed Address Details:", {
       billingAddress,
       city,
@@ -5295,22 +5223,22 @@ app.post("/api/admin/orders/:id/shiprocket", verifyToken, verifyAdminVendorIndiv
       return res.json({ success: true, message: "Order pushed to Shiprocket successfully!", data: result });
     } else {
       console.error("Shiprocket push failed:", result);
-      
+
       // Provide more specific error message
       let errorMessage = result.message || "Failed to push to Shiprocket";
       if (result.errors) {
         errorMessage = Object.values(result.errors).flat().join(", ");
       }
-      
+
       // Handle common address errors
       if (errorMessage.toLowerCase().includes("address") || errorMessage.toLowerCase().includes("city") || errorMessage.toLowerCase().includes("state")) {
         errorMessage = "Missing or invalid address details. Please ensure the order has complete city, state, and pincode information.";
       }
-      
-      return res.status(400).json({ 
-        success: false, 
+
+      return res.status(400).json({
+        success: false,
         message: errorMessage,
-        errors: result.errors 
+        errors: result.errors
       });
     }
   } catch (error) {
@@ -5421,7 +5349,7 @@ app.put("/api/admin/orders/:id/address", verifyToken, verifyAdminOrSuperAdmin, a
   try {
     const { id } = req.params;
     const { city, state, pincode, house_no, street_area, landmark, address } = req.body;
-    
+
     // Build the full address if components are provided
     let fullAddress = address;
     if (!fullAddress && (house_no || street_area || city || state || pincode)) {
@@ -5433,7 +5361,7 @@ app.put("/api/admin/orders/:id/address", verifyToken, verifyAdminOrSuperAdmin, a
       if (pincode) parts.push(pincode);
       fullAddress = parts.join(', ');
     }
-    
+
     const result = await pool.query(
       `UPDATE orders 
        SET city = COALESCE($1, city),
@@ -5448,11 +5376,11 @@ app.put("/api/admin/orders/:id/address", verifyToken, verifyAdminOrSuperAdmin, a
        RETURNING *`,
       [city, state, pincode, house_no, street_area, landmark, fullAddress, id]
     );
-    
+
     if (result.rows.length === 0) {
       return res.status(404).json({ success: false, message: "Order not found" });
     }
-    
+
     res.json({ success: true, order: result.rows[0] });
   } catch (error) {
     console.error("Update order address error:", error);

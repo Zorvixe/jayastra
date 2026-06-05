@@ -82,138 +82,152 @@ const PaymentPage = () => {
     // Add this function for better error handling
     // In PaymentPage.jsx, update the order placement:
 
-    const handlePlaceOrder = async () => {
-        if (paymentMethod === "COD") {
-            setIsPlacingOrder(true);
-            try {
-                // Ensure we're using the correct total amount with coupon discount already applied
-                const finalOrderData = {
-                    ...orderDetails,
-                    total_amount: parseFloat(orderDetails.total_amount), // This already has coupon discount applied from checkout
-                    payment_method: paymentMethod
-                };
+   // In PaymentPage.jsx, update the handlePlaceOrder function:
 
-                console.log("Placing COD order:", finalOrderData);
-
-                const res = await axios.post(`${API_URL}/orders`, finalOrderData, {
-                    headers: { Authorization: `Bearer ${token}` }
-                });
-
-                if (res.data.success) {
-                    setOrderId(res.data.orderId);
-                    setShowSuccessModal(true);
-                    clearCart();
-                }
-            } catch (err) {
-                console.error("Order error:", err);
-                toast.error(err.response?.data?.message || "Order placement failed");
-            } finally {
-                setIsPlacingOrder(false);
-            }
-        } else {
-            handleRazorpayPayment();
-        }
-    };
-
-    // Update Razorpay payment to use correct amount
-    const handleRazorpayPayment = async () => {
-        if (!razorpayKey) {
-            toast.error("Payment gateway not configured. Please try COD or contact support.");
-            return;
-        }
+const handlePlaceOrder = async () => {
+    if (paymentMethod === "COD") {
+        setIsPlacingOrder(true);
         try {
-            setIsPlacingOrder(true);
+            // Ensure cartItems have correct quantity field name
+            const cartItemsWithCorrectQty = (orderDetails.cartItems || []).map(item => ({
+                ...item,
+                quantity: item.quantity || item.qty || 1
+            }));
+            
+            const finalOrderData = {
+                ...orderDetails,
+                cartItems: cartItemsWithCorrectQty,
+                total_amount: parseFloat(orderDetails.total_amount),
+                payment_method: paymentMethod
+            };
 
-            // Use the final payable amount from orderDetails (already includes coupon discount)
-            const amountToPay = parseFloat(orderDetails.total_amount);
+            console.log("Placing COD order:", finalOrderData);
 
-            console.log("Razorpay payment amount:", amountToPay);
-
-            // 1. Create Razorpay Order in Backend
-            const orderRes = await axios.post(`${API_URL}/razorpay/order`, {
-                amount: amountToPay
-            }, {
+            const res = await axios.post(`${API_URL}/orders`, finalOrderData, {
                 headers: { Authorization: `Bearer ${token}` }
             });
 
-            if (!orderRes.data.success) {
-                throw new Error(orderRes.data.message || "Failed to create order");
+            if (res.data.success) {
+                setOrderId(res.data.orderId);
+                setShowSuccessModal(true);
+                clearCart();
             }
-
-            const { order } = orderRes.data;
-
-            // 2. Open Razorpay Modal
-            const options = {
-                key: razorpayKey,
-                amount: order.amount,
-                currency: order.currency,
-                name: "JAYASTRA",
-                description: `Purchase of Premium Products`,
-                order_id: order.id,
-                handler: async (response) => {
-                    try {
-                        toast.info("Verifying payment...");
-
-                        const verifyRes = await axios.post(`${API_URL}/razorpay/verify`, {
-                            razorpay_order_id: response.razorpay_order_id,
-                            razorpay_payment_id: response.razorpay_payment_id,
-                            razorpay_signature: response.razorpay_signature,
-                            orderDetails: {
-                                ...orderDetails,
-                                total_amount: amountToPay,
-                                payment_method: "RAZORPAY"
-                            }
-                        }, {
-                            headers: { Authorization: `Bearer ${token}` }
-                        });
-
-                        if (verifyRes.data.success) {
-                            setOrderId(verifyRes.data.orderId);
-                            setShowSuccessModal(true);
-                            clearCart();
-                            toast.success("Payment successful! Order placed.");
-                        } else {
-                            toast.error(verifyRes.data.message || "Payment verification failed");
-                        }
-                    } catch (err) {
-                        console.error("Verification error:", err);
-                        toast.error(err.response?.data?.message || "Payment verification failed");
-                    } finally {
-                        setIsPlacingOrder(false);
-                    }
-                },
-                modal: {
-                    ondismiss: () => {
-                        setIsPlacingOrder(false);
-                        toast.info("Payment cancelled");
-                    }
-                },
-                prefill: {
-                    name: orderDetails.customer_name,
-                    email: orderDetails.email,
-                    contact: orderDetails.phone
-                },
-                theme: {
-                    color: "#8E2139"
-                }
-            };
-
-            const rzp = new window.Razorpay(options);
-
-            rzp.on('payment.failed', function (response) {
-                console.error("Payment failed:", response.error);
-                toast.error(response.error.description || "Payment failed. Please try again.");
-                setIsPlacingOrder(false);
-            });
-
-            rzp.open();
-
         } catch (err) {
-            console.error("Razorpay error:", err);
-            toast.error(err.message || "Failed to initialize payment");
+            console.error("Order error:", err);
+            toast.error(err.response?.data?.message || "Order placement failed");
+        } finally {
             setIsPlacingOrder(false);
         }
-    };
+    } else {
+        handleRazorpayPayment();
+    }
+};
+
+// Also update the Razorpay payment handler:
+const handleRazorpayPayment = async () => {
+    if (!razorpayKey) {
+        toast.error("Payment gateway not configured. Please try COD or contact support.");
+        return;
+    }
+    try {
+        setIsPlacingOrder(true);
+
+        // Ensure cartItems have correct quantity field name
+        const cartItemsWithCorrectQty = (orderDetails.cartItems || []).map(item => ({
+            ...item,
+            quantity: item.quantity || item.qty || 1
+        }));
+
+        const amountToPay = parseFloat(orderDetails.total_amount);
+
+        console.log("Razorpay payment amount:", amountToPay);
+
+        // 1. Create Razorpay Order in Backend
+        const orderRes = await axios.post(`${API_URL}/razorpay/order`, {
+            amount: amountToPay
+        }, {
+            headers: { Authorization: `Bearer ${token}` }
+        });
+
+        if (!orderRes.data.success) {
+            throw new Error(orderRes.data.message || "Failed to create order");
+        }
+
+        const { order } = orderRes.data;
+
+        // 2. Open Razorpay Modal
+        const options = {
+            key: razorpayKey,
+            amount: order.amount,
+            currency: order.currency,
+            name: "JAYASTRA",
+            description: `Purchase of Premium Products`,
+            order_id: order.id,
+            handler: async (response) => {
+                try {
+                    toast.info("Verifying payment...");
+
+                    const verifyRes = await axios.post(`${API_URL}/razorpay/verify`, {
+                        razorpay_order_id: response.razorpay_order_id,
+                        razorpay_payment_id: response.razorpay_payment_id,
+                        razorpay_signature: response.razorpay_signature,
+                        orderDetails: {
+                            ...orderDetails,
+                            cartItems: cartItemsWithCorrectQty,
+                            total_amount: amountToPay,
+                            payment_method: "RAZORPAY"
+                        }
+                    }, {
+                        headers: { Authorization: `Bearer ${token}` }
+                    });
+
+                    if (verifyRes.data.success) {
+                        setOrderId(verifyRes.data.orderId);
+                        setShowSuccessModal(true);
+                        clearCart();
+                        toast.success("Payment successful! Order placed.");
+                    } else {
+                        toast.error(verifyRes.data.message || "Payment verification failed");
+                    }
+                } catch (err) {
+                    console.error("Verification error:", err);
+                    toast.error(err.response?.data?.message || "Payment verification failed");
+                } finally {
+                    setIsPlacingOrder(false);
+                }
+            },
+            modal: {
+                ondismiss: () => {
+                    setIsPlacingOrder(false);
+                    toast.info("Payment cancelled");
+                }
+            },
+            prefill: {
+                name: orderDetails.customer_name,
+                email: orderDetails.email,
+                contact: orderDetails.phone
+            },
+            theme: {
+                color: "#8E2139"
+            }
+        };
+
+        const rzp = new window.Razorpay(options);
+
+        rzp.on('payment.failed', function (response) {
+            console.error("Payment failed:", response.error);
+            toast.error(response.error.description || "Payment failed. Please try again.");
+            setIsPlacingOrder(false);
+        });
+
+        rzp.open();
+
+    } catch (err) {
+        console.error("Razorpay error:", err);
+        toast.error(err.message || "Failed to initialize payment");
+        setIsPlacingOrder(false);
+    }
+};
 
     if (!orderDetails) return null;
 
