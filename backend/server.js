@@ -487,15 +487,49 @@ const verifyAdminVendorIndividualAccess = (req, res, next) => {
 };
 
 // ================= DATABASE INIT =================
+// ================= DATABASE INIT =================
 const initDatabase = async () => {
   try {
-    // 1. users
+    // 1. Create settings table FIRST (before any other tables that might need it)
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS settings(
+        id SERIAL PRIMARY KEY,
+        key VARCHAR(100) UNIQUE NOT NULL,
+        value TEXT NOT NULL,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+    console.log("✅ Settings table created/verified");
+
+    // 2. Insert default settings if they don't exist
+    const defaultSettings = [
+      { key: 'platform_fee_percent', value: '10.00' },
+      { key: 'online_payment_discount', value: '0' },
+      { key: 'cod_fee', value: '0' },
+      { key: 'razorpay_key_id', value: '' },
+      { key: 'razorpay_key_secret', value: '' },
+      { key: 'shipmozo_username', value: '' },
+      { key: 'shipmozo_password', value: '' },
+      { key: 'shipmozo_pickup_pincode', value: '518508' },
+      { key: 'shipmozo_webhook_secret', value: '' }
+    ];
+
+    for (const setting of defaultSettings) {
+      await pool.query(`
+        INSERT INTO settings(key, value)
+        VALUES($1, $2)
+        ON CONFLICT(key) DO NOTHING
+      `, [setting.key, setting.value]);
+    }
+    console.log("✅ Default settings inserted");
+
+    // 3. users table
     await pool.query(`
       CREATE TABLE IF NOT EXISTS users (
         id SERIAL PRIMARY KEY,
         name VARCHAR(255) NOT NULL,
-        email VARCHAR(255) UNIQUE NOT NULL,
-        password TEXT NOT NULL,
+        email VARCHAR(255) UNIQUE,
+        password TEXT,
         role VARCHAR(20) DEFAULT 'user',
         phone VARCHAR(20),
         status VARCHAR(20) DEFAULT 'Active',
@@ -534,8 +568,7 @@ const initDatabase = async () => {
         ADD COLUMN IF NOT EXISTS pickup_location_name VARCHAR(255)
       `);
 
-
-
+    // 4. vendor_pickup_addresses
     await pool.query(`
         CREATE TABLE IF NOT EXISTS vendor_pickup_addresses (
           id SERIAL PRIMARY KEY,
@@ -561,11 +594,12 @@ const initDatabase = async () => {
       `);
 
     await pool.query(`
-    ALTER TABLE vendor_pickup_addresses 
-    ADD COLUMN IF NOT EXISTS shipmozo_pickup_id VARCHAR(100),
-    ADD COLUMN IF NOT EXISTS shipmozo_synced BOOLEAN DEFAULT false
-  `);
-    // 2. addresses
+      ALTER TABLE vendor_pickup_addresses 
+      ADD COLUMN IF NOT EXISTS shipmozo_pickup_id VARCHAR(100),
+      ADD COLUMN IF NOT EXISTS shipmozo_synced BOOLEAN DEFAULT false
+    `);
+
+    // 5. addresses
     await pool.query(`
       CREATE TABLE IF NOT EXISTS addresses(
         id SERIAL PRIMARY KEY,
@@ -587,21 +621,21 @@ const initDatabase = async () => {
       ALTER TABLE addresses 
       ADD COLUMN IF NOT EXISTS house_no VARCHAR(255),
       ADD COLUMN IF NOT EXISTS street_area VARCHAR(255),
-        ADD COLUMN IF NOT EXISTS landmark VARCHAR(255);
+      ADD COLUMN IF NOT EXISTS landmark VARCHAR(255);
     `);
 
-    // 3. categories
+    // 6. categories
     await pool.query(`
       CREATE TABLE IF NOT EXISTS categories(
-      id SERIAL PRIMARY KEY,
-      name VARCHAR(255) UNIQUE NOT NULL,
-      description TEXT,
-      image_url VARCHAR(500),
-      is_active BOOLEAN DEFAULT true,
-      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-      updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-    )
-      `);
+        id SERIAL PRIMARY KEY,
+        name VARCHAR(255) UNIQUE NOT NULL,
+        description TEXT,
+        image_url VARCHAR(500),
+        is_active BOOLEAN DEFAULT true,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
     await pool.query(`
       ALTER TABLE categories 
       ADD COLUMN IF NOT EXISTS image_url VARCHAR(500),
@@ -609,87 +643,83 @@ const initDatabase = async () => {
     `);
 
     await pool.query(`ALTER TABLE categories ADD COLUMN IF NOT EXISTS slug VARCHAR(255) UNIQUE; `);
+    await pool.query(`
+      ALTER TABLE categories 
+      ADD COLUMN IF NOT EXISTS show_in_navbar BOOLEAN DEFAULT true,
+      ADD COLUMN IF NOT EXISTS nav_order INTEGER DEFAULT 0
+    `);
 
-    // 4. sub_categories
+    // 7. sub_categories
     await pool.query(`
       CREATE TABLE IF NOT EXISTS sub_categories(
-      id SERIAL PRIMARY KEY,
-      name VARCHAR(255) NOT NULL,
-      category_id INTEGER REFERENCES categories(id) ON DELETE CASCADE,
-      description TEXT,
-      is_active BOOLEAN DEFAULT true,
-      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-      updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-      UNIQUE(name, category_id)
-    )
-      `);
+        id SERIAL PRIMARY KEY,
+        name VARCHAR(255) NOT NULL,
+        category_id INTEGER REFERENCES categories(id) ON DELETE CASCADE,
+        description TEXT,
+        is_active BOOLEAN DEFAULT true,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE(name, category_id)
+      )
+    `);
     await pool.query(`
       ALTER TABLE sub_categories 
       ADD COLUMN IF NOT EXISTS vendor_id INTEGER REFERENCES users(id) ON DELETE CASCADE;
     `);
 
-    // Add this inside your initDatabase() function, after creating categories table
-    await pool.query(`
-      ALTER TABLE categories 
-      ADD COLUMN IF NOT EXISTS show_in_navbar BOOLEAN DEFAULT true,
-      ADD COLUMN IF NOT EXISTS nav_order INTEGER DEFAULT 0
-        `);
-
-    // 5. products
+    // 8. products
     await pool.query(`
       CREATE TABLE IF NOT EXISTS products(
-          id SERIAL PRIMARY KEY,
-          name VARCHAR(255) NOT NULL,
-          description TEXT,
-          old_price DECIMAL(10, 2),
-          price DECIMAL(10, 2) NOT NULL,
-          category_id INTEGER REFERENCES categories(id) ON DELETE SET NULL,
-          sub_category_id INTEGER REFERENCES sub_categories(id) ON DELETE SET NULL,
-          main_image_url VARCHAR(500),
-          video_url VARCHAR(500),
-          sku VARCHAR(100) UNIQUE,
-          stock_quantity INTEGER DEFAULT 0,
-          is_featured BOOLEAN DEFAULT false,
-          is_active BOOLEAN DEFAULT true,
-          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-          updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-          vendor_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
-          platform_fee_percent DECIMAL(5, 2) DEFAULT 10.00
-        )
-      `);
+        id SERIAL PRIMARY KEY,
+        name VARCHAR(255) NOT NULL,
+        description TEXT,
+        old_price DECIMAL(10, 2),
+        price DECIMAL(10, 2) NOT NULL,
+        category_id INTEGER REFERENCES categories(id) ON DELETE SET NULL,
+        sub_category_id INTEGER REFERENCES sub_categories(id) ON DELETE SET NULL,
+        main_image_url VARCHAR(500),
+        video_url VARCHAR(500),
+        sku VARCHAR(100) UNIQUE,
+        stock_quantity INTEGER DEFAULT 0,
+        is_featured BOOLEAN DEFAULT false,
+        is_active BOOLEAN DEFAULT true,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        vendor_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+        platform_fee_percent DECIMAL(5, 2) DEFAULT 10.00
+      )
+    `);
     await pool.query(`
       ALTER TABLE products 
-      ADD COLUMN IF NOT EXISTS video_url VARCHAR(500),
       ADD COLUMN IF NOT EXISTS color VARCHAR(50),
-        ADD COLUMN IF NOT EXISTS product_code VARCHAR(100) UNIQUE,
-          ADD COLUMN IF NOT EXISTS weight DECIMAL(10, 2) DEFAULT 0.7,
-            ADD COLUMN IF NOT EXISTS length DECIMAL(10, 2) DEFAULT 30,
-              ADD COLUMN IF NOT EXISTS width DECIMAL(10, 2) DEFAULT 20,
-                ADD COLUMN IF NOT EXISTS height DECIMAL(10, 2) DEFAULT 5,
-                  ADD COLUMN IF NOT EXISTS vendor_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
-                    ADD COLUMN IF NOT EXISTS platform_fee_percent DECIMAL(5, 2) DEFAULT 10.00
+      ADD COLUMN IF NOT EXISTS product_code VARCHAR(100) UNIQUE,
+      ADD COLUMN IF NOT EXISTS weight DECIMAL(10, 2) DEFAULT 0.7,
+      ADD COLUMN IF NOT EXISTS length DECIMAL(10, 2) DEFAULT 30,
+      ADD COLUMN IF NOT EXISTS width DECIMAL(10, 2) DEFAULT 20,
+      ADD COLUMN IF NOT EXISTS height DECIMAL(10, 2) DEFAULT 5,
+      ADD COLUMN IF NOT EXISTS platform_fee_percent DECIMAL(5, 2) DEFAULT 10.00
     `);
 
     await pool.query(`CREATE EXTENSION IF NOT EXISTS "pgcrypto"; `);
     await pool.query(`
-          ALTER TABLE products 
-          ADD COLUMN IF NOT EXISTS uuid UUID DEFAULT gen_random_uuid() NOT NULL UNIQUE
-        `);
+      ALTER TABLE products 
+      ADD COLUMN IF NOT EXISTS uuid UUID DEFAULT gen_random_uuid() NOT NULL UNIQUE
+    `);
     await pool.query(`CREATE INDEX IF NOT EXISTS idx_products_uuid ON products(uuid)`);
     await pool.query(`UPDATE products SET uuid = gen_random_uuid() WHERE uuid IS NULL`);
 
-    // 6. product_images
+    // 9. product_images
     await pool.query(`
       CREATE TABLE IF NOT EXISTS product_images(
-                      id SERIAL PRIMARY KEY,
-                      product_id INTEGER REFERENCES products(id) ON DELETE CASCADE,
-                      image_url VARCHAR(500) NOT NULL,
-                      display_order INTEGER DEFAULT 0,
-                      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-                    )
-      `);
+        id SERIAL PRIMARY KEY,
+        product_id INTEGER REFERENCES products(id) ON DELETE CASCADE,
+        image_url VARCHAR(500) NOT NULL,
+        display_order INTEGER DEFAULT 0,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
 
-    // 7. cart_items
+    // 10. cart_items
     await pool.query(`
       CREATE TABLE IF NOT EXISTS cart_items(
         id SERIAL PRIMARY KEY,
@@ -699,9 +729,9 @@ const initDatabase = async () => {
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         UNIQUE(user_id, product_id)
       )
-      `);
+    `);
 
-    // 8. wishlist
+    // 11. wishlist
     await pool.query(`
       CREATE TABLE IF NOT EXISTS wishlist(
         id SERIAL PRIMARY KEY,
@@ -710,9 +740,9 @@ const initDatabase = async () => {
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         UNIQUE(user_id, product_id)
       )
-      `);
+    `);
 
-    // 9. coupons 
+    // 12. coupons 
     await pool.query(`
       CREATE TABLE IF NOT EXISTS coupons(
         id SERIAL PRIMARY KEY,
@@ -732,91 +762,91 @@ const initDatabase = async () => {
     await pool.query(`ALTER TABLE coupons ADD COLUMN IF NOT EXISTS is_hidden BOOLEAN DEFAULT false; `);
     await pool.query(`ALTER TABLE coupons ADD COLUMN IF NOT EXISTS vendor_id INTEGER REFERENCES users(id) ON DELETE CASCADE; `);
 
-    // 10. orders 
+    // 13. orders 
     await pool.query(`
       CREATE TABLE IF NOT EXISTS orders(
-      id SERIAL PRIMARY KEY,
-      user_id INTEGER REFERENCES users(id),
-      customer_name VARCHAR(255) NOT NULL,
-      email VARCHAR(255),
-      phone VARCHAR(20) NOT NULL,
-      address TEXT NOT NULL,
-      total_amount DECIMAL(10, 2) NOT NULL,
-      status VARCHAR(50) DEFAULT 'Pending',
-      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-    )
-      `);
+        id SERIAL PRIMARY KEY,
+        user_id INTEGER REFERENCES users(id),
+        customer_name VARCHAR(255) NOT NULL,
+        email VARCHAR(255),
+        phone VARCHAR(20) NOT NULL,
+        address TEXT NOT NULL,
+        total_amount DECIMAL(10, 2) NOT NULL,
+        status VARCHAR(50) DEFAULT 'Pending',
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
     await pool.query(`
       ALTER TABLE orders 
       ADD COLUMN IF NOT EXISTS discount DECIMAL(10, 2) DEFAULT 0,
       ADD COLUMN IF NOT EXISTS coupon_id INTEGER REFERENCES coupons(id),
-        ADD COLUMN IF NOT EXISTS payment_method VARCHAR(50) DEFAULT 'COD',
-          ADD COLUMN IF NOT EXISTS payment_status VARCHAR(50) DEFAULT 'Pending',
-            ADD COLUMN IF NOT EXISTS order_status VARCHAR(50) DEFAULT 'Placed',
-              ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                ADD COLUMN IF NOT EXISTS shipmozo_order_id VARCHAR(100),
-                  ADD COLUMN IF NOT EXISTS shipmozo_shipment_id VARCHAR(100),
-                    ADD COLUMN IF NOT EXISTS awb_code VARCHAR(100),
-                      ADD COLUMN IF NOT EXISTS house_no VARCHAR(255),
-                        ADD COLUMN IF NOT EXISTS street_area VARCHAR(255),
-                          ADD COLUMN IF NOT EXISTS landmark VARCHAR(255),
-                            ADD COLUMN IF NOT EXISTS razorpay_order_id VARCHAR(255),
-                              ADD COLUMN IF NOT EXISTS razorpay_payment_id VARCHAR(255),
-                                ADD COLUMN IF NOT EXISTS city VARCHAR(100),
-                                  ADD COLUMN IF NOT EXISTS state VARCHAR(100),
-                                    ADD COLUMN IF NOT EXISTS pincode VARCHAR(10),
-                                      ADD COLUMN IF NOT EXISTS country VARCHAR(50) DEFAULT 'India';
+      ADD COLUMN IF NOT EXISTS payment_method VARCHAR(50) DEFAULT 'COD',
+      ADD COLUMN IF NOT EXISTS payment_status VARCHAR(50) DEFAULT 'Pending',
+      ADD COLUMN IF NOT EXISTS order_status VARCHAR(50) DEFAULT 'Placed',
+      ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      ADD COLUMN IF NOT EXISTS shipmozo_order_id VARCHAR(100),
+      ADD COLUMN IF NOT EXISTS shipmozo_shipment_id VARCHAR(100),
+      ADD COLUMN IF NOT EXISTS awb_code VARCHAR(100),
+      ADD COLUMN IF NOT EXISTS house_no VARCHAR(255),
+      ADD COLUMN IF NOT EXISTS street_area VARCHAR(255),
+      ADD COLUMN IF NOT EXISTS landmark VARCHAR(255),
+      ADD COLUMN IF NOT EXISTS razorpay_order_id VARCHAR(255),
+      ADD COLUMN IF NOT EXISTS razorpay_payment_id VARCHAR(255),
+      ADD COLUMN IF NOT EXISTS city VARCHAR(100),
+      ADD COLUMN IF NOT EXISTS state VARCHAR(100),
+      ADD COLUMN IF NOT EXISTS pincode VARCHAR(10),
+      ADD COLUMN IF NOT EXISTS country VARCHAR(50) DEFAULT 'India'
     `);
 
-    // 11. order_items
+    // 14. order_items
     await pool.query(`
       CREATE TABLE IF NOT EXISTS order_items(
-      id SERIAL PRIMARY KEY,
-      order_id INTEGER REFERENCES orders(id) ON DELETE CASCADE,
-      product_id INTEGER REFERENCES products(id),
-      quantity INTEGER NOT NULL,
-      price DECIMAL(10, 2) NOT NULL,
-      vendor_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
-      vendor_earning DECIMAL(10, 2) DEFAULT 0
-    )
-      `);
+        id SERIAL PRIMARY KEY,
+        order_id INTEGER REFERENCES orders(id) ON DELETE CASCADE,
+        product_id INTEGER REFERENCES products(id),
+        quantity INTEGER NOT NULL,
+        price DECIMAL(10, 2) NOT NULL,
+        vendor_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+        vendor_earning DECIMAL(10, 2) DEFAULT 0
+      )
+    `);
     await pool.query(`
       ALTER TABLE order_items 
       ADD COLUMN IF NOT EXISTS vendor_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
       ADD COLUMN IF NOT EXISTS vendor_earning DECIMAL(10, 2) DEFAULT 0;
     `);
 
-    // PAYOUTS
+    // 15. payouts
     await pool.query(`
       CREATE TABLE IF NOT EXISTS payouts(
-      id SERIAL PRIMARY KEY,
-      vendor_id INTEGER REFERENCES users(id),
-      amount DECIMAL(10, 2) NOT NULL,
-      status VARCHAR(50) DEFAULT 'Pending',
-      bank_details TEXT,
-      requested_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-      processed_at TIMESTAMP
-    );
+        id SERIAL PRIMARY KEY,
+        vendor_id INTEGER REFERENCES users(id),
+        amount DECIMAL(10, 2) NOT NULL,
+        status VARCHAR(50) DEFAULT 'Pending',
+        bank_details TEXT,
+        requested_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        processed_at TIMESTAMP
+      );
     `);
 
     await pool.query(`
       ALTER TABLE payouts 
       ADD COLUMN IF NOT EXISTS rejection_reason TEXT,
       ADD COLUMN IF NOT EXISTS cancellation_reason TEXT,
-        ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-          `);
+      ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    `);
 
-    // 12. inventory
+    // 16. inventory
     await pool.query(`
       CREATE TABLE IF NOT EXISTS inventory(
-            id SERIAL PRIMARY KEY,
-            product_id INTEGER REFERENCES products(id) ON DELETE CASCADE,
-            stock_quantity INTEGER DEFAULT 0,
-            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-          )
-      `);
+        id SERIAL PRIMARY KEY,
+        product_id INTEGER REFERENCES products(id) ON DELETE CASCADE,
+        stock_quantity INTEGER DEFAULT 0,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
 
-    // 13. banners
+    // 17. banners
     await pool.query(`
       CREATE TABLE IF NOT EXISTS banners(
         id SERIAL PRIMARY KEY,
@@ -836,7 +866,7 @@ const initDatabase = async () => {
     await pool.query(`ALTER TABLE banners ADD COLUMN IF NOT EXISTS category_id INTEGER REFERENCES categories(id) ON DELETE SET NULL; `);
     await pool.query(`ALTER TABLE banners ADD COLUMN IF NOT EXISTS vendor_id INTEGER REFERENCES users(id) ON DELETE CASCADE; `);
 
-    // 14. reviews
+    // 18. reviews
     await pool.query(`
       CREATE TABLE IF NOT EXISTS reviews(
         id SERIAL PRIMARY KEY,
@@ -846,35 +876,35 @@ const initDatabase = async () => {
         comment TEXT,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       )
-      `);
+    `);
     await pool.query(`
       ALTER TABLE reviews 
       ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
       ADD COLUMN IF NOT EXISTS images TEXT[],
-        ADD COLUMN IF NOT EXISTS status VARCHAR(20) DEFAULT 'approved';
+      ADD COLUMN IF NOT EXISTS status VARCHAR(20) DEFAULT 'approved'
     `);
     await pool.query(`
       ALTER TABLE reviews 
       DROP CONSTRAINT IF EXISTS unique_user_product_review,
       ADD CONSTRAINT unique_user_product_review UNIQUE(user_id, product_id)
-        `);
+    `);
 
-    // 15. returns
+    // 19. returns
     await pool.query(`
       CREATE TABLE IF NOT EXISTS returns(
-          id SERIAL PRIMARY KEY,
-          order_id INTEGER REFERENCES orders(id) ON DELETE CASCADE,
-          user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
-          video_url VARCHAR(500) NOT NULL,
-          reason TEXT,
-          status VARCHAR(50) DEFAULT 'Pending',
-          admin_comment TEXT,
-          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-          updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        )
-      `);
+        id SERIAL PRIMARY KEY,
+        order_id INTEGER REFERENCES orders(id) ON DELETE CASCADE,
+        user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+        video_url VARCHAR(500) NOT NULL,
+        reason TEXT,
+        status VARCHAR(50) DEFAULT 'Pending',
+        admin_comment TEXT,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
 
-    // 16. menus & menu_items
+    // 20. menus & menu_items
     await pool.query(`
       CREATE TABLE IF NOT EXISTS menus(
         id SERIAL PRIMARY KEY,
@@ -882,7 +912,7 @@ const initDatabase = async () => {
         slug VARCHAR(255) UNIQUE NOT NULL,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       )
-      `);
+    `);
     await pool.query(`
       CREATE TABLE IF NOT EXISTS menu_items(
         id SERIAL PRIMARY KEY,
@@ -894,9 +924,9 @@ const initDatabase = async () => {
         is_active BOOLEAN DEFAULT true,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       )
-      `);
+    `);
 
-    // 17. stock_notifications
+    // 21. stock_notifications
     await pool.query(`
       CREATE TABLE IF NOT EXISTS stock_notifications(
         id SERIAL PRIMARY KEY,
@@ -908,40 +938,38 @@ const initDatabase = async () => {
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         UNIQUE(user_id, product_id, email, phone)
       )
-      `);
+    `);
     await pool.query(`
       DO $$
-    BEGIN 
-        IF NOT EXISTS(SELECT 1 FROM information_schema.columns WHERE table_name = 'stock_notifications' AND column_name = 'customer_name') THEN
-          ALTER TABLE stock_notifications ADD COLUMN customer_name VARCHAR(255);
-        END IF;
+      BEGIN 
+          IF NOT EXISTS(SELECT 1 FROM information_schema.columns WHERE table_name = 'stock_notifications' AND column_name = 'customer_name') THEN
+              ALTER TABLE stock_notifications ADD COLUMN customer_name VARCHAR(255);
+          END IF;
       END $$;
     `);
     await pool.query(`ALTER TABLE stock_notifications ADD COLUMN IF NOT EXISTS vendor_id INTEGER REFERENCES users(id); `);
 
-
+    // 22. wallet_transactions
     await pool.query(`
       CREATE TABLE IF NOT EXISTS wallet_transactions(
-      id SERIAL PRIMARY KEY,
-      vendor_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
-      transaction_type VARCHAR(50) NOT NULL, -- 'credit', 'debit'
+        id SERIAL PRIMARY KEY,
+        vendor_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+        transaction_type VARCHAR(50) NOT NULL,
         amount DECIMAL(10, 2) NOT NULL,
-      status VARCHAR(50) DEFAULT 'completed',
-      description TEXT,
-      order_id INTEGER REFERENCES orders(id),
-      payout_id INTEGER REFERENCES payouts(id),
-      platform_fee DECIMAL(10, 2) DEFAULT 0,
-      coupon_discount_applied DECIMAL(10, 2) DEFAULT 0,
-      original_amount DECIMAL(10, 2),
-      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-    )
-      `);
+        status VARCHAR(50) DEFAULT 'completed',
+        description TEXT,
+        order_id INTEGER REFERENCES orders(id),
+        payout_id INTEGER REFERENCES payouts(id),
+        platform_fee DECIMAL(10, 2) DEFAULT 0,
+        coupon_discount_applied DECIMAL(10, 2) DEFAULT 0,
+        original_amount DECIMAL(10, 2),
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
 
-
-    // Add PIN verification table for users
-    // Add PIN verification table for users
+    // 23. user_pins
     await pool.query(`
-  CREATE TABLE IF NOT EXISTS user_pins(
+      CREATE TABLE IF NOT EXISTS user_pins(
         id SERIAL PRIMARY KEY,
         user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
         pin_hash TEXT NOT NULL,
@@ -950,11 +978,11 @@ const initDatabase = async () => {
         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         UNIQUE(user_id)
       )
-      `);
+    `);
 
-    // Add PIN login attempts tracking for security
+    // 24. pin_login_attempts
     await pool.query(`
-  CREATE TABLE IF NOT EXISTS pin_login_attempts(
+      CREATE TABLE IF NOT EXISTS pin_login_attempts(
         id SERIAL PRIMARY KEY,
         user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
         attempt_count INTEGER DEFAULT 0,
@@ -962,60 +990,23 @@ const initDatabase = async () => {
         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         UNIQUE(user_id)
       )
-      `);
+    `);
 
-    // Add Shipmozo settings if not exists
+    // 25. vendor_bank_accounts
     await pool.query(`
-  INSERT INTO settings(key, value)
-    VALUES
-      ('shipmozo_api_key', ''),
-      ('shipmozo_api_secret', ''),
-      ('shipmozo_pickup_pincode', ''),
-      ('shipmozo_webhook_secret', '')
-  ON CONFLICT(key) DO NOTHING
-      `);
-
-
-
-    // SETTINGS TABLE
-    await pool.query(`
-          CREATE TABLE IF NOT EXISTS settings(
+      CREATE TABLE IF NOT EXISTS vendor_bank_accounts(
         id SERIAL PRIMARY KEY,
-        key VARCHAR(100) UNIQUE NOT NULL,
-        value TEXT NOT NULL,
+        vendor_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+        bank_details TEXT NOT NULL,
+        is_default BOOLEAN DEFAULT false,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       )
-      `);
+    `);
 
-    await pool.query(`
-        INSERT INTO settings(key, value)
-    VALUES('platform_fee_percent', '10.00')
-        ON CONFLICT(key) DO NOTHING
-      `);
+    console.log("✅ All database tables created/verified");
 
-    // In initDatabase() function, add these settings if not exists
-    await pool.query(`
-      INSERT INTO settings(key, value)
-    VALUES
-      ('razorpay_key_id', ''),
-      ('razorpay_key_secret', '')
-      ON CONFLICT(key) DO NOTHING
-      `);
-
-    const defaultSettings = [
-      { key: 'online_payment_discount', value: '0' },
-      { key: 'cod_fee', value: '0' }
-    ];
-
-    for (const setting of defaultSettings) {
-      await pool.query(`
-        INSERT INTO settings(key, value)
-    VALUES($1, $2)
-        ON CONFLICT(key) DO NOTHING
-      `, [setting.key, setting.value]);
-    }
-
-    // SILENT SEED
+    // SILENT SEED - Create super admin if not exists
     const adminEmail = (process.env.ADMIN_EMAIL || "admin@example.com").toLowerCase().trim();
     const defaultAdminPassword = process.env.DEFAULT_ADMIN_PASSWORD || "Admin@123";
 
@@ -1033,15 +1024,18 @@ const initDatabase = async () => {
       const hashedPassword = await bcrypt.hash(defaultAdminPassword, 10);
       await pool.query(`
         INSERT INTO users(name, email, password, role, status)
-    VALUES($1, $2, $3, $4, $5)
+        VALUES($1, $2, $3, $4, $5)
       `, ["Super Admin", adminEmail, hashedPassword, "super_admin", "Active"]);
+      console.log(`✅ Super Admin created: ${adminEmail}`);
     }
+
+    console.log("✅ Database initialization complete!");
 
   } catch (error) {
     console.error("❌ Database initialization error:", error);
+    throw error; // Re-throw to ensure server doesn't start with broken DB
   }
 };
-
 // ================= AUTH ROUTES =================
 // ================= REGISTRATION ENDPOINT WITH PIN =================
 app.post("/api/auth/register", async (req, res) => {
