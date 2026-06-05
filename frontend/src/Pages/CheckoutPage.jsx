@@ -55,6 +55,7 @@ const CheckoutPage = () => {
     const [couponMessage, setCouponMessage] = useState({ type: "", text: "" });
     const [manualCoupon, setManualCoupon] = useState("");
     const [settings, setSettings] = useState({ online_payment_discount: 0, cod_fee: 0 });
+    const [processingOrder, setProcessingOrder] = useState(false);
 
     const fetchAddresses = async () => {
         try {
@@ -114,9 +115,6 @@ const CheckoutPage = () => {
     };
 
     // Apply coupon – send cart items with vendor_id to backend
-    // In CheckoutPage.jsx, update these functions:
-
-    // Handle apply coupon with proper discount calculation
     const handleApplyCoupon = async (coupon) => {
         setCouponMessage({ type: "", text: "" });
         try {
@@ -176,32 +174,51 @@ const CheckoutPage = () => {
         return Math.max(0, total);
     };
 
-    // Update the proceed to payment function
+    // Updated proceed to payment function with complete address details
     const handleProceedToPayment = () => {
         if (!selectedAddressId) {
             showToast("Please select a delivery address", "error");
             return;
         }
+        
         const selectedAddress = addresses.find(a => a.id === selectedAddressId);
-
-        const fullAddress = selectedAddress.house_no
-            ? `${selectedAddress.house_no}, ${selectedAddress.street_area}, ${selectedAddress.city}`
-            : selectedAddress.address;
+        if (!selectedAddress) {
+            showToast("Selected address not found", "error");
+            return;
+        }
 
         const finalAmount = getFinalAmount();
 
+        // Build complete order data with all address components
         const orderData = {
             customer_name: selectedAddress.name,
             email: localStorage.getItem("userEmail") || "",
             phone: selectedAddress.phone,
-            address: `${fullAddress}, ${selectedAddress.state} - ${selectedAddress.pincode}`,
+            // Full address string for display
+            address: `${selectedAddress.house_no ? selectedAddress.house_no + ', ' : ''}${selectedAddress.street_area ? selectedAddress.street_area + ', ' : ''}${selectedAddress.city ? selectedAddress.city + ', ' : ''}${selectedAddress.state ? selectedAddress.state : ''}${selectedAddress.pincode ? ' - ' + selectedAddress.pincode : ''}`,
+            // Individual address components for Shiprocket
             house_no: selectedAddress.house_no || "",
             street_area: selectedAddress.street_area || "",
             landmark: selectedAddress.landmark || "",
+            city: selectedAddress.city || "",
+            state: selectedAddress.state || "",
+            pincode: selectedAddress.pincode || "",
+            country: "India",
+            // Order details
             total_amount: finalAmount,
             discount: couponDiscount,
             coupon_id: selectedCoupon?.id || null,
-            cartItems: cartItems
+            payment_method: "COD", // Default, will be overridden in payment page
+            cartItems: cartItems.map(item => ({
+                product_id: item.product_id || item.id,
+                name: item.name,
+                price: item.price,
+                quantity: item.qty,
+                image: item.main_image_url || item.image_url,
+                product_code: item.product_code,
+                vendor_id: item.vendor_id,
+                weight: item.weight || 0.5
+            }))
         };
 
         navigate("/payment", { state: { orderDetails: orderData } });
@@ -253,6 +270,8 @@ const CheckoutPage = () => {
     const saveAddressEdit = async () => {
         try {
             const payload = { ...editForm };
+            
+            // Build full address string from components
             if (!payload.address && payload.house_no && payload.street_area) {
                 payload.address = `${payload.house_no}, ${payload.street_area}`;
             }
@@ -271,12 +290,15 @@ const CheckoutPage = () => {
             }
             fetchAddresses();
             setIsEditingAddress(false);
+            setLocationStep("choice");
+            setEditForm({
+                name: "", phone: "", address: "", city: "", state: "", pincode: "", type: "HOME",
+                house_no: "", street_area: "", landmark: ""
+            });
         } catch (err) {
             showToast("Failed to save address", "error");
         }
     };
-
-   
 
     const totalMRP = cartItems.reduce((acc, item) => acc + (Number(item.old_price || item.price) * item.qty), 0);
     const mrpDiscount = Number(totalMRP) - Number(totalPrice);
@@ -284,7 +306,7 @@ const CheckoutPage = () => {
     const totalSavings = Number(mrpDiscount) + Number(couponDiscount);
     const selectedAddress = addresses.find(a => a.id === selectedAddressId);
 
-    // ✅ SHOW BEAUTIFUL EMPTY STATE INSTEAD OF BLANK SCREEN
+    // SHOW BEAUTIFUL EMPTY STATE INSTEAD OF BLANK SCREEN
     if (cartItems.length === 0) {
         return (
             <div className="empty-checkout-container">
@@ -357,7 +379,7 @@ const CheckoutPage = () => {
                                     {selectedAddress && currentStep > 2 && (
                                         <div className="selection-preview">
                                             <span>{selectedAddress.name}</span>
-                                            <p>{selectedAddress.address}, {selectedAddress.city}</p>
+                                            <p>{selectedAddress.house_no}, {selectedAddress.street_area}, {selectedAddress.city}</p>
                                         </div>
                                     )}
                                 </div>
@@ -367,11 +389,17 @@ const CheckoutPage = () => {
                             {currentStep === 2 && (
                                 <div className="step-content">
                                     {isEditingAddress && (
-                                        <div className="address-form-overlay" onClick={() => setIsEditingAddress(false)}>
+                                        <div className="address-form-overlay" onClick={() => {
+                                            setIsEditingAddress(false);
+                                            setLocationStep("choice");
+                                        }}>
                                             <div className="address-form-modal" onClick={e => e.stopPropagation()}>
                                                 <div className="form-header-new">
                                                     <h6>{editForm.id ? "Edit Address" : "Add New Address"}</h6>
-                                                    <button onClick={() => setIsEditingAddress(false)}><i className="bi bi-x-lg"></i></button>
+                                                    <button onClick={() => {
+                                                        setIsEditingAddress(false);
+                                                        setLocationStep("choice");
+                                                    }}><i className="bi bi-x-lg"></i></button>
                                                 </div>
 
                                                 {locationStep === "choice" ? (
@@ -395,45 +423,107 @@ const CheckoutPage = () => {
                                                         <div className="row g-3">
                                                             <div className="col-md-6">
                                                                 <div className="form-floating mb-2">
-                                                                    <input type="text" className="form-control" placeholder="Full Name" value={editForm.name} onChange={e => setEditForm({ ...editForm, name: e.target.value })} />
-                                                                    <label>Full Name</label>
+                                                                    <input 
+                                                                        type="text" 
+                                                                        className="form-control" 
+                                                                        placeholder="Full Name" 
+                                                                        value={editForm.name} 
+                                                                        onChange={e => setEditForm({ ...editForm, name: e.target.value })} 
+                                                                        required
+                                                                    />
+                                                                    <label>Full Name *</label>
                                                                 </div>
                                                             </div>
                                                             <div className="col-md-6">
                                                                 <div className="form-floating mb-2">
-                                                                    <input type="text" className="form-control" placeholder="Phone" value={editForm.phone} onChange={e => setEditForm({ ...editForm, phone: e.target.value })} />
-                                                                    <label>Phone Number</label>
+                                                                    <input 
+                                                                        type="tel" 
+                                                                        className="form-control" 
+                                                                        placeholder="Phone" 
+                                                                        value={editForm.phone} 
+                                                                        onChange={e => setEditForm({ ...editForm, phone: e.target.value })} 
+                                                                        required
+                                                                    />
+                                                                    <label>Phone Number *</label>
                                                                 </div>
                                                             </div>
                                                             <div className="col-md-6">
                                                                 <div className="form-floating mb-2">
-                                                                    <input type="text" className="form-control" placeholder="House No" value={editForm.house_no} onChange={e => setEditForm({ ...editForm, house_no: e.target.value })} />
+                                                                    <input 
+                                                                        type="text" 
+                                                                        className="form-control" 
+                                                                        placeholder="House No" 
+                                                                        value={editForm.house_no} 
+                                                                        onChange={e => setEditForm({ ...editForm, house_no: e.target.value })} 
+                                                                        required
+                                                                    />
                                                                     <label>House / Flat No *</label>
                                                                 </div>
                                                             </div>
                                                             <div className="col-md-6">
                                                                 <div className="form-floating mb-2">
-                                                                    <input type="text" className="form-control" placeholder="Street" value={editForm.street_area} onChange={e => setEditForm({ ...editForm, street_area: e.target.value })} />
+                                                                    <input 
+                                                                        type="text" 
+                                                                        className="form-control" 
+                                                                        placeholder="Street" 
+                                                                        value={editForm.street_area} 
+                                                                        onChange={e => setEditForm({ ...editForm, street_area: e.target.value })} 
+                                                                        required
+                                                                    />
                                                                     <label>Area / Street *</label>
                                                                 </div>
                                                             </div>
                                                             <div className="col-md-12">
                                                                 <div className="form-floating mb-2">
-                                                                    <input type="text" className="form-control" placeholder="Landmark" value={editForm.landmark} onChange={e => setEditForm({ ...editForm, landmark: e.target.value })} />
+                                                                    <input 
+                                                                        type="text" 
+                                                                        className="form-control" 
+                                                                        placeholder="Landmark" 
+                                                                        value={editForm.landmark} 
+                                                                        onChange={e => setEditForm({ ...editForm, landmark: e.target.value })} 
+                                                                    />
                                                                     <label>Landmark (Optional)</label>
                                                                 </div>
                                                             </div>
                                                             <div className="col-md-4">
-                                                                <input type="text" className="form-control p-3 mb-2" placeholder="City" value={editForm.city} onChange={e => setEditForm({ ...editForm, city: e.target.value })} />
+                                                                <input 
+                                                                    type="text" 
+                                                                    className="form-control p-3 mb-2" 
+                                                                    placeholder="City *" 
+                                                                    value={editForm.city} 
+                                                                    onChange={e => setEditForm({ ...editForm, city: e.target.value })} 
+                                                                    required
+                                                                />
                                                             </div>
                                                             <div className="col-md-4">
-                                                                <input type="text" className="form-control p-3 mb-2" placeholder="State" value={editForm.state} onChange={e => setEditForm({ ...editForm, state: e.target.value })} />
+                                                                <input 
+                                                                    type="text" 
+                                                                    className="form-control p-3 mb-2" 
+                                                                    placeholder="State *" 
+                                                                    value={editForm.state} 
+                                                                    onChange={e => setEditForm({ ...editForm, state: e.target.value })} 
+                                                                    required
+                                                                />
                                                             </div>
                                                             <div className="col-md-4">
-                                                                <input type="text" className="form-control p-3 mb-2" placeholder="Pincode" value={editForm.pincode} onChange={e => setEditForm({ ...editForm, pincode: e.target.value })} />
+                                                                <input 
+                                                                    type="text" 
+                                                                    className="form-control p-3 mb-2" 
+                                                                    placeholder="Pincode *" 
+                                                                    value={editForm.pincode} 
+                                                                    onChange={e => setEditForm({ ...editForm, pincode: e.target.value })} 
+                                                                    maxLength="6"
+                                                                    required
+                                                                />
                                                             </div>
                                                         </div>
-                                                        <button className="btn-save-address-new w-100 mt-4" onClick={saveAddressEdit}>SAVE AND DELIVER HERE</button>
+                                                        <button 
+                                                            className="btn-save-address-new w-100 mt-4" 
+                                                            onClick={saveAddressEdit}
+                                                            disabled={!editForm.name || !editForm.phone || !editForm.house_no || !editForm.street_area || !editForm.city || !editForm.state || !editForm.pincode}
+                                                        >
+                                                            SAVE AND DELIVER HERE
+                                                        </button>
                                                     </div>
                                                 )}
                                             </div>
@@ -450,17 +540,32 @@ const CheckoutPage = () => {
                                                             <span className="tag">{a.type}</span>
                                                             <span className="phone">{a.phone}</span>
                                                         </div>
-                                                        <p className="address-text">{a.address}, {a.city}, {a.state} - {a.pincode}</p>
+                                                        <p className="address-text">
+                                                            {a.house_no && `${a.house_no}, `}
+                                                            {a.street_area && `${a.street_area}, `}
+                                                            {a.city && `${a.city}, `}
+                                                            {a.state && `${a.state} - `}
+                                                            {a.pincode}
+                                                        </p>
                                                         {selectedAddressId === a.id && (
                                                             <button className="btn-deliver-here mt-3" onClick={() => setCurrentStep(3)}>DELIVER HERE</button>
                                                         )}
                                                     </div>
-                                                    <button className="edit-link" onClick={() => { setEditForm(a); setIsEditingAddress(true); setLocationStep("form"); }}>EDIT</button>
+                                                    <button className="edit-link" onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        setEditForm(a);
+                                                        setIsEditingAddress(true);
+                                                        setLocationStep("form");
+                                                    }}>EDIT</button>
                                                 </div>
                                             ))}
                                             <button className="add-address-btn-new" onClick={() => {
-                                                setEditForm({ name: "", phone: "", address: "", city: "", state: "", pincode: "", type: "HOME", house_no: "", street_area: "", landmark: "" });
-                                                setIsEditingAddress(true); setLocationStep("choice");
+                                                setEditForm({ 
+                                                    name: "", phone: "", address: "", city: "", state: "", pincode: "", type: "HOME", 
+                                                    house_no: "", street_area: "", landmark: "", id: null 
+                                                });
+                                                setIsEditingAddress(true);
+                                                setLocationStep("choice");
                                             }}>+ ADD A NEW ADDRESS</button>
                                         </div>
                                     )}
@@ -490,7 +595,7 @@ const CheckoutPage = () => {
                                                 </div>
                                                 <div className="info-box">
                                                     <h6 className="name" onClick={() => navigate(`/product/${item.product_id || item.id}`)} style={{ cursor: 'pointer' }}>{item.name}</h6>
-                                                    <div className="price-info d-flex align-items-center">
+                                                    <div className="price-info d-flex align-items-center flex-wrap">
                                                         <span className="price">₹{item.price}</span>
                                                         {item.old_price && Number(item.old_price) > Number(item.price) && (
                                                             <span className="old-price" style={{ textDecoration: 'line-through', color: '#9ca3af', fontSize: '13px', marginLeft: '8px' }}>₹{item.old_price}</span>
@@ -508,7 +613,13 @@ const CheckoutPage = () => {
                                         ))}
                                     </div>
                                     <div className="summary-footer d-none d-lg-flex">
-                                        <button className="btn-continue-to-payment" onClick={handleProceedToPayment}>CONTINUE</button>
+                                        <button 
+                                            className="btn-continue-to-payment" 
+                                            onClick={handleProceedToPayment}
+                                            disabled={!selectedAddressId}
+                                        >
+                                            CONTINUE
+                                        </button>
                                     </div>
                                 </div>
                             )}
@@ -519,10 +630,10 @@ const CheckoutPage = () => {
                         <div className="price-sidebar">
                             <h6 className="title">PRICE DETAILS</h6>
                             <div className="price-rows">
-                                <div className="p-row"><span>Price ({totalItems} items)</span><span>₹{totalMRP}</span></div>
-                                <div className="p-row green"><span>Discount</span><span>− ₹{mrpDiscount}</span></div>
+                                <div className="p-row"><span>Price ({totalItems} items)</span><span>₹{totalMRP.toFixed(2)}</span></div>
+                                <div className="p-row green"><span>Discount</span><span>− ₹{mrpDiscount.toFixed(2)}</span></div>
                                 <div className="p-row green"><span>Delivery Charges</span><span>FREE</span></div>
-                                {selectedCoupon && <div className="p-row green"><span>Coupon Discount</span><span>− ₹{couponDiscount}</span></div>}
+                                {selectedCoupon && <div className="p-row green"><span>Coupon Discount</span><span>− ₹{couponDiscount.toFixed(2)}</span></div>}
                                 <div className="coupon-box" onClick={openCouponModal}>
                                     <i className="bi bi-patch-check"></i>
                                     <span>{selectedCoupon ? `Applied: ${selectedCoupon.code}` : "Apply Coupons"}</span>
@@ -530,7 +641,7 @@ const CheckoutPage = () => {
                                 </div>
                                 <div className="p-total">
                                     <span>Total Amount</span>
-                                    <span>₹{finalAmount}</span>
+                                    <span>₹{finalAmount.toFixed(2)}</span>
                                 </div>
                                 {settings.online_payment_discount > 0 && (
                                     <div className="p-row text-success fw-bold mt-2" style={{ borderTop: '1px dashed #22c55e', paddingTop: '10px' }}>
@@ -540,7 +651,7 @@ const CheckoutPage = () => {
                                 )}
                             </div>
                             {totalSavings > 0 && (
-                                <div className="savings-msg">You will save ₹{totalSavings} on this order</div>
+                                <div className="savings-msg">You will save ₹{totalSavings.toFixed(2)} on this order</div>
                             )}
                         </div>
                     </div>
@@ -551,7 +662,7 @@ const CheckoutPage = () => {
             <div className="mobile-checkout-footer d-lg-none">
                 <div className="price-info">
                     <span className="label">Total Amount</span>
-                    <span className="val">₹{finalAmount}</span>
+                    <span className="val">₹{finalAmount.toFixed(2)}</span>
                 </div>
                 <button
                     className="btn-footer-continue"
@@ -576,7 +687,7 @@ const CheckoutPage = () => {
                                     className="form-control"
                                     placeholder="Enter Coupon Code"
                                     value={manualCoupon}
-                                    onChange={(e) => setManualCoupon(e.target.value)}
+                                    onChange={(e) => setManualCoupon(e.target.value.toUpperCase())}
                                     onKeyDown={(e) => {
                                         if (e.key === 'Enter' && manualCoupon.trim()) {
                                             handleManualCouponApply();
@@ -604,14 +715,22 @@ const CheckoutPage = () => {
 
                             {coupons.length > 0 && <h6 className="available-coupons-title mb-3" style={{ fontSize: '0.9rem', color: '#666', fontWeight: 600 }}>Available Offers</h6>}
 
-                            {coupons.map(c => (
-                                <div key={c.id} className="coupon-item" onClick={() => handleApplyCoupon(c)}>
-                                    <div className="code-wrap"><div className="code">{c.code}</div><button>APPLY</button></div>
-                                    <p className="desc">Save ₹{c.discount_type === 'percentage' ? (totalPrice * c.discount_value / 100) : c.discount_value} on this order</p>
-                                </div>
-                            ))}
+                            {coupons.map(c => {
+                                const discountAmount = c.discount_type === 'percentage' 
+                                    ? (totalPrice * c.discount_value / 100).toFixed(2) 
+                                    : c.discount_value;
+                                return (
+                                    <div key={c.id} className="coupon-item" onClick={() => handleApplyCoupon(c)}>
+                                        <div className="code-wrap"><div className="code">{c.code}</div><button>APPLY</button></div>
+                                        <p className="desc">Save ₹{discountAmount} on this order</p>
+                                        {c.min_order_amount > 0 && (
+                                            <small className="text-muted">Min. order: ₹{c.min_order_amount}</small>
+                                        )}
+                                    </div>
+                                );
+                            })}
 
-                            {/* ✅ BEAUTIFUL EMPTY STATE FOR COUPONS */}
+                            {/* BEAUTIFUL EMPTY STATE FOR COUPONS */}
                             {coupons.length === 0 && (
                                 <div className="empty-coupon-state">
                                     <i className="bi bi-ticket-detailed empty-icon"></i>

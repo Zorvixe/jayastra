@@ -3513,14 +3513,69 @@ app.post("/api/orders", verifyToken, async (req, res) => {
       coupon_id,
       payment_method,
       cartItems,
-      house_no,
-      street_area,
-      landmark
+      address_id  // NEW: ID of selected address from addresses table
     } = req.body;
 
     if (!cartItems || cartItems.length === 0) throw new Error("Cart is empty");
 
-    // Calculate original total and discount percentage
+    // Fetch complete address details from addresses table if address_id is provided
+    let city = null, state = null, pincode = null, house_no = null, street_area = null, landmark = null;
+    
+    if (address_id) {
+      const addressRes = await client.query(
+        `SELECT house_no, street_area, landmark, city, state, pincode, address as full_address 
+         FROM addresses WHERE id = $1 AND user_id = $2`,
+        [address_id, req.user.id]
+      );
+      if (addressRes.rows.length > 0) {
+        const addr = addressRes.rows[0];
+        house_no = addr.house_no;
+        street_area = addr.street_area;
+        landmark = addr.landmark;
+        city = addr.city;
+        state = addr.state;
+        pincode = addr.pincode;
+        // If address not provided in request, use the full address from addresses table
+        if (!address) {
+          address = addr.full_address;
+        }
+      }
+    }
+    
+    // If still missing city/state/pincode, try to get from user's default profile
+    if (!city || !state || !pincode) {
+      const userRes = await client.query(
+        `SELECT city, state, pincode, address FROM users WHERE id = $1`,
+        [req.user.id]
+      );
+      if (userRes.rows.length > 0) {
+        const user = userRes.rows[0];
+        if (!city) city = user.city;
+        if (!state) state = user.state;
+        if (!pincode) pincode = user.pincode;
+        if (!address) address = user.address;
+      }
+    }
+    
+    // If still missing, try to extract from address string
+    if ((!city || !state || !pincode) && address) {
+      // Extract pincode
+      const pinMatch = address.match(/\b\d{6}\b/);
+      if (pinMatch && !pincode) pincode = pinMatch[0];
+      
+      // Try to extract city and state
+      const parts = address.split(',');
+      if (parts.length >= 2) {
+        if (!city) city = parts[parts.length - 2]?.trim();
+        if (parts.length >= 3 && !state) {
+          const lastPart = parts[parts.length - 1]?.trim();
+          const stateMatch = lastPart?.match(/^([A-Za-z\s]+)/);
+          if (stateMatch) state = stateMatch[1].trim();
+        }
+      }
+    }
+
+    // Calculate original total and discount
     const originalTotal = cartItems.reduce((sum, item) => {
       const price = parseFloat(item.price);
       const qty = parseInt(item.qty || item.quantity || 1);
@@ -3530,31 +3585,24 @@ app.post("/api/orders", verifyToken, async (req, res) => {
     const discountAmount = parseFloat(discount || 0);
     const finalAmount = parseFloat(total_amount);
 
-    // Calculate discount percentage (how much discount was applied overall)
-    const discountPercentage = originalTotal > 0 ? (discountAmount / originalTotal) * 100 : 0;
-
-    console.log("Order calculation:", {
-      originalTotal,
-      discountAmount,
-      finalAmount,
-      discountPercentage: discountPercentage.toFixed(2) + "%"
-    });
-
-    // Insert order with discounted amount
+    // Insert order with all address components
     const orderRes = await client.query(
       `INSERT INTO orders (
         user_id, customer_name, email, phone, address, total_amount, 
-        discount, coupon_id, payment_method, house_no, street_area, landmark
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12) RETURNING id`,
+        discount, coupon_id, payment_method, 
+        house_no, street_area, landmark,
+        city, state, pincode
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15) RETURNING id`,
       [
         req.user.id, customer_name, email, phone, address, finalAmount,
         discountAmount, coupon_id || null, payment_method || 'COD',
-        house_no || '', street_area || '', landmark || ''
+        house_no || '', street_area || '', landmark || '',
+        city, state, pincode
       ]
     );
     const orderId = orderRes.rows[0].id;
 
-    // Insert order items with PROPORTIONALLY REDUCED vendor earnings based on discount
+    // Insert order items
     for (let item of cartItems) {
       const prodRes = await client.query(
         "SELECT vendor_id, price, platform_fee_percent FROM products WHERE id = $1",
@@ -3565,28 +3613,15 @@ app.post("/api/orders", verifyToken, async (req, res) => {
       const platform_fee_percent = parseFloat(prodRes.rows[0]?.platform_fee_percent || 10);
       const qty = parseInt(item.qty || item.quantity || 1);
 
-      // Calculate discounted price for this item (proportional discount)
       let discounted_price = original_price;
-
-      // Apply proportional discount if there's a coupon discount
       if (discountAmount > 0 && originalTotal > 0) {
-        // Each item gets discount proportional to its original price
         const itemOriginalTotal = original_price * qty;
         const itemDiscount = (itemOriginalTotal / originalTotal) * discountAmount;
         discounted_price = original_price - (itemDiscount / qty);
         discounted_price = Math.max(0, discounted_price);
       }
 
-      // Calculate vendor earnings after platform fee on the DISCOUNTED price
       const vendor_earning = (discounted_price * qty) * ((100 - platform_fee_percent) / 100);
-
-      console.log(`Item ${item.name}:`, {
-        original_price,
-        discounted_price,
-        qty,
-        platform_fee_percent,
-        vendor_earning
-      });
 
       await client.query(
         `INSERT INTO order_items (order_id, product_id, quantity, price, vendor_id, vendor_earning) 
@@ -3594,14 +3629,12 @@ app.post("/api/orders", verifyToken, async (req, res) => {
         [orderId, item.product_id || item.id, qty, discounted_price, vendor_id, vendor_earning]
       );
 
-      // Update stock
       await client.query(
         `UPDATE products SET stock_quantity = stock_quantity - $1 WHERE id = $2`,
         [qty, item.product_id || item.id]
       );
     }
 
-    // Update coupon usage count
     if (coupon_id) {
       await client.query(
         `UPDATE coupons SET used_count = used_count + 1 WHERE id = $1`,
@@ -3609,12 +3642,9 @@ app.post("/api/orders", verifyToken, async (req, res) => {
       );
     }
 
-    // Clear cart
     await client.query(`DELETE FROM cart_items WHERE user_id = $1`, [req.user.id]);
-
     await client.query("COMMIT");
 
-    // Send notification
     const fullOrderResult = await pool.query(`SELECT * FROM orders WHERE id = $1`, [orderId]);
     sendAdminNotification(fullOrderResult.rows[0]);
 
@@ -3680,9 +3710,47 @@ app.post("/api/razorpay/verify", verifyToken, async (req, res) => {
     if (expectedSignature !== razorpay_signature) return res.status(400).json({ success: false, message: "Invalid signature" });
 
     await client.query("BEGIN");
-    const { customer_name, email, phone, address, total_amount, discount, coupon_id, cartItems, house_no, street_area, landmark } = orderDetails;
+    const { 
+      customer_name, email, phone, address, total_amount, discount, coupon_id, 
+      cartItems, address_id
+    } = orderDetails;
 
-    // Calculate original total and discount percentage
+    // Fetch complete address details from addresses table
+    let city = null, state = null, pincode = null, house_no = null, street_area = null, landmark = null;
+    
+    if (address_id) {
+      const addressRes = await client.query(
+        `SELECT house_no, street_area, landmark, city, state, pincode, address as full_address 
+         FROM addresses WHERE id = $1 AND user_id = $2`,
+        [address_id, req.user.id]
+      );
+      if (addressRes.rows.length > 0) {
+        const addr = addressRes.rows[0];
+        house_no = addr.house_no;
+        street_area = addr.street_area;
+        landmark = addr.landmark;
+        city = addr.city;
+        state = addr.state;
+        pincode = addr.pincode;
+        if (!address) address = addr.full_address;
+      }
+    }
+    
+    // Fallback to user profile
+    if (!city || !state || !pincode) {
+      const userRes = await client.query(
+        `SELECT city, state, pincode, address FROM users WHERE id = $1`,
+        [req.user.id]
+      );
+      if (userRes.rows.length > 0) {
+        const user = userRes.rows[0];
+        if (!city) city = user.city;
+        if (!state) state = user.state;
+        if (!pincode) pincode = user.pincode;
+        if (!address) address = user.address;
+      }
+    }
+
     const originalTotal = cartItems.reduce((sum, item) => {
       const price = parseFloat(item.price);
       const qty = parseInt(item.qty || item.quantity || 1);
@@ -3692,25 +3760,24 @@ app.post("/api/razorpay/verify", verifyToken, async (req, res) => {
     const discountAmount = parseFloat(discount || 0);
     const finalAmount = parseFloat(total_amount);
 
-    // Calculate discount percentage
-    const discountPercentage = originalTotal > 0 ? (discountAmount / originalTotal) * 100 : 0;
-
     const orderRes = await client.query(
       `INSERT INTO orders (
         user_id, customer_name, email, phone, address, total_amount, 
         discount, coupon_id, payment_method, payment_status, order_status, 
-        house_no, street_area, landmark, razorpay_order_id, razorpay_payment_id
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16) RETURNING id`,
+        house_no, street_area, landmark, razorpay_order_id, razorpay_payment_id,
+        city, state, pincode
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19) RETURNING id`,
       [
         req.user.id, customer_name, email, phone, address, finalAmount,
         discountAmount, coupon_id, 'RAZORPAY', 'Completed', 'Placed',
         house_no || '', street_area || '', landmark || '',
-        razorpay_order_id, razorpay_payment_id
+        razorpay_order_id, razorpay_payment_id,
+        city, state, pincode
       ]
     );
     const orderId = orderRes.rows[0].id;
 
-    // Insert order items with PROPORTIONALLY REDUCED vendor earnings
+    // Insert order items (same as above)
     for (let item of cartItems) {
       const prodRes = await client.query(
         "SELECT vendor_id, price, platform_fee_percent FROM products WHERE id = $1",
@@ -3721,7 +3788,6 @@ app.post("/api/razorpay/verify", verifyToken, async (req, res) => {
       const platform_fee_percent = parseFloat(prodRes.rows[0]?.platform_fee_percent || 10);
       const qty = parseInt(item.qty || item.quantity || 1);
 
-      // Calculate discounted price for this item (proportional discount)
       let discounted_price = original_price;
       if (discountAmount > 0 && originalTotal > 0) {
         const itemOriginalTotal = original_price * qty;
@@ -3730,7 +3796,6 @@ app.post("/api/razorpay/verify", verifyToken, async (req, res) => {
         discounted_price = Math.max(0, discounted_price);
       }
 
-      // Calculate vendor earnings on discounted price
       const vendor_earning = (discounted_price * qty) * ((100 - platform_fee_percent) / 100);
 
       await client.query(
@@ -5351,10 +5416,23 @@ app.post("/api/admin/orders/:id/invoice", verifyToken, verifyAdminVendorIndividu
 });
 
 // Update order address details (Admin only)
+// Update order address - Admin only
 app.put("/api/admin/orders/:id/address", verifyToken, verifyAdminOrSuperAdmin, async (req, res) => {
   try {
     const { id } = req.params;
-    const { city, state, pincode, house_no, street_area, landmark } = req.body;
+    const { city, state, pincode, house_no, street_area, landmark, address } = req.body;
+    
+    // Build the full address if components are provided
+    let fullAddress = address;
+    if (!fullAddress && (house_no || street_area || city || state || pincode)) {
+      const parts = [];
+      if (house_no) parts.push(house_no);
+      if (street_area) parts.push(street_area);
+      if (city) parts.push(city);
+      if (state) parts.push(state);
+      if (pincode) parts.push(pincode);
+      fullAddress = parts.join(', ');
+    }
     
     const result = await pool.query(
       `UPDATE orders 
@@ -5364,10 +5442,11 @@ app.put("/api/admin/orders/:id/address", verifyToken, verifyAdminOrSuperAdmin, a
            house_no = COALESCE($4, house_no),
            street_area = COALESCE($5, street_area),
            landmark = COALESCE($6, landmark),
+           address = COALESCE($7, address),
            updated_at = NOW()
-       WHERE id = $7
+       WHERE id = $8
        RETURNING *`,
-      [city, state, pincode, house_no, street_area, landmark, id]
+      [city, state, pincode, house_no, street_area, landmark, fullAddress, id]
     );
     
     if (result.rows.length === 0) {

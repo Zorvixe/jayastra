@@ -172,21 +172,26 @@ const Orders = () => {
   };
 
   // Check if order has complete address for Shiprocket
-  const canPushToShiprocket = (order) => {
-    // Check if order already has address details
-    const hasCity = order.city && order.city !== '' && order.city !== 'City';
-    const hasState = order.state && order.state !== '' && order.state !== 'State';
-    const hasPincode = order.address?.match(/\b\d{6}\b/);
+ const canPushToShiprocket = (order) => {
+  // Check if order has the required address components
+  const hasCity = order.city && order.city !== '' && order.city !== 'City';
+  const hasState = order.state && order.state !== '' && order.state !== 'State';
+  const hasPincode = order.pincode && order.pincode.toString().length === 6;
+  
+  if (!hasCity || !hasState || !hasPincode) {
+    const missing = [];
+    if (!hasCity) missing.push('City');
+    if (!hasState) missing.push('State');
+    if (!hasPincode) missing.push('Pincode (6 digits)');
+    
+    return {
+      canPush: false,
+      reason: `Missing delivery address details (${missing.join(', ')}). Please update the order address first.`
+    };
+  }
 
-    if (!hasCity || !hasState || !hasPincode) {
-      return {
-        canPush: false,
-        reason: "Missing address details (City, State, or Pincode). Please update order address first."
-      };
-    }
-
-    return { canPush: true, reason: null };
-  };
+  return { canPush: true, reason: null };
+};
 
   // Helper function to escape HTML to prevent XSS
   const escapeHtml = (text) => {
