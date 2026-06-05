@@ -5148,58 +5148,82 @@ const authenticateShiprocket = async (retryCount = 0) => {
 
   try {
     console.log("Calling Shiprocket login API...");
+    console.log("API URL: https://apiv2.shiprocket.in/v1/external/auth/login");
+
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
 
     const response = await fetch("https://apiv2.shiprocket.in/v1/external/auth/login", {
       method: "POST",
       headers: {
-        "Content-Type": "application/json"
+        "Content-Type": "application/json",
+        "Accept": "application/json"
       },
       body: JSON.stringify({
         email: email.trim(),
         password: password
-      })
+      }),
+      signal: controller.signal
     });
 
+    clearTimeout(timeoutId);
+
     console.log("Shiprocket response status:", response.status);
+    console.log("Shiprocket response headers:", JSON.stringify(Object.fromEntries(response.headers.entries()), null, 2));
 
-    const data = await response.json();
-    console.log("Shiprocket response has token:", !!data.token);
+    // Get response text first for debugging
+    const responseText = await response.text();
+    console.log("Shiprocket raw response:", responseText.substring(0, 500));
 
-    if (response.status !== 200) {
-      console.error("Shiprocket auth failed with status:", response.status);
-      console.error("Shiprocket response:", JSON.stringify(data).substring(0, 500));
-
-      let errorMessage = "Shiprocket authentication failed";
-      if (data.message) {
-        if (data.message.toLowerCase().includes("invalid") || data.message.toLowerCase().includes("wrong")) {
-          errorMessage = "Invalid Shiprocket credentials. Please check your email and password in Settings.";
-        } else {
-          errorMessage = data.message;
-        }
-      }
-      throw new Error(errorMessage);
+    let data;
+    try {
+      data = JSON.parse(responseText);
+    } catch (parseError) {
+      console.error("Failed to parse Shiprocket response:", parseError.message);
+      console.error("Raw response:", responseText);
+      throw new Error(`Invalid response from Shiprocket: ${responseText.substring(0, 100)}`);
     }
 
-    if (data.token) {
+    if (response.status === 200 && data.token) {
       shiprocketToken = data.token;
-      // Token expires in 10 days, set expiry to 9 days for safety
       tokenExpiry = Date.now() + (9 * 24 * 60 * 60 * 1000);
       console.log("✅ Shiprocket authenticated successfully, token expires in 9 days");
       return shiprocketToken;
     } else {
-      console.error("Shiprocket auth failed - no token received:", data);
-      throw new Error(data.message || "Invalid Shiprocket credentials");
+      console.error("Shiprocket auth failed:", data);
+      
+      let errorMessage = "Shiprocket authentication failed";
+      if (data.message) {
+        if (data.message.toLowerCase().includes("invalid") || data.message.toLowerCase().includes("wrong")) {
+          errorMessage = "Invalid Shiprocket credentials. Please check your email and password in Settings.";
+        } else if (data.message.toLowerCase().includes("not found")) {
+          errorMessage = "Shiprocket account not found. Please verify your credentials.";
+        } else {
+          errorMessage = data.message;
+        }
+      }
+      
+      if (response.status === 401) {
+        errorMessage = "Authentication failed (401). Invalid Shiprocket credentials.";
+      } else if (response.status === 403) {
+        errorMessage = "Access denied (403). Please ensure your Shiprocket account has API access enabled.";
+      } else if (response.status === 404) {
+        errorMessage = "Shiprocket API endpoint not found. Please check your internet connection.";
+      }
+      
+      throw new Error(errorMessage);
     }
   } catch (err) {
     console.error("Shiprocket Auth Error:", err.message);
-
-    // Retry once after clearing cache if it's a network error
-    if (retryCount === 0 && (err.message.includes("network") || err.message.includes("fetch"))) {
-      console.log("Retrying Shiprocket authentication...");
-      clearShiprocketCache();
-      return authenticateShiprocket(1);
+    
+    if (err.name === 'AbortError') {
+      throw new Error("Shiprocket connection timeout. Please check your internet connection.");
     }
-
+    
+    if (err.message.includes("fetch") || err.message.includes("network")) {
+      throw new Error("Network error connecting to Shiprocket. Please check your internet connection and firewall settings.");
+    }
+    
     throw err;
   }
 };
@@ -7957,6 +7981,48 @@ app.post("/api/admin/shiprocket-test", verifyToken, verifyAdminOrSuperAdmin, asy
       success: false,
       message: error.message || "Network error. Please check your connection and try again."
     });
+  }
+});
+
+app.get("/api/admin/debug/shiprocket-connection", verifyToken, verifyAdminOrSuperAdmin, async (req, res) => {
+  try {
+    const config = await getShiprocketConfig(true);
+    
+    // Test 1: Check if credentials exist in DB
+    const hasEmail = !!config.shiprocket_email && config.shiprocket_email !== '';
+    const hasPassword = !!config.shiprocket_password && config.shiprocket_password !== '' && config.shiprocket_password !== '********';
+    
+    if (!hasEmail || !hasPassword) {
+      return res.json({
+        success: false,
+        message: "Credentials not found in database",
+        hasEmail,
+        hasPassword,
+        emailValue: config.shiprocket_email ? config.shiprocket_email.substring(0, 3) + '***' : null
+      });
+    }
+    
+    // Test 2: Try to authenticate
+    try {
+      const token = await authenticateShiprocket();
+      return res.json({
+        success: true,
+        message: "Shiprocket connection successful!",
+        hasToken: !!token,
+        tokenPreview: token ? token.substring(0, 20) + '...' : null
+      });
+    } catch (authError) {
+      return res.json({
+        success: false,
+        message: authError.message,
+        credentials: {
+          email: config.shiprocket_email ? config.shiprocket_email.substring(0, 3) + '***' : null,
+          hasPassword: hasPassword
+        }
+      });
+    }
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
   }
 });
 
