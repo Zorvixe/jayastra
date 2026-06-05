@@ -208,7 +208,10 @@ const VendorPickupAddresses = () => {
   if (loading) {
     return (
       <div className="pickup-loader-overlay">
-        <div className="pickup-spinner"></div>
+        <div className="pickup-loader-container">
+          <div className="pickup-spinner"></div>
+          <p>Loading addresses...</p>
+        </div>
       </div>
     );
   }
@@ -216,29 +219,13 @@ const VendorPickupAddresses = () => {
   return (
     <div className="pickup-container">
       <div className="pickup-header-actions">
-        <h4><i className="bi bi-building"></i> Warehouse / Pickup Addresses</h4>
-        <button className="pickup-add-address-btn" onClick={() => {
-          setEditingAddress(null);
-          setFormData({
-            location_name: "",
-            address_line1: "",
-            address_line2: "",
-            city: "",
-            state: "",
-            pincode: "",
-            is_default: false,
-          });
-          setModalOpen(true);
-        }}>
-          <i className="bi bi-plus-lg"></i> Add New Address
-        </button>
-      </div>
-
-      {addresses.length === 0 ? (
-        <div className="pickup-empty-addresses">
-          <i className="bi bi-geo-alt"></i>
-          <p>No pickup addresses added yet.</p>
-          <button onClick={() => {
+        <div className="pickup-header-title">
+          <i className="bi bi-building"></i>
+          <h4>Warehouse / Pickup Addresses</h4>
+        </div>
+        <button 
+          className="pickup-add-address-btn" 
+          onClick={() => {
             setEditingAddress(null);
             setFormData({
               location_name: "",
@@ -250,16 +237,50 @@ const VendorPickupAddresses = () => {
               is_default: false,
             });
             setModalOpen(true);
-          }}>Create your first address</button>
+          }}
+        >
+          <i className="bi bi-plus-lg"></i> Add New Address
+        </button>
+      </div>
+
+      {addresses.length === 0 ? (
+        <div className="pickup-empty-addresses">
+          <div className="pickup-empty-icon">
+            <i className="bi bi-geo-alt"></i>
+          </div>
+          <p>No pickup addresses added yet.</p>
+          <button 
+            className="pickup-empty-create-btn"
+            onClick={() => {
+              setEditingAddress(null);
+              setFormData({
+                location_name: "",
+                address_line1: "",
+                address_line2: "",
+                city: "",
+                state: "",
+                pincode: "",
+                is_default: false,
+              });
+              setModalOpen(true);
+            }}
+          >
+            Create your first address
+          </button>
         </div>
       ) : (
         <div className="pickup-addresses-grid">
           {addresses.map(addr => (
-            <div key={addr.id} className={`pickup-address-card ${addr.is_default ? "pickup-default" : ""}`}>
+            <div key={addr.id} className={`pickup-address-card ${addr.is_default ? "pickup-card-default" : ""}`}>
               <div className="pickup-card-header">
                 <div className="pickup-location-name">
-                  <i className="bi bi-geo-alt-fill"></i> {addr.location_name}
-                  {addr.is_default && <span className="pickup-default-badge">Default</span>}
+                  <i className="bi bi-geo-alt-fill"></i> 
+                  <span className="pickup-location-text">{addr.location_name}</span>
+                  {addr.is_default && (
+                    <span className="pickup-default-badge">
+                      <i className="bi bi-star-fill"></i> Default
+                    </span>
+                  )}
                   {addr.shiprocket_synced && addr.shiprocket_pickup_id ? (
                     <span className="pickup-synced-badge" title={`Shiprocket ID: ${addr.shiprocket_pickup_id}`}>
                       <i className="bi bi-cloud-check-fill"></i> Synced
@@ -271,31 +292,35 @@ const VendorPickupAddresses = () => {
                   )}
                 </div>
                 <div className="pickup-card-actions">
-                  <button className="pickup-icon-btn pickup-edit" onClick={() => openEditModal(addr)} title="Edit">
+                  <button 
+                    className="pickup-action-btn pickup-action-edit" 
+                    onClick={() => openEditModal(addr)} 
+                    title="Edit"
+                  >
                     <i className="bi bi-pencil"></i>
                   </button>
                   {!addr.shiprocket_synced && (
                     <button 
-                      className="pickup-icon-btn pickup-sync" 
+                      className="pickup-action-btn pickup-action-sync" 
                       onClick={() => syncWithShiprocket(addr.id)} 
                       title="Sync with Shiprocket"
                       disabled={syncingId === addr.id}
                     >
                       {syncingId === addr.id ? (
-                        <div className="small-spinner"></div>
+                        <div className="pickup-small-spinner"></div>
                       ) : (
                         <i className="bi bi-cloud-upload"></i>
                       )}
                     </button>
                   )}
                   <button 
-                    className="pickup-icon-btn pickup-delete" 
+                    className="pickup-action-btn pickup-action-delete" 
                     onClick={() => setDeleteConfirm(addr.id)} 
                     title="Delete"
                     disabled={deletingId === addr.id}
                   >
                     {deletingId === addr.id ? (
-                      <div className="small-spinner"></div>
+                      <div className="pickup-small-spinner"></div>
                     ) : (
                       <i className="bi bi-trash"></i>
                     )}
@@ -303,13 +328,27 @@ const VendorPickupAddresses = () => {
                 </div>
               </div>
               <div className="pickup-card-body">
-                <p>{addr.address_line1}{addr.address_line2 && `, ${addr.address_line2}`}</p>
-                <p>{addr.city}, {addr.state} - {addr.pincode}</p>
+                <p className="pickup-address-line">
+                  {addr.address_line1}
+                  {addr.address_line2 && <>, {addr.address_line2}</>}
+                </p>
+                <p className="pickup-location-details">
+                  {addr.city}, {addr.state} - <strong>{addr.pincode}</strong>
+                </p>
               </div>
               {!addr.is_default && (
-                <button className="pickup-set-default-btn" onClick={() => setDefault(addr.id)}>
+                <button 
+                  className="pickup-set-default-btn" 
+                  onClick={() => setDefault(addr.id)}
+                >
                   Set as Default
                 </button>
+              )}
+              {addr.is_default && (
+                <div className="pickup-default-footer">
+                  <i className="bi bi-check-circle-fill"></i>
+                  <span>This is your default pickup address</span>
+                </div>
               )}
             </div>
           ))}
@@ -319,27 +358,28 @@ const VendorPickupAddresses = () => {
       {/* Add/Edit Modal */}
       {modalOpen && (
         <div className="pickup-modal-backdrop" onClick={() => setModalOpen(false)}>
-          <div className="pickup-modal-content pickup-large-modal" onClick={e => e.stopPropagation()}>
+          <div className="pickup-modal-content pickup-modal-large" onClick={e => e.stopPropagation()}>
             <div className="pickup-modal-header">
               <h5>{editingAddress ? "Edit Pickup Address" : "Add Pickup Address"}</h5>
-              <button className="pickup-close-modal" onClick={() => setModalOpen(false)}>✕</button>
+              <button className="pickup-modal-close" onClick={() => setModalOpen(false)}>✕</button>
             </div>
-            <form onSubmit={handleSubmit}>
+            <form onSubmit={handleSubmit} className="pickup-modal-form">
               <div className="pickup-form-row-two">
                 <div className="pickup-form-group">
-                  <label>Location Name *</label>
+                  <label>Location Name <span className="pickup-required">*</span></label>
                   <input
                     type="text"
                     name="location_name"
                     value={formData.location_name}
                     onChange={handleChange}
                     placeholder="e.g., Main Warehouse, Mumbai Hub"
+                    className="pickup-input"
                     required
                   />
-                  <small>This will be used as pickup location name in Shiprocket</small>
+                  <small className="pickup-hint">This will be used as pickup location name in Shiprocket</small>
                 </div>
                 <div className="pickup-form-group">
-                  <label>Pincode *</label>
+                  <label>Pincode <span className="pickup-required">*</span></label>
                   <input
                     type="text"
                     name="pincode"
@@ -347,71 +387,88 @@ const VendorPickupAddresses = () => {
                     onChange={handleChange}
                     pattern="[0-9]{6}"
                     maxLength="6"
+                    className="pickup-input"
                     required
                   />
                 </div>
               </div>
 
               <div className="pickup-form-group">
-                <label>Address Line 1 *</label>
+                <label>Address Line 1 <span className="pickup-required">*</span></label>
                 <input
                   type="text"
                   name="address_line1"
                   value={formData.address_line1}
                   onChange={handleChange}
+                  className="pickup-input"
                   required
                 />
               </div>
 
               <div className="pickup-form-group">
-                <label>Address Line 2 (Optional)</label>
+                <label>Address Line 2 <span className="pickup-optional">(Optional)</span></label>
                 <input
                   type="text"
                   name="address_line2"
                   value={formData.address_line2}
                   onChange={handleChange}
+                  className="pickup-input"
                 />
               </div>
 
               <div className="pickup-form-row">
                 <div className="pickup-form-group">
-                  <label>City *</label>
+                  <label>City <span className="pickup-required">*</span></label>
                   <input 
                     type="text" 
                     name="city" 
                     value={formData.city} 
                     onChange={handleChange} 
+                    className="pickup-input"
                     required 
                   />
                 </div>
                 <div className="pickup-form-group">
-                  <label>State *</label>
+                  <label>State <span className="pickup-required">*</span></label>
                   <input 
                     type="text" 
                     name="state" 
                     value={formData.state} 
                     onChange={handleChange} 
+                    className="pickup-input"
                     required 
                   />
                 </div>
               </div>
 
               <div className="pickup-form-check">
-                <input
-                  type="checkbox"
-                  name="is_default"
-                  checked={formData.is_default}
-                  onChange={handleChange}
-                  id="pickup_is_default"
-                />
-                <label htmlFor="pickup_is_default">Set as default pickup address</label>
-                <small>Default address will be used for all Shiprocket shipments</small>
+                <label className="pickup-checkbox-label">
+                  <input
+                    type="checkbox"
+                    name="is_default"
+                    checked={formData.is_default}
+                    onChange={handleChange}
+                  />
+                  <span className="pickup-checkbox-text">Set as default pickup address</span>
+                </label>
+                <small className="pickup-hint pickup-hint-block">
+                  Default address will be used for all Shiprocket shipments
+                </small>
               </div>
 
               <div className="pickup-modal-footer">
-                <button type="button" className="pickup-cancel-btn" onClick={() => setModalOpen(false)}>Cancel</button>
+                <button type="button" className="pickup-cancel-btn" onClick={() => setModalOpen(false)}>
+                  Cancel
+                </button>
                 <button type="submit" className="pickup-submit-btn" disabled={submitting}>
-                  {submitting ? "Saving..." : (editingAddress ? "Update Address" : "Create Address")}
+                  {submitting ? (
+                    <>
+                      <div className="pickup-btn-spinner"></div>
+                      Saving...
+                    </>
+                  ) : (
+                    editingAddress ? "Update Address" : "Create Address"
+                  )}
                 </button>
               </div>
             </form>
@@ -421,14 +478,22 @@ const VendorPickupAddresses = () => {
 
       {/* Delete Confirmation Modal */}
       {deleteConfirm && (
-        <div className="pickup-modal-backdrop" onClick={() => setDeleteConfirm(null)}>
+        <div className="pickup-modal-backdrop pickup-delete-backdrop" onClick={() => setDeleteConfirm(null)}>
           <div className="pickup-confirm-modal" onClick={e => e.stopPropagation()}>
-            <div className="pickup-confirm-icon">⚠️</div>
+            <div className="pickup-confirm-icon">
+              <i className="bi bi-exclamation-triangle-fill"></i>
+            </div>
             <h5>Delete Address?</h5>
             <p>Are you sure you want to delete this pickup address? This will also delete it from Shiprocket if synced.</p>
             <div className="pickup-confirm-actions">
-              <button className="pickup-cancel-btn" onClick={() => setDeleteConfirm(null)}>Cancel</button>
-              <button className="pickup-delete-btn" onClick={deleteAddress} disabled={deletingId === deleteConfirm}>
+              <button className="pickup-cancel-btn" onClick={() => setDeleteConfirm(null)}>
+                Cancel
+              </button>
+              <button 
+                className="pickup-delete-btn" 
+                onClick={deleteAddress} 
+                disabled={deletingId === deleteConfirm}
+              >
                 {deletingId === deleteConfirm ? "Deleting..." : "Yes, Delete"}
               </button>
             </div>
