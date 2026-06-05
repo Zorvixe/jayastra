@@ -171,6 +171,23 @@ const Orders = () => {
     }
   };
 
+  // Check if order has complete address for Shiprocket
+  const canPushToShiprocket = (order) => {
+    // Check if order already has address details
+    const hasCity = order.city && order.city !== '' && order.city !== 'City';
+    const hasState = order.state && order.state !== '' && order.state !== 'State';
+    const hasPincode = order.address?.match(/\b\d{6}\b/);
+
+    if (!hasCity || !hasState || !hasPincode) {
+      return {
+        canPush: false,
+        reason: "Missing address details (City, State, or Pincode). Please update order address first."
+      };
+    }
+
+    return { canPush: true, reason: null };
+  };
+
   // Helper function to escape HTML to prevent XSS
   const escapeHtml = (text) => {
     if (!text) return '';
@@ -725,23 +742,36 @@ const Orders = () => {
               >
                 <i className="bi bi-search"></i> Check Courier
               </button>
-              <button
-                className="invoice-btn-admin push-btn"
-                onClick={() => setConfirmPushOrderId(selectedOrder.id)}
-                disabled={selectedOrder.shiprocket_order_id || pushLoading}
-              >
-                {pushLoading && confirmPushOrderId === selectedOrder.id ? (
-                  <>
-                    <div className="btn-spinner"></div>
-                    Pushing...
-                  </>
-                ) : (
-                  <>
-                    <i className="bi bi-box-seam"></i>
-                    {selectedOrder.shiprocket_order_id ? "Pushed to Shiprocket" : "Push to Shiprocket"}
-                  </>
-                )}
-              </button>
+
+              {(() => {
+                const pushCheck = canPushToShiprocket(selectedOrder);
+                return (
+                  <button
+                    className="invoice-btn-admin push-btn"
+                    onClick={() => {
+                      if (pushCheck.canPush) {
+                        setConfirmPushOrderId(selectedOrder.id);
+                      } else {
+                        toast.error(pushCheck.reason);
+                      }
+                    }}
+                    disabled={selectedOrder.shiprocket_order_id || pushLoading || !pushCheck.canPush}
+                    title={!pushCheck.canPush ? pushCheck.reason : "Push to Shiprocket"}
+                  >
+                    {pushLoading && confirmPushOrderId === selectedOrder.id ? (
+                      <>
+                        <div className="btn-spinner"></div>
+                        Pushing...
+                      </>
+                    ) : (
+                      <>
+                        <i className="bi bi-box-seam"></i>
+                        {selectedOrder.shiprocket_order_id ? "Pushed to Shiprocket" : "Push to Shiprocket"}
+                      </>
+                    )}
+                  </button>
+                );
+              })()}
 
               {selectedOrder.shiprocket_order_id && !selectedOrder.awb_code && (
                 <button
