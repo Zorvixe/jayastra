@@ -1,6 +1,6 @@
 // src/admin/pages/ShiprocketSettings/ShiprocketSettings.jsx
 import React, { useState, useEffect } from "react";
-import axios from '../../utils/axiosConfig'; // Adjust path as needed
+import axios from '../../utils/axiosConfig';
 import { toast } from "react-toastify";
 import "./ShiprocketSettings.css";
 
@@ -10,6 +10,7 @@ const ShiprocketSettings = () => {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [testing, setTesting] = useState(false);
+  const [testingWebhook, setTestingWebhook] = useState(false);
   const [settings, setSettings] = useState({
     shiprocket_email: "",
     shiprocket_password: "",
@@ -17,7 +18,6 @@ const ShiprocketSettings = () => {
     shiprocket_webhook_secret: ""
   });
 
-  // For showing/hiding password
   const [showPassword, setShowPassword] = useState(false);
   const [showWebhookSecret, setShowWebhookSecret] = useState(false);
 
@@ -65,8 +65,6 @@ const ShiprocketSettings = () => {
       });
 
       toast.success("Shiprocket settings saved successfully!");
-
-      // Refresh to show masked password
       await fetchSettings();
     } catch (err) {
       console.error("Save error:", err);
@@ -76,7 +74,6 @@ const ShiprocketSettings = () => {
     }
   };
 
-  // Update the handleTestCredentials function
   const handleTestCredentials = async () => {
     if (!settings.shiprocket_email || !settings.shiprocket_password || settings.shiprocket_password === '********') {
       toast.error("Please enter valid email and password before testing");
@@ -87,8 +84,6 @@ const ShiprocketSettings = () => {
 
     try {
       const token = localStorage.getItem("token");
-      console.log("Testing credentials with email:", settings.shiprocket_email);
-
       const response = await axios.post(`${API_URL}/admin/shiprocket-test`, {
         email: settings.shiprocket_email,
         password: settings.shiprocket_password
@@ -101,13 +96,28 @@ const ShiprocketSettings = () => {
       }
     } catch (err) {
       console.error("Test error:", err);
-      if (err.response?.status === 401) {
-        toast.error("Authentication failed. Please logout and login again.");
-      } else {
-        toast.error(err.response?.data?.message || "Invalid credentials. Please check your Shiprocket login details.");
-      }
+      toast.error(err.response?.data?.message || "Invalid credentials. Please check your Shiprocket login details.");
     } finally {
       setTesting(false);
+    }
+  };
+
+  const handleTestWebhook = async () => {
+    setTestingWebhook(true);
+    
+    try {
+      const response = await axios.get(`${API_URL}/webhooks/shiprocket`);
+      
+      if (response.data.success) {
+        toast.success("✅ Webhook endpoint is reachable!");
+      } else {
+        toast.error("Webhook endpoint responded but with error");
+      }
+    } catch (err) {
+      console.error("Webhook test error:", err);
+      toast.error("❌ Webhook endpoint is not reachable. Please check your server configuration.");
+    } finally {
+      setTestingWebhook(false);
     }
   };
 
@@ -127,7 +137,6 @@ const ShiprocketSettings = () => {
       <p className="shiprocket-description">Configure your Shiprocket account for order shipping and tracking.</p>
 
       <form onSubmit={handleSave} className="shiprocket-form">
-
         {/* Shiprocket Credentials Section */}
         <div className="shiprocket-section">
           <h5 className="shiprocket-section-title">
@@ -258,6 +267,15 @@ const ShiprocketSettings = () => {
                 Go to Shiprocket Dashboard → Settings → API → Webhooks. Add this URL and set the
                 header <strong>x-api-key</strong> with your webhook secret above.
               </p>
+              <button
+                type="button"
+                className="shiprocket-test-webhook-btn"
+                onClick={handleTestWebhook}
+                disabled={testingWebhook}
+                style={{ marginTop: "10px" }}
+              >
+                {testingWebhook ? "Testing..." : "Test Webhook Endpoint"}
+              </button>
             </div>
           </div>
         </div>

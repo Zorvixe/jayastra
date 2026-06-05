@@ -103,21 +103,142 @@ app.use(
   })
 );
 
+app.post("/api/webhooks/shiprocket", express.raw({ type: 'application/json' }), async (req, res) => {
+  try {
+    // Get the webhook secret from database
+    const config = await getShiprocketConfig(true);
+    const webhookSecret = config.shiprocket_webhook_secret || process.env.SHIPROCKET_WEBHOOK_SECRET || "JayastraWebhookSecure123";
+
+    // Get signature from headers - Shiprocket uses 'x-api-key' as per your settings
+    const apiKey = req.headers['x-api-key'];
+    const rawBody = req.body.toString();
+
+    console.log("📦 Webhook received at:", new Date().toISOString());
+    console.log("Headers:", JSON.stringify(req.headers, null, 2));
+    console.log("Raw body length:", rawBody.length);
+
+    // Verify the API key
+    if (webhookSecret && webhookSecret !== "JayastraWebhookSecure123") {
+      if (apiKey !== webhookSecret) {
+        console.warn("⚠️ Invalid webhook API key received");
+        return res.status(401).json({ success: false, message: "Invalid API key" });
+      } else {
+        console.log("✅ Webhook API key verified");
+      }
+    } else {
+      console.log("⚠️ Webhook secret not configured, accepting any key");
+    }
+
+    let payload;
+    try {
+      payload = JSON.parse(rawBody);
+    } catch (e) {
+      console.error("Failed to parse webhook body:", e.message);
+      return res.status(400).json({ success: false, message: "Invalid JSON" });
+    }
+
+    console.log("📦 Shiprocket Webhook payload:", JSON.stringify(payload, null, 2));
+
+    const { shipment_id, order_id, status, awb_code, event } = payload;
+
+    let dbStatus = null;
+    let eventType = event || payload.status;
+
+    // Map Shiprocket status to your order status
+    if (eventType) {
+      const s = eventType.toLowerCase();
+
+      if (s.includes("pickup") || s.includes("manifest") || s === "pickup_generated") {
+        dbStatus = "Processing";
+      } else if (s.includes("ship") || s === "shipped" || s.includes("transit")) {
+        dbStatus = "Shipped";
+      } else if (s.includes("out for delivery") || s === "out_for_delivery") {
+        dbStatus = "Out for Delivery";
+      } else if (s.includes("delivered") || s === "delivered") {
+        dbStatus = "Delivered";
+      } else if (s.includes("return") || s.includes("rto") || s === "return_to_origin") {
+        dbStatus = "Returned";
+      } else if (s.includes("cancel") || s === "cancelled") {
+        dbStatus = "Cancelled";
+      }
+    }
+
+    // Update order in database
+    if (dbStatus && (shipment_id || order_id)) {
+      let query = "UPDATE orders SET order_status = $1, updated_at = NOW()";
+      let params = [dbStatus];
+      let condition = "";
+      let conditionParam = "";
+
+      if (shipment_id) {
+        condition = " WHERE shiprocket_shipment_id = $2";
+        conditionParam = shipment_id.toString();
+        params.push(conditionParam);
+      } else if (order_id) {
+        condition = " WHERE shiprocket_order_id = $2";
+        conditionParam = order_id.toString();
+        params.push(conditionParam);
+      }
+
+      if (condition) {
+        const result = await pool.query(query + condition, params);
+
+        if (result.rowCount > 0) {
+          console.log(`✅ Updated order status to ${dbStatus} for ${conditionParam}`);
+
+          // If delivered and payment is COD, mark payment as completed
+          if (dbStatus === "Delivered") {
+            await pool.query(
+              `UPDATE orders SET payment_status = 'Completed' WHERE ${condition}`,
+              params
+            );
+          }
+
+          // Emit socket event for real-time updates
+          io.emit('order_status_updated', {
+            order_id: conditionParam,
+            status: dbStatus,
+            awb_code: awb_code
+          });
+        } else {
+          console.log(`⚠️ No order found with ${conditionParam}`);
+        }
+      }
+    }
+
+    // Update AWB code if provided
+    if (awb_code && shipment_id) {
+      await pool.query(
+        `UPDATE orders SET awb_code = $1 WHERE shiprocket_shipment_id = $2 AND (awb_code IS NULL OR awb_code = '')`,
+        [awb_code, shipment_id.toString()]
+      );
+      console.log(`✅ Updated AWB ${awb_code} for shipment ${shipment_id}`);
+    }
+
+    // Always return 200 to acknowledge receipt
+    res.status(200).json({ success: true, message: "Webhook processed" });
+  } catch (error) {
+    console.error("❌ Webhook error:", error);
+    // Still return 200 to prevent Shiprocket from retrying
+    res.status(200).json({ success: false, message: error.message });
+  }
+});
+
 app.post("/api/razorpay/webhook", express.raw({ type: 'application/json' }), async (req, res) => {
   try {
     const webhookSecret = process.env.RAZORPAY_WEBHOOK_SECRET;
     const signature = req.headers['x-razorpay-signature'];
-    
+
     // Get the raw body as string
     const rawBody = req.body.toString();
-    
+
     const expectedSignature = crypto
       .createHmac('sha256', webhookSecret)
       .update(rawBody)
       .digest('hex');
 
     console.log("Webhook received - signature valid:", signature === expectedSignature);
-    
+
     if (signature !== expectedSignature) {
       console.error("Invalid webhook signature");
       return res.status(400).json({ success: false, message: 'Invalid webhook signature' });
@@ -125,12 +246,12 @@ app.post("/api/razorpay/webhook", express.raw({ type: 'application/json' }), asy
 
     const event = JSON.parse(rawBody);
     console.log("Webhook event:", event.event);
-    
+
     if (event.event === 'payment.captured') {
       const payment = event.payload.payment.entity;
       const orderId = payment.order_id;
       const paymentId = payment.id;
-      
+
       // Update order payment status
       await pool.query(
         `UPDATE orders 
@@ -140,21 +261,30 @@ app.post("/api/razorpay/webhook", express.raw({ type: 'application/json' }), asy
          WHERE razorpay_order_id = $2 AND payment_status != 'Completed'`,
         [paymentId, orderId]
       );
-      
+
       console.log(`✅ Payment captured for order: ${orderId}`);
     }
-    
+
     if (event.event === 'payment.failed') {
       const payment = event.payload.payment.entity;
       console.log(`❌ Payment failed for order: ${payment.order_id}`);
       // Optionally update order status
     }
-    
+
     res.json({ success: true });
   } catch (error) {
     console.error("Webhook error:", error);
     res.status(500).json({ success: false, message: error.message });
   }
+});
+
+// Test endpoint for webhook (GET request to verify the endpoint is working)
+app.get("/api/webhooks/shiprocket", (req, res) => {
+  res.status(200).json({ 
+    success: true, 
+    message: "Webhook endpoint is working. Use POST method for webhook events.",
+    timestamp: new Date().toISOString()
+  });
 });
 
 app.use(express.json({ limit: '50mb' }));
@@ -827,10 +957,10 @@ const initDatabase = async () => {
   )
 `);
 
-// Add this inside your initDatabase() function, after existing settings insertion
+    // Add this inside your initDatabase() function, after existing settings insertion
 
-// Add Shiprocket settings if not exists
-await pool.query(`
+    // Add Shiprocket settings if not exists
+    await pool.query(`
   INSERT INTO settings (key, value)
   VALUES 
     ('shiprocket_email', ''),
@@ -4717,19 +4847,19 @@ const getShiprocketConfig = async (returnRealPassword = false) => {
   if (cachedShiprocketConfig && configLastFetched && (Date.now() - configLastFetched) < 60000) {
     return cachedShiprocketConfig;
   }
-  
+
   try {
     const result = await pool.query(
       "SELECT key, value FROM settings WHERE key IN ('shiprocket_email', 'shiprocket_password', 'shiprocket_pickup_pincode', 'shiprocket_webhook_secret')"
     );
-    
+
     const config = {
       shiprocket_email: '',
       shiprocket_password: '',
       shiprocket_pickup_pincode: '518508',
       shiprocket_webhook_secret: ''
     };
-    
+
     result.rows.forEach(row => {
       if (row.key === 'shiprocket_password') {
         // Store actual password in memory, not masked
@@ -4738,17 +4868,17 @@ const getShiprocketConfig = async (returnRealPassword = false) => {
         config[row.key] = row.value || '';
       }
     });
-    
+
     console.log("Shiprocket config loaded from DB:", {
       hasEmail: !!config.shiprocket_email,
       hasPassword: !!config.shiprocket_password && config.shiprocket_password !== '********',
       passwordLength: config.shiprocket_password ? config.shiprocket_password.length : 0,
       pickupPincode: config.shiprocket_pickup_pincode
     });
-    
+
     cachedShiprocketConfig = config;
     configLastFetched = Date.now();
-    
+
     return config;
   } catch (error) {
     console.error("Failed to fetch Shiprocket config:", error);
@@ -4775,43 +4905,43 @@ const authenticateShiprocket = async (retryCount = 0) => {
     console.log("Using cached Shiprocket token, expires in:", Math.round((tokenExpiry - Date.now()) / 1000 / 60 / 60), "hours");
     return shiprocketToken;
   }
-  
+
   // Get credentials from database
   const config = await getShiprocketConfig(true);
   const email = config.shiprocket_email;
   const password = config.shiprocket_password;
-  
+
   console.log("Authenticating with Shiprocket - Email:", email ? email.substring(0, 3) + '***' : 'none');
   console.log("Has password:", !!password && password !== '********');
-  
+
   if (!email || email === '' || !password || password === '' || password === '********') {
     console.error("Shiprocket credentials not configured in settings");
     throw new Error("Shiprocket credentials not configured. Please add them in Settings page.");
   }
-  
+
   try {
     console.log("Calling Shiprocket login API...");
-    
+
     const response = await fetch("https://apiv2.shiprocket.in/v1/external/auth/login", {
       method: "POST",
-      headers: { 
+      headers: {
         "Content-Type": "application/json"
       },
-      body: JSON.stringify({ 
-        email: email.trim(), 
-        password: password 
+      body: JSON.stringify({
+        email: email.trim(),
+        password: password
       })
     });
-    
+
     console.log("Shiprocket response status:", response.status);
-    
+
     const data = await response.json();
     console.log("Shiprocket response has token:", !!data.token);
-    
+
     if (response.status !== 200) {
       console.error("Shiprocket auth failed with status:", response.status);
       console.error("Shiprocket response:", JSON.stringify(data).substring(0, 500));
-      
+
       let errorMessage = "Shiprocket authentication failed";
       if (data.message) {
         if (data.message.toLowerCase().includes("invalid") || data.message.toLowerCase().includes("wrong")) {
@@ -4822,7 +4952,7 @@ const authenticateShiprocket = async (retryCount = 0) => {
       }
       throw new Error(errorMessage);
     }
-    
+
     if (data.token) {
       shiprocketToken = data.token;
       // Token expires in 10 days, set expiry to 9 days for safety
@@ -4835,14 +4965,14 @@ const authenticateShiprocket = async (retryCount = 0) => {
     }
   } catch (err) {
     console.error("Shiprocket Auth Error:", err.message);
-    
+
     // Retry once after clearing cache if it's a network error
     if (retryCount === 0 && (err.message.includes("network") || err.message.includes("fetch"))) {
       console.log("Retrying Shiprocket authentication...");
       clearShiprocketCache();
       return authenticateShiprocket(1);
     }
-    
+
     throw err;
   }
 };
@@ -4886,7 +5016,7 @@ app.post("/api/admin/orders/:id/shiprocket", verifyToken, verifyAdminVendorIndiv
 
     // Get vendor's default pickup address
     let pickupAddress = null;
-    
+
     // First try vendor_pickup_addresses table
     const pickupRes = await pool.query(
       `SELECT location_name, address_line1, address_line2, city, state, pincode 
@@ -4895,7 +5025,7 @@ app.post("/api/admin/orders/:id/shiprocket", verifyToken, verifyAdminVendorIndiv
        LIMIT 1`,
       [vendorId]
     );
-    
+
     if (pickupRes.rows.length > 0) {
       pickupAddress = pickupRes.rows[0];
     } else {
@@ -4906,7 +5036,7 @@ app.post("/api/admin/orders/:id/shiprocket", verifyToken, verifyAdminVendorIndiv
          WHERE id = $1`,
         [vendorId]
       );
-      
+
       const userPickup = userPickupRes.rows[0];
       if (userPickup && userPickup.pickup_pincode) {
         pickupAddress = {
@@ -4919,7 +5049,7 @@ app.post("/api/admin/orders/:id/shiprocket", verifyToken, verifyAdminVendorIndiv
         };
       }
     }
-    
+
     if (!pickupAddress || !pickupAddress.pincode) {
       return res.status(400).json({
         success: false,
@@ -5021,10 +5151,10 @@ app.post("/api/admin/orders/:id/shiprocket", verifyToken, verifyAdminVendorIndiv
       return res.json({ success: true, message: "Order pushed to Shiprocket successfully!", data: result });
     } else {
       console.error("Shiprocket push failed:", result);
-      return res.status(400).json({ 
-        success: false, 
+      return res.status(400).json({
+        success: false,
         message: result.message || "Failed to push to Shiprocket",
-        errors: result.errors 
+        errors: result.errors
       });
     }
   } catch (error) {
@@ -5131,113 +5261,7 @@ app.post("/api/admin/orders/:id/invoice", verifyToken, verifyAdminVendorIndividu
 
 // ================= SHIPROCKET WEBHOOK (SECURE VERSION) =================
 // ================= SHIPROCKET WEBHOOK (SECURE VERSION) =================
-app.post("/api/webhooks/shiprocket", express.raw({ type: 'application/json' }), async (req, res) => {
-  try {
-    // Get the webhook secret from database
-    const config = await getShiprocketConfig(true);
-    const webhookSecret = config.shiprocket_webhook_secret || process.env.SHIPROCKET_WEBHOOK_SECRET || "JayastraWebhookSecure123";
-    
-    // Get signature from headers - Shiprocket uses 'x-shiprocket-signature'
-    const signature = req.headers['x-shiprocket-signature'] || req.headers['x-api-key'];
-    const rawBody = req.body.toString();
-    
-    // Verify signature if secret is configured
-    if (webhookSecret && webhookSecret !== "JayastraWebhookSecure123") {
-      const crypto = await import('crypto');
-      const expectedSignature = crypto
-        .createHmac('sha256', webhookSecret)
-        .update(rawBody)
-        .digest('hex');
-      
-      if (signature !== expectedSignature) {
-        console.warn("⚠️ Invalid webhook signature received");
-        // Still process but log warning - you can choose to reject here
-        // return res.status(401).json({ success: false, message: "Invalid signature" });
-      } else {
-        console.log("✅ Webhook signature verified");
-      }
-    }
-    
-    const payload = JSON.parse(rawBody);
-    console.log("📦 Shiprocket Webhook received:", payload.event || payload.status);
-    
-    const { shipment_id, order_id, status, awb_code } = payload;
-    
-    let dbStatus = null;
-    let eventType = payload.event || payload.status;
-    
-    // Map Shiprocket status to your order status
-    if (eventType) {
-      const s = eventType.toLowerCase();
-      
-      if (s.includes("pickup") || s.includes("manifest") || s === "pickup_generated") {
-        dbStatus = "Processing";
-      } else if (s.includes("ship") || s === "shipped" || s.includes("transit")) {
-        dbStatus = "Shipped";
-      } else if (s.includes("out for delivery") || s === "out_for_delivery") {
-        dbStatus = "Out for Delivery";
-      } else if (s.includes("delivered") || s === "delivered") {
-        dbStatus = "Delivered";
-      } else if (s.includes("return") || s.includes("rto") || s === "return_to_origin") {
-        dbStatus = "Returned";
-      } else if (s.includes("cancel") || s === "cancelled") {
-        dbStatus = "Cancelled";
-      }
-    }
-    
-    // Update order in database
-    if (dbStatus && (shipment_id || order_id)) {
-      let query = "UPDATE orders SET order_status = $1, updated_at = NOW()";
-      let params = [dbStatus];
-      let condition = "";
-      
-      if (shipment_id) {
-        condition = " WHERE shiprocket_shipment_id = $2";
-        params.push(shipment_id.toString());
-      } else if (order_id) {
-        condition = " WHERE shiprocket_order_id = $2";
-        params.push(order_id.toString());
-      }
-      
-      if (condition) {
-        const result = await pool.query(query + condition, params);
-        
-        if (result.rowCount > 0) {
-          console.log(`✅ Updated order status to ${dbStatus} for ${shipment_id || order_id}`);
-          
-          // If delivered and payment is COD, mark payment as completed
-          if (dbStatus === "Delivered") {
-            await pool.query(
-              `UPDATE orders SET payment_status = 'Completed' WHERE ${condition}`,
-              params
-            );
-          }
-          
-          // Emit socket event for real-time updates
-          io.emit('order_status_updated', {
-            order_id: shipment_id || order_id,
-            status: dbStatus,
-            awb_code: awb_code
-          });
-        }
-      }
-    }
-    
-    // Update AWB code if provided
-    if (awb_code && shipment_id) {
-      await pool.query(
-        `UPDATE orders SET awb_code = $1 WHERE shiprocket_shipment_id = $2 AND (awb_code IS NULL OR awb_code = '')`,
-        [awb_code, shipment_id.toString()]
-      );
-      console.log(`✅ Updated AWB ${awb_code} for shipment ${shipment_id}`);
-    }
-    
-    res.status(200).json({ success: true, message: "Webhook processed" });
-  } catch (error) {
-    console.error("❌ Webhook error:", error);
-    res.status(500).json({ success: false, message: error.message });
-  }
-});
+
 
 app.get("/api/shiprocket/pincode/:pincode", async (req, res) => {
   try {
@@ -5273,19 +5297,19 @@ app.get("/api/shiprocket/pincode/:pincode", async (req, res) => {
 app.get("/api/shiprocket/shipping-rates", async (req, res) => {
   try {
     const { pickup_pincode, delivery_pincode, weight, cod } = req.query;
-    
+
     if (!delivery_pincode || !/^[1-9][0-9]{5}$/.test(delivery_pincode)) {
       return res.status(400).json({ success: false, message: "Invalid delivery pincode" });
     }
-    
+
     const token = await authenticateShiprocket();
     const codParam = cod === 'true' ? 1 : 0;
-    
+
     // Use vendor's pickup pincode or fallback to default
     let pickupPostcode = pickup_pincode || process.env.SHIPROCKET_PICKUP_PINCODE || "581322";
-    
+
     const url = `https://apiv2.shiprocket.in/v1/external/courier/serviceability?pickup_postcode=${pickupPostcode}&delivery_postcode=${delivery_pincode}&weight=${weight || 0.5}&cod=${codParam}`;
-    
+
     const fetchRes = await fetch(url, {
       method: "GET",
       headers: {
@@ -5293,9 +5317,9 @@ app.get("/api/shiprocket/shipping-rates", async (req, res) => {
         "Authorization": `Bearer ${token}`
       }
     });
-    
+
     const result = await fetchRes.json();
-    
+
     if (result.status === 200 && result.data?.available_courier_companies?.length > 0) {
       const rates = result.data.available_courier_companies.map(courier => ({
         courier_id: courier.courier_id,
@@ -5305,10 +5329,10 @@ app.get("/api/shiprocket/shipping-rates", async (req, res) => {
         estimated_delivery: `${Math.ceil(courier.etd_hours / 24)}-${Math.ceil(courier.etd_hours / 24) + 2} days`,
         serviceability: true
       }));
-      
+
       // Sort by rate (cheapest first)
       rates.sort((a, b) => a.rate - b.rate);
-      
+
       return res.json({
         success: true,
         serviceable: true,
@@ -5336,32 +5360,32 @@ app.get("/api/shiprocket/shipping-rates", async (req, res) => {
 app.get("/api/shiprocket/courier-recommendation", async (req, res) => {
   try {
     const { delivery_pincode, amount, is_cod, weight } = req.query;
-    
+
     if (!delivery_pincode) {
       return res.status(400).json({ success: false, message: "Delivery pincode is required" });
     }
-    
+
     if (!/^[1-9][0-9]{5}$/.test(delivery_pincode)) {
       return res.status(400).json({ success: false, message: "Invalid pincode format" });
     }
-    
+
     let token;
     try {
       token = await authenticateShiprocket();
     } catch (authError) {
-      return res.status(401).json({ 
-        success: false, 
-        message: "Shipping service not configured. Please add Shiprocket credentials in Settings." 
+      return res.status(401).json({
+        success: false,
+        message: "Shipping service not configured. Please add Shiprocket credentials in Settings."
       });
     }
-    
+
     const config = await getShiprocketConfig();
     const pickupPostcode = config.shiprocket_pickup_pincode || "581322";
     const codParam = is_cod === 'true' ? 1 : 0;
     const weightParam = parseFloat(weight) || 0.5;
-    
+
     const url = `https://apiv2.shiprocket.in/v1/external/courier/serviceability?pickup_postcode=${pickupPostcode}&delivery_postcode=${delivery_pincode}&weight=${weightParam}&cod=${codParam}`;
-    
+
     const fetchRes = await fetch(url, {
       method: "GET",
       headers: {
@@ -5369,9 +5393,9 @@ app.get("/api/shiprocket/courier-recommendation", async (req, res) => {
         "Authorization": `Bearer ${token}`
       }
     });
-    
+
     const result = await fetchRes.json();
-    
+
     if (fetchRes.status !== 200) {
       return res.status(400).json({
         success: false,
@@ -5379,14 +5403,14 @@ app.get("/api/shiprocket/courier-recommendation", async (req, res) => {
         message: result.message || "Failed to fetch courier rates"
       });
     }
-    
+
     if (result.status === 200 && result.data?.available_courier_companies?.length > 0) {
       let couriers = result.data.available_courier_companies;
-      
+
       if (is_cod === 'true') {
         couriers = couriers.filter(c => c.cod_available === true);
       }
-      
+
       if (couriers.length === 0) {
         return res.json({
           success: true,
@@ -5394,10 +5418,10 @@ app.get("/api/shiprocket/courier-recommendation", async (req, res) => {
           message: "No courier available for COD on this pincode"
         });
       }
-      
+
       const cheapest = [...couriers].sort((a, b) => parseFloat(a.rate) - parseFloat(b.rate))[0];
       const fastest = [...couriers].sort((a, b) => a.etd_hours - b.etd_hours)[0];
-      
+
       return res.json({
         success: true,
         serviceable: true,
@@ -5432,9 +5456,9 @@ app.get("/api/shiprocket/courier-recommendation", async (req, res) => {
     }
   } catch (error) {
     console.error("Courier recommendation error:", error);
-    res.status(500).json({ 
-      success: false, 
-      message: error.message || "Internal server error" 
+    res.status(500).json({
+      success: false,
+      message: error.message || "Internal server error"
     });
   }
 });
@@ -5443,7 +5467,7 @@ app.get("/api/shiprocket/track/:awb", async (req, res) => {
   try {
     const { awb } = req.params;
     const token = await authenticateShiprocket();
-    
+
     const fetchRes = await fetch(`https://apiv2.shiprocket.in/v1/external/tracking?awb=${awb}`, {
       method: "GET",
       headers: {
@@ -5451,9 +5475,9 @@ app.get("/api/shiprocket/track/:awb", async (req, res) => {
         "Authorization": `Bearer ${token}`
       }
     });
-    
+
     const result = await fetchRes.json();
-    
+
     if (result.status === 200) {
       return res.json({
         success: true,
@@ -5476,7 +5500,7 @@ app.get("/api/shiprocket/orders", verifyToken, verifyAdminOrSuperAdmin, async (r
   try {
     const token = await authenticateShiprocket();
     const { page = 1, per_page = 20 } = req.query;
-    
+
     const fetchRes = await fetch(`https://apiv2.shiprocket.in/v1/external/orders?page=${page}&per_page=${per_page}`, {
       method: "GET",
       headers: {
@@ -5484,9 +5508,9 @@ app.get("/api/shiprocket/orders", verifyToken, verifyAdminOrSuperAdmin, async (r
         "Authorization": `Bearer ${token}`
       }
     });
-    
+
     const result = await fetchRes.json();
-    
+
     res.json({
       success: true,
       orders: result.data || []
@@ -5502,7 +5526,7 @@ app.post("/api/shiprocket/cancel-order/:orderId", verifyToken, verifyAdminOrSupe
   try {
     const { orderId } = req.params;
     const token = await authenticateShiprocket();
-    
+
     const fetchRes = await fetch(`https://apiv2.shiprocket.in/v1/external/orders/cancel`, {
       method: "POST",
       headers: {
@@ -5511,16 +5535,16 @@ app.post("/api/shiprocket/cancel-order/:orderId", verifyToken, verifyAdminOrSupe
       },
       body: JSON.stringify({ ids: [orderId] })
     });
-    
+
     const result = await fetchRes.json();
-    
+
     if (result.status === 200) {
       // Update local database
       await pool.query(
         `UPDATE orders SET order_status = 'Cancelled', updated_at = NOW() WHERE shiprocket_order_id = $1`,
         [orderId]
       );
-      
+
       res.json({ success: true, message: "Order cancelled successfully", data: result });
     } else {
       res.status(400).json({ success: false, message: result.message || "Failed to cancel order" });
@@ -5536,7 +5560,7 @@ app.post("/api/shiprocket/generate-manifest", verifyToken, verifyAdminOrSuperAdm
   try {
     const { shipment_ids } = req.body;
     const token = await authenticateShiprocket();
-    
+
     const fetchRes = await fetch(`https://apiv2.shiprocket.in/v1/external/manifests/generate`, {
       method: "POST",
       headers: {
@@ -5545,9 +5569,9 @@ app.post("/api/shiprocket/generate-manifest", verifyToken, verifyAdminOrSuperAdm
       },
       body: JSON.stringify({ shipment_ids: shipment_ids })
     });
-    
+
     const result = await fetchRes.json();
-    
+
     res.json({
       success: result.status === 200,
       data: result
@@ -6825,16 +6849,16 @@ app.post("/api/auth/check-user", async (req, res) => {
 app.post("/api/auth/login-with-pin-only", async (req, res) => {
   try {
     const { pin, userId } = req.body;
-    
+
     if (!pin || !/^\d{4}$/.test(pin)) {
       return res.status(400).json({
         success: false,
         message: "PIN must be exactly 4 digits"
       });
     }
-    
+
     let user = null;
-    
+
     // If userId is provided, use it directly
     if (userId) {
       const userResult = await pool.query(
@@ -6845,7 +6869,7 @@ app.post("/api/auth/login-with-pin-only", async (req, res) => {
         user = userResult.rows[0];
       }
     }
-    
+
     // If no user found by ID, find by PIN (only for the specific user)
     if (!user) {
       // IMPORTANT: We need to find the user FIRST before checking attempts
@@ -6855,7 +6879,7 @@ app.post("/api/auth/login-with-pin-only", async (req, res) => {
         FROM user_pins up
         WHERE up.is_active = true AND up.pin_hash IS NOT NULL AND up.pin_hash != ''
       `);
-      
+
       // Find the user that matches this PIN
       for (const row of pinResult.rows) {
         try {
@@ -6876,7 +6900,7 @@ app.post("/api/auth/login-with-pin-only", async (req, res) => {
         }
       }
     }
-    
+
     // If no user found with this PIN, return error (don't track attempts for non-existent user)
     if (!user) {
       return res.status(400).json({
@@ -6884,15 +6908,15 @@ app.post("/api/auth/login-with-pin-only", async (req, res) => {
         message: "Invalid PIN or Not Registered. Please try again."
       });
     }
-    
+
     // Now we have a specific user - check attempts ONLY for this user
     const attemptsResult = await pool.query(
       "SELECT * FROM pin_login_attempts WHERE user_id = $1",
       [user.id]
     );
-    
+
     let attempts = attemptsResult.rows[0];
-    
+
     // Check if this specific user is locked
     if (attempts && attempts.locked_until && new Date(attempts.locked_until) > new Date()) {
       const minutesLeft = Math.ceil((new Date(attempts.locked_until) - new Date()) / (1000 * 60));
@@ -6903,40 +6927,40 @@ app.post("/api/auth/login-with-pin-only", async (req, res) => {
         minutesLeft: minutesLeft
       });
     }
-    
+
     // Verify PIN for this specific user
     const pinResult = await pool.query(
       "SELECT pin_hash FROM user_pins WHERE user_id = $1 AND is_active = true",
       [user.id]
     );
-    
+
     if (pinResult.rows.length === 0 || !pinResult.rows[0].pin_hash) {
       return res.status(400).json({
         success: false,
         message: "No PIN set for this account. Please login with credentials first."
       });
     }
-    
+
     const isValid = await bcrypt.compare(pin, pinResult.rows[0].pin_hash);
-    
+
     if (!isValid) {
       let newAttemptCount = 1;
       let lockedUntil = null;
-      
+
       if (attempts) {
         newAttemptCount = attempts.attempt_count + 1;
-        
+
         // Lock after 5 failed attempts for 15 minutes - ONLY for this user
         if (newAttemptCount >= 5) {
           lockedUntil = new Date(Date.now() + 15 * 60 * 1000);
-          
+
           await pool.query(
             `UPDATE pin_login_attempts 
              SET attempt_count = $1, locked_until = $2, updated_at = NOW() 
              WHERE user_id = $3`,
             [newAttemptCount, lockedUntil, user.id]
           );
-          
+
           return res.status(400).json({
             success: false,
             message: `Too many failed attempts. Login with Credentials.`,
@@ -6958,30 +6982,30 @@ app.post("/api/auth/login-with-pin-only", async (req, res) => {
           [user.id, 1]
         );
       }
-      
+
       const remainingAttempts = 5 - newAttemptCount;
       return res.status(400).json({
         success: false,
-        message: remainingAttempts > 0 
+        message: remainingAttempts > 0
           ? `Invalid PIN or Not Registered.`
           : "Invalid PIN or Not Registered. Please try again later.",
         attemptsLeft: remainingAttempts
       });
     }
-    
+
     // Reset attempts on successful login for this user only
     await pool.query(
       `DELETE FROM pin_login_attempts WHERE user_id = $1`,
       [user.id]
     );
-    
+
     const role = user.role ? user.role.toLowerCase() : "user";
     const token = jwt.sign(
       { id: user.id, role },
       JWT_SECRET,
       { expiresIn: "7d" }
     );
-    
+
     res.json({
       success: true,
       token,
@@ -6994,7 +7018,7 @@ app.post("/api/auth/login-with-pin-only", async (req, res) => {
       },
       message: "PIN login successful"
     });
-    
+
   } catch (error) {
     console.error("PIN only login error:", error);
     res.status(500).json({
@@ -7009,12 +7033,12 @@ app.post("/api/auth/login-with-pin-only", async (req, res) => {
 app.post("/api/admin/reset-pin-attempts/:userId", verifyToken, verifySuperAdmin, async (req, res) => {
   try {
     const { userId } = req.params;
-    
+
     await pool.query(
       "DELETE FROM pin_login_attempts WHERE user_id = $1",
       [userId]
     );
-    
+
     res.json({
       success: true,
       message: "PIN attempts reset successfully for user"
@@ -7032,26 +7056,26 @@ app.post("/api/admin/reset-pin-attempts/:userId", verifyToken, verifySuperAdmin,
 app.get("/api/auth/pin-attempts-status", verifyToken, async (req, res) => {
   try {
     const userId = req.user.id;
-    
+
     const result = await pool.query(
       "SELECT attempt_count, locked_until FROM pin_login_attempts WHERE user_id = $1",
       [userId]
     );
-    
+
     let isLocked = false;
     let minutesLeft = 0;
     let attemptsLeft = 5;
-    
+
     if (result.rows.length > 0) {
       const attempts = result.rows[0];
       attemptsLeft = 5 - (attempts.attempt_count || 0);
-      
+
       if (attempts.locked_until && new Date(attempts.locked_until) > new Date()) {
         isLocked = true;
         minutesLeft = Math.ceil((new Date(attempts.locked_until) - new Date()) / (1000 * 60));
       }
     }
-    
+
     res.json({
       success: true,
       attemptsLeft: Math.max(0, attemptsLeft),
@@ -7075,14 +7099,14 @@ app.get("/api/admin/shiprocket-settings", verifyToken, verifyAdminOrSuperAdmin, 
     const result = await pool.query(
       "SELECT key, value FROM settings WHERE key IN ('shiprocket_email', 'shiprocket_password', 'shiprocket_pickup_pincode', 'shiprocket_webhook_secret')"
     );
-    
+
     const settings = {
       shiprocket_email: '',
       shiprocket_password: '',
       shiprocket_pickup_pincode: '518508',
       shiprocket_webhook_secret: ''
     };
-    
+
     result.rows.forEach(row => {
       if (row.key === 'shiprocket_password') {
         // Return masked password for security
@@ -7091,7 +7115,7 @@ app.get("/api/admin/shiprocket-settings", verifyToken, verifyAdminOrSuperAdmin, 
         settings[row.key] = row.value || '';
       }
     });
-    
+
     res.json({ success: true, settings });
   } catch (error) {
     console.error("Failed to fetch Shiprocket settings:", error);
@@ -7103,24 +7127,24 @@ app.get("/api/admin/shiprocket-settings", verifyToken, verifyAdminOrSuperAdmin, 
 app.put("/api/admin/shiprocket-settings", verifyToken, verifyAdminOrSuperAdmin, async (req, res) => {
   try {
     const { shiprocket_email, shiprocket_password, shiprocket_pickup_pincode, shiprocket_webhook_secret } = req.body;
-    
+
     console.log("Updating Shiprocket settings:", {
       hasEmail: !!shiprocket_email,
       hasPassword: !!shiprocket_password && shiprocket_password !== '********',
       hasPickupPincode: !!shiprocket_pickup_pincode,
       hasWebhookSecret: !!shiprocket_webhook_secret
     });
-    
+
     // Update each setting
     const updates = [];
-    
+
     if (shiprocket_email !== undefined) {
       updates.push(pool.query(
         "INSERT INTO settings (key, value) VALUES ('shiprocket_email', $1) ON CONFLICT (key) DO UPDATE SET value = $1, updated_at = CURRENT_TIMESTAMP",
         [shiprocket_email.trim()]
       ));
     }
-    
+
     // Only update password if it's not masked (not '********') and not empty
     if (shiprocket_password !== undefined && shiprocket_password !== '********' && shiprocket_password !== '') {
       updates.push(pool.query(
@@ -7131,28 +7155,28 @@ app.put("/api/admin/shiprocket-settings", verifyToken, verifyAdminOrSuperAdmin, 
     } else if (shiprocket_password === '********') {
       console.log("Password unchanged (masked value received)");
     }
-    
+
     if (shiprocket_pickup_pincode !== undefined) {
       updates.push(pool.query(
         "INSERT INTO settings (key, value) VALUES ('shiprocket_pickup_pincode', $1) ON CONFLICT (key) DO UPDATE SET value = $1, updated_at = CURRENT_TIMESTAMP",
         [shiprocket_pickup_pincode]
       ));
     }
-    
+
     if (shiprocket_webhook_secret !== undefined && shiprocket_webhook_secret !== '********') {
       updates.push(pool.query(
         "INSERT INTO settings (key, value) VALUES ('shiprocket_webhook_secret', $1) ON CONFLICT (key) DO UPDATE SET value = $1, updated_at = CURRENT_TIMESTAMP",
         [shiprocket_webhook_secret]
       ));
     }
-    
+
     await Promise.all(updates);
-    
+
     // Clear cache
     clearShiprocketCache();
-    
+
     console.log("Shiprocket settings updated successfully");
-    
+
     res.json({ success: true, message: "Shiprocket settings updated successfully" });
   } catch (error) {
     console.error("Failed to update Shiprocket settings:", error);
@@ -7164,34 +7188,34 @@ app.put("/api/admin/shiprocket-settings", verifyToken, verifyAdminOrSuperAdmin, 
 app.post("/api/admin/shiprocket-test", verifyToken, verifyAdminOrSuperAdmin, async (req, res) => {
   try {
     let { email, password, saveCredentials } = req.body;
-    
-    console.log("Shiprocket test request:", { 
-      hasEmail: !!email, 
+
+    console.log("Shiprocket test request:", {
+      hasEmail: !!email,
       hasPassword: !!password && password !== '********',
-      saveCredentials 
+      saveCredentials
     });
-    
+
     // If no credentials provided in request, try to get from database settings
     if (!email || !password || password === '********' || email === '' || password === '') {
       console.log("No valid credentials in request, fetching from database...");
       const config = await getShiprocketConfig(true);
       email = config.shiprocket_email;
       password = config.shiprocket_password;
-      
-      console.log("Database credentials:", { 
-        hasEmail: !!email, 
+
+      console.log("Database credentials:", {
+        hasEmail: !!email,
         hasPassword: !!password && password !== '********',
         emailPreview: email ? email.substring(0, 3) + '***' : 'none'
       });
-      
+
       if (!email || email === '' || !password || password === '' || password === '********') {
-        return res.status(400).json({ 
-          success: false, 
-          message: "No credentials found. Please enter email and password in Settings first." 
+        return res.status(400).json({
+          success: false,
+          message: "No credentials found. Please enter email and password in Settings first."
         });
       }
     }
-    
+
     // Validate email format
     if (!email || !email.includes('@')) {
       return res.status(400).json({
@@ -7199,7 +7223,7 @@ app.post("/api/admin/shiprocket-test", verifyToken, verifyAdminOrSuperAdmin, asy
         message: "Invalid email format. Please enter a valid email address."
       });
     }
-    
+
     // Validate password is not empty
     if (!password || password.trim() === '' || password === '********') {
       return res.status(400).json({
@@ -7207,22 +7231,22 @@ app.post("/api/admin/shiprocket-test", verifyToken, verifyAdminOrSuperAdmin, asy
         message: "Password is required. Please enter your Shiprocket password."
       });
     }
-    
+
     console.log("Testing Shiprocket credentials for email:", email.substring(0, 3) + '***');
-    
+
     const response = await fetch("https://apiv2.shiprocket.in/v1/external/auth/login", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ 
-        email: email.trim(), 
-        password: password 
+      body: JSON.stringify({
+        email: email.trim(),
+        password: password
       })
     });
-    
+
     const data = await response.json();
-    
+
     console.log("Shiprocket test response status:", response.status);
-    
+
     if (response.ok && data.token) {
       // If test was successful, save the credentials to database
       await pool.query(
@@ -7233,20 +7257,20 @@ app.post("/api/admin/shiprocket-test", verifyToken, verifyAdminOrSuperAdmin, asy
         "INSERT INTO settings (key, value) VALUES ('shiprocket_password', $1) ON CONFLICT (key) DO UPDATE SET value = $1, updated_at = CURRENT_TIMESTAMP",
         [password]
       );
-      
+
       console.log("✅ Credentials saved to database");
-      
+
       // Clear cache
       clearShiprocketCache();
-      
-      res.json({ 
-        success: true, 
+
+      res.json({
+        success: true,
         message: "✅ Credentials are valid! Shiprocket API is working correctly."
       });
     } else {
       // Provide detailed error message
       let errorMessage = "Invalid credentials. Please check your Shiprocket login details.";
-      
+
       if (data.message) {
         const msg = data.message.toLowerCase();
         if (msg.includes("invalid") || msg.includes("unauthorized")) {
@@ -7259,7 +7283,7 @@ app.post("/api/admin/shiprocket-test", verifyToken, verifyAdminOrSuperAdmin, asy
           errorMessage = `❌ Shiprocket error: ${data.message}`;
         }
       }
-      
+
       if (response.status === 401) {
         errorMessage = "❌ Authentication failed (401). Please check your Shiprocket credentials.";
       } else if (response.status === 403) {
@@ -7267,15 +7291,15 @@ app.post("/api/admin/shiprocket-test", verifyToken, verifyAdminOrSuperAdmin, asy
       } else if (response.status === 500) {
         errorMessage = "❌ Shiprocket server error (500). Please try again later.";
       }
-      
+
       console.error("Shiprocket test failed:", errorMessage);
       res.status(401).json({ success: false, message: errorMessage });
     }
   } catch (error) {
     console.error("Shiprocket test error:", error);
-    res.status(500).json({ 
-      success: false, 
-      message: error.message || "Network error. Please check your connection and try again." 
+    res.status(500).json({
+      success: false,
+      message: error.message || "Network error. Please check your connection and try again."
     });
   }
 });
