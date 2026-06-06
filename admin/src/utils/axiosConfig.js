@@ -50,29 +50,6 @@ axiosInstance.interceptors.response.use(
     
     // Check if error is due to token expiration (401 Unauthorized)
     if (error.response?.status === 401 && !originalRequest._retry) {
-      
-      // List of API endpoints that should NOT clear token/session
-      // These are APIs that might return 401 for other reasons (invalid credentials, etc.)
-      const skipSessionClearPaths = [
-        '/admin/shipmozo-test',      // Shipmozo test API - might return 401 for invalid credentials
-        '/admin/shipmozo/warehouses', // Shipmozo warehouses API
-        '/admin/shipmozo-settings',   // Shipmozo settings API
-        '/auth/login',                // Login API
-        '/auth/login-with-pin-only',  // PIN login API
-      ];
-      
-      // Check if current URL matches any skip path
-      const shouldSkipClear = skipSessionClearPaths.some(path => 
-        originalRequest.url?.includes(path)
-      );
-      
-      // For Shipmozo APIs, just return the error without clearing session
-      if (shouldSkipClear) {
-        console.log('Shipmozo API error - returning error without clearing session');
-        return Promise.reject(error);
-      }
-      
-      // For other APIs, handle session expiration
       // Prevent infinite loops
       originalRequest._retry = true;
       
@@ -86,6 +63,9 @@ axiosInstance.interceptors.response.use(
       
       // Show modal instead of alert
       showSessionExpiredModal('Session expired. Please login again.');
+      
+      // Don't redirect immediately - wait for modal action
+      // The modal will handle the redirect when user clicks OK
     }
     
     return Promise.reject(error);

@@ -3,7 +3,7 @@ import React, { useEffect, useState } from "react";
 import axios from '../utils/axiosConfig';
 import { toast } from "react-toastify";
 
-import shipmozoService from '../services/shipmozoService';
+import shiprocketService from '../services/shiprocketService';
 
 import "./Order.css";
 
@@ -201,6 +201,7 @@ const Orders = () => {
   const [selectedOrders, setSelectedOrders] = useState([]);
   const [bulkDeleting, setBulkDeleting] = useState(false);
 
+
   // Date filter state - default to today
   const [filterDate, setFilterDate] = useState(new Date().toISOString().split('T')[0]);
 
@@ -293,23 +294,23 @@ const Orders = () => {
     }
   };
 
-  // ================= PUSH TO SHIPMOZO =================
-  const executePushToShipmozo = async () => {
+  // ================= PUSH TO SHIPROCKET =================
+  const executePushToShiprocket = async () => {
     if (!confirmPushOrderId) return;
     try {
       setPushLoading(true);
       setLoading(true);
-      const res = await axios.post(`${API_URL}/admin/orders/${confirmPushOrderId}/shipmozo`, {}, {
+      const res = await axios.post(`${API_URL}/admin/orders/${confirmPushOrderId}/shiprocket`, {}, {
         headers: { Authorization: `Bearer ${token}` }
       });
       if (res.data.success) {
-        toast.success(res.data.message || "Order successfully pushed to Shipmozo! 🚀");
+        toast.success("Order successfully pushed to Shiprocket! 🚀");
         await fetchOrders(true);
         setConfirmPushOrderId(null);
       }
     } catch (err) {
       console.error(err);
-      const errorMsg = err.response?.data?.message || "Failed to push to Shipmozo";
+      const errorMsg = err.response?.data?.message || "Failed to push to Shiprocket";
       toast.error(errorMsg);
       setConfirmPushOrderId(null);
     } finally {
@@ -318,7 +319,7 @@ const Orders = () => {
     }
   };
 
-  // ================= SHIPMOZO GENERATORS =================
+  // ================= SHIPROCKET GENERATORS =================
   const generateAWB = async (orderId) => {
     try {
       setLoading(true);
@@ -354,7 +355,7 @@ const Orders = () => {
     }
   };
 
-  const downloadShipmozoInvoice = async (orderId) => {
+  const downloadShiprocketInvoice = async (orderId) => {
     try {
       setLoading(true);
       const res = await axios.post(`${API_URL}/admin/orders/${orderId}/invoice`, {}, {
@@ -366,14 +367,14 @@ const Orders = () => {
         toast.error("Invoice URL not available");
       }
     } catch (err) {
-      toast.error(err.response?.data?.message || "Failed to download Shipmozo invoice");
+      toast.error(err.response?.data?.message || "Failed to download Shiprocket invoice");
     } finally {
       setLoading(false);
     }
   };
 
-  // Check if order has complete address for Shipmozo
-  const canPushToShipmozo = (order) => {
+  // Check if order has complete address for Shiprocket
+  const canPushToShiprocket = (order) => {
     // Check if order has the required address components
     const hasCity = order.city && order.city !== '' && order.city !== 'City' && order.city !== 'city';
     const hasState = order.state && order.state !== '' && order.state !== 'State' && order.state !== 'state';
@@ -408,7 +409,7 @@ const Orders = () => {
         return sum + (itemWeight * item.quantity);
       }, 0) || 0.5;
 
-      const result = await shipmozoService.getCourierRecommendation(
+      const result = await shiprocketService.getCourierRecommendation(
         pincode,
         order.total_amount,
         order.payment_method === 'COD',
@@ -416,7 +417,7 @@ const Orders = () => {
       );
 
       if (result.serviceable && result.recommended_courier) {
-        toast.success(`✅ Recommended: ${result.recommended_courier.courier_name} - ₹${result.recommended_courier.rate} (Est. ${result.recommended_courier.estimated_days || 5} days)`);
+        toast.success(`✅ Recommended: ${result.recommended_courier.courier_name} - ₹${result.recommended_courier.rate} (Est. ${Math.ceil(result.recommended_courier.etd_hours / 24)} days)`);
       } else {
         toast.warning(result.message || "No courier available for this pincode");
       }
@@ -722,84 +723,18 @@ const Orders = () => {
 
   // Add delete order function
   const deleteOrder = async (orderId) => {
-    try {
-      setLoading(true);
-      const response = await axios.delete(`${API_URL}/admin/orders/${orderId}`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-
-      if (response.data.success) {
-        toast.success(response.data.message);
-        await fetchOrders(true);
-        setDeleteConfirmOrder(null);
-        if (selectedOrder && selectedOrder.id === orderId) {
-          setSelectedOrder(null);
-        }
-      } else {
-        toast.error(response.data.message || "Failed to delete order");
-      }
-    } catch (err) {
-      console.error("Delete order error:", err);
-      toast.error(err.response?.data?.message || "Failed to delete order");
-    } finally {
-      setLoading(false);
-    }
   };
 
   // Add bulk delete function
   const bulkDeleteOrders = async () => {
-    if (selectedOrders.length === 0) {
-      toast.warning("Please select orders to delete");
-      return;
-    }
-
-    if (!window.confirm(`Are you sure you want to delete ${selectedOrders.length} order(s)? This action cannot be undone.`)) {
-      return;
-    }
-
-    try {
-      setBulkDeleting(true);
-      setLoading(true);
-      const response = await axios.post(`${API_URL}/admin/orders/bulk-delete`,
-        { orderIds: selectedOrders },
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
-
-      if (response.data.success) {
-        toast.success(response.data.message);
-        setSelectedOrders([]);
-        setBulkDeleteMode(false);
-        await fetchOrders(true);
-      } else {
-        toast.error(response.data.message || "Failed to delete orders");
-      }
-    } catch (err) {
-      console.error("Bulk delete error:", err);
-      toast.error(err.response?.data?.message || "Failed to delete orders");
-    } finally {
-      setBulkDeleting(false);
-      setLoading(false);
-    }
   };
 
   // Handle single order selection for bulk delete
   const toggleOrderSelection = (orderId) => {
-    setSelectedOrders(prev => {
-      if (prev.includes(orderId)) {
-        return prev.filter(id => id !== orderId);
-      } else {
-        return [...prev, orderId];
-      }
-    });
   };
 
   // Select/Deselect all orders
   const selectAllOrders = () => {
-    if (selectedOrders.length === filteredOrders.length) {
-      setSelectedOrders([]);
-    } else {
-      setSelectedOrders(filteredOrders.map(order => order.id));
-    }
   };
 
   return (
@@ -1066,8 +1001,8 @@ const Orders = () => {
                   {selectedOrder.awb_code && (
                     <p><strong>AWB:</strong> {selectedOrder.awb_code}</p>
                   )}
-                  {selectedOrder.shipmozo_order_id && (
-                    <p><strong>Shipmozo Order ID:</strong> {selectedOrder.shipmozo_order_id}</p>
+                  {selectedOrder.shiprocket_order_id && (
+                    <p><strong>SR Order ID:</strong> {selectedOrder.shiprocket_order_id}</p>
                   )}
                 </div>
               </div>
@@ -1109,10 +1044,16 @@ const Orders = () => {
                 <i className="bi bi-search"></i> Check Courier
               </button>
 
-
+              <button
+                className="invoice-btn-admin edit-address-btn"
+                onClick={() => setShowAddressEditModal(true)}
+                disabled={loading}
+              >
+                <i className="bi bi-geo-alt"></i> Edit Address
+              </button>
 
               {(() => {
-                const pushCheck = canPushToShipmozo(selectedOrder);
+                const pushCheck = canPushToShiprocket(selectedOrder);
                 return (
                   <button
                     className="invoice-btn-admin push-btn"
@@ -1123,8 +1064,8 @@ const Orders = () => {
                         toast.error(pushCheck.reason);
                       }
                     }}
-                    disabled={selectedOrder.shipmozo_order_id || pushLoading || !pushCheck.canPush}
-                    title={!pushCheck.canPush ? pushCheck.reason : "Push to Shipmozo"}
+                    disabled={selectedOrder.shiprocket_order_id || pushLoading || !pushCheck.canPush}
+                    title={!pushCheck.canPush ? pushCheck.reason : "Push to Shiprocket"}
                   >
                     {pushLoading && confirmPushOrderId === selectedOrder.id ? (
                       <>
@@ -1134,14 +1075,14 @@ const Orders = () => {
                     ) : (
                       <>
                         <i className="bi bi-box-seam"></i>
-                        {selectedOrder.shipmozo_order_id ? "Pushed to Shipmozo" : "Push to Shipmozo"}
+                        {selectedOrder.shiprocket_order_id ? "Pushed to Shiprocket" : "Push to Shiprocket"}
                       </>
                     )}
                   </button>
                 );
               })()}
 
-              {selectedOrder.shipmozo_order_id && !selectedOrder.awb_code && (
+              {selectedOrder.shiprocket_order_id && !selectedOrder.awb_code && (
                 <button
                   className="invoice-btn-admin generate-awb-btn"
                   onClick={() => generateAWB(selectedOrder.id)}
@@ -1163,11 +1104,11 @@ const Orders = () => {
 
               {selectedOrder.awb_code && (
                 <button
-                  className="invoice-btn-admin shipmozo-invoice-btn"
-                  onClick={() => downloadShipmozoInvoice(selectedOrder.id)}
+                  className="invoice-btn-admin shiprocket-invoice-btn"
+                  onClick={() => downloadShiprocketInvoice(selectedOrder.id)}
                   disabled={loading}
                 >
-                  <i className="bi bi-receipt"></i> Shipmozo Invoice
+                  <i className="bi bi-receipt"></i> SR Invoice
                 </button>
               )}
 
@@ -1206,16 +1147,16 @@ const Orders = () => {
         </div>
       )}
 
-      {/* Push to Shipmozo Confirmation Modal */}
+      {/* Push to Shiprocket Confirmation Modal */}
       {confirmPushOrderId && (
         <div className="custom-confirm-overlay" onClick={() => setConfirmPushOrderId(null)}>
           <div className="custom-confirm-box" onClick={(e) => e.stopPropagation()}>
             <div className="confirm-icon">🚀</div>
             <h5>Push to Logistics</h5>
-            <p>Are you sure you want to push Order #ORD{confirmPushOrderId} to Shipmozo? A shipment will be initiated.</p>
+            <p>Are you sure you want to push Order #ORD{confirmPushOrderId} to Shiprocket? A shipment will be initiated.</p>
             <div className="confirm-actions">
               <button className="confirm-cancel-btn" onClick={() => setConfirmPushOrderId(null)} disabled={pushLoading}>Cancel</button>
-              <button className="confirm-execute-btn" onClick={executePushToShipmozo} disabled={pushLoading}>
+              <button className="confirm-execute-btn" onClick={executePushToShiprocket} disabled={pushLoading}>
                 {pushLoading ? "Pushing..." : "Yes, Push Now"}
               </button>
             </div>

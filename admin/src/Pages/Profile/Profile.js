@@ -1,4 +1,4 @@
-// AdminProfile.js - Complete Updated Version with PIN Management & Shipmozo Integration
+// AdminProfile.js - Complete Updated Version with PIN Management
 import React, { useState, useEffect, useRef } from "react";
 import { useNavigate, useOutletContext } from "react-router-dom";
 import axios from "axios";
@@ -602,11 +602,7 @@ const Profile = () => {
                 { headers: { Authorization: `Bearer ${token}` } }
             );
             if (response.data.success) {
-                if (response.data.shipmozo_synced) {
-                    toast.success(response.data.message || "Pickup address added and synced with Shipmozo!");
-                } else {
-                    toast.warning(response.data.message || "Address added but Shipmozo sync failed");
-                }
+                toast.success("Pickup address added successfully!");
                 setShowAddressModal(false);
                 setAddressForm({
                     location_name: "",
@@ -672,11 +668,7 @@ const Profile = () => {
                 { headers: { Authorization: `Bearer ${token}` } }
             );
             if (response.data.success) {
-                if (response.data.shipmozo_updated) {
-                    toast.success(response.data.message || "Pickup address updated and synced with Shipmozo!");
-                } else {
-                    toast.warning(response.data.message || "Address updated but Shipmozo sync failed");
-                }
+                toast.success("Pickup address updated successfully!");
                 setShowAddressModal(false);
                 setEditingAddress(null);
                 setAddressForm({
@@ -716,11 +708,7 @@ const Profile = () => {
                 { headers: { Authorization: `Bearer ${token}` } }
             );
             if (response.data.success) {
-                if (response.data.shipmozo_deleted) {
-                    toast.success(response.data.message || "Address deleted from both systems!");
-                } else {
-                    toast.warning(response.data.message || "Address deleted locally. Shipmozo deletion failed.");
-                }
+                toast.success("Address deleted successfully!");
                 fetchPickupAddresses();
             }
         } catch (error) {
@@ -1517,7 +1505,7 @@ Timestamp: ${new Date().toLocaleString()}
 
                                     <div className="prof-form-section-title">
                                         <i className="bi bi-truck"></i> Default Pickup Location
-                                        <small>Used for Shipmozo order processing</small>
+                                        <small>Used for Shiprocket order processing</small>
                                     </div>
 
                                     <div className="prof-form-row">
@@ -1663,17 +1651,6 @@ Timestamp: ${new Date().toLocaleString()}
                                             )}
                                             <div className="prof-address-card-content">
                                                 <h4>{address.location_name}</h4>
-                                                <div className="prof-address-sync-status">
-                                                    {address.shipmozo_synced && address.shipmozo_pickup_id ? (
-                                                        <span className="prof-sync-badge success" title={`Shipmozo Warehouse ID: ${address.shipmozo_pickup_id}`}>
-                                                            <i className="bi bi-cloud-check-fill"></i> Synced
-                                                        </span>
-                                                    ) : (
-                                                        <span className="prof-sync-badge warning" title="Not synced with Shipmozo">
-                                                            <i className="bi bi-cloud-slash"></i> Not Synced
-                                                        </span>
-                                                    )}
-                                                </div>
                                                 <p>{address.address_line1}</p>
                                                 {address.address_line2 && <p>{address.address_line2}</p>}
                                                 <p>{address.city}, {address.state} - {address.pincode}</p>
@@ -1734,7 +1711,6 @@ Timestamp: ${new Date().toLocaleString()}
                                     placeholder="e.g., Main Warehouse, Store Front"
                                     required
                                 />
-                                <small>This will be used as warehouse name in Shipmozo</small>
                             </div>
                             <div className="prof-form-group">
                                 <label>Address Line 1 *</label>
@@ -1799,7 +1775,7 @@ Timestamp: ${new Date().toLocaleString()}
                                         checked={addressForm.is_default}
                                         onChange={(e) => setAddressForm({ ...addressForm, is_default: e.target.checked })}
                                     />
-                                    Set as default pickup address (used for Shipmozo shipments)
+                                    Set as default pickup address
                                 </label>
                             </div>
                         </div>

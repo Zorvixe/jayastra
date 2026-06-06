@@ -99,10 +99,10 @@ const VendorPickupAddresses = () => {
         });
         
         if (response.data.success) {
-          if (response.data.shipmozo_updated) {
-            toast.success(response.data.message || "Address updated and synced with Shipmozo!");
+          if (response.data.shiprocket_updated) {
+            toast.success(response.data.message || "Address updated and synced!");
           } else {
-            toast.warning(response.data.message || "Address updated but Shipmozo sync failed");
+            toast.warning(response.data.message || "Address updated but Shiprocket sync failed");
           }
         }
       } else {
@@ -111,10 +111,10 @@ const VendorPickupAddresses = () => {
         });
         
         if (response.data.success) {
-          if (response.data.shipmozo_synced) {
-            toast.success(response.data.message || "Address created and synced with Shipmozo!");
+          if (response.data.shiprocket_synced) {
+            toast.success(response.data.message || "Address created and synced!");
           } else {
-            toast.warning(response.data.message || "Address created but Shipmozo sync failed");
+            toast.warning(response.data.message || "Address created but Shiprocket sync failed");
           }
         }
       }
@@ -154,7 +154,7 @@ const VendorPickupAddresses = () => {
     }
   };
 
-  const syncWithShipmozo = async (addressId) => {
+  const syncWithShiprocket = async (addressId) => {
     setSyncingId(addressId);
     try {
       const token = localStorage.getItem("token");
@@ -164,14 +164,14 @@ const VendorPickupAddresses = () => {
       });
       
       if (response.data.success) {
-        toast.success(response.data.message || "Address synced with Shipmozo!");
+        toast.success(response.data.message || "Address synced with Shiprocket!");
         await fetchAddresses();
       } else {
         toast.error(response.data.message || "Failed to sync");
       }
     } catch (err) {
       console.error("Sync error:", err);
-      toast.error(err.response?.data?.message || "Failed to sync with Shipmozo");
+      toast.error(err.response?.data?.message || "Failed to sync with Shiprocket");
     } finally {
       setSyncingId(null);
     }
@@ -187,10 +187,10 @@ const VendorPickupAddresses = () => {
       });
       
       if (response.data.success) {
-        if (response.data.shipmozo_deleted) {
+        if (response.data.shiprocket_deleted) {
           toast.success(response.data.message || "Address deleted from both systems!");
         } else {
-          toast.warning(response.data.message || "Address deleted locally. Shipmozo deletion failed.");
+          toast.warning(response.data.message || "Address deleted locally. Shiprocket deletion failed.");
         }
         await fetchAddresses();
       } else {
@@ -281,12 +281,12 @@ const VendorPickupAddresses = () => {
                       <i className="bi bi-star-fill"></i> Default
                     </span>
                   )}
-                  {addr.shipmozo_synced && addr.shipmozo_pickup_id ? (
-                    <span className="pickup-synced-badge" title={`Shipmozo Warehouse ID: ${addr.shipmozo_pickup_id}`}>
+                  {addr.shiprocket_synced && addr.shiprocket_pickup_id ? (
+                    <span className="pickup-synced-badge" title={`Shiprocket ID: ${addr.shiprocket_pickup_id}`}>
                       <i className="bi bi-cloud-check-fill"></i> Synced
                     </span>
                   ) : (
-                    <span className="pickup-not-synced-badge" title="Not synced with Shipmozo">
+                    <span className="pickup-not-synced-badge" title="Not synced with Shiprocket">
                       <i className="bi bi-cloud-slash"></i> Not Synced
                     </span>
                   )}
@@ -299,11 +299,11 @@ const VendorPickupAddresses = () => {
                   >
                     <i className="bi bi-pencil"></i>
                   </button>
-                  {!addr.shipmozo_synced && (
+                  {!addr.shiprocket_synced && (
                     <button 
                       className="pickup-action-btn pickup-action-sync" 
-                      onClick={() => syncWithShipmozo(addr.id)} 
-                      title="Sync with Shipmozo"
+                      onClick={() => syncWithShiprocket(addr.id)} 
+                      title="Sync with Shiprocket"
                       disabled={syncingId === addr.id}
                     >
                       {syncingId === addr.id ? (
@@ -376,7 +376,7 @@ const VendorPickupAddresses = () => {
                     className="pickup-input"
                     required
                   />
-                  <small className="pickup-hint">This will be used as warehouse/pickup location name in Shipmozo</small>
+                  <small className="pickup-hint">This will be used as pickup location name in Shiprocket</small>
                 </div>
                 <div className="pickup-form-group">
                   <label>Pincode <span className="pickup-required">*</span></label>
@@ -452,7 +452,7 @@ const VendorPickupAddresses = () => {
                   <span className="pickup-checkbox-text">Set as default pickup address</span>
                 </label>
                 <small className="pickup-hint pickup-hint-block">
-                  Default address will be used for all Shipmozo shipments
+                  Default address will be used for all Shiprocket shipments
                 </small>
               </div>
 
@@ -484,7 +484,7 @@ const VendorPickupAddresses = () => {
               <i className="bi bi-exclamation-triangle-fill"></i>
             </div>
             <h5>Delete Address?</h5>
-            <p>Are you sure you want to delete this pickup address? This will also delete it from Shipmozo if synced.</p>
+            <p>Are you sure you want to delete this pickup address? This will also delete it from Shiprocket if synced.</p>
             <div className="pickup-confirm-actions">
               <button className="pickup-cancel-btn" onClick={() => setDeleteConfirm(null)}>
                 Cancel
