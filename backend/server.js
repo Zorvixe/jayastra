@@ -2015,11 +2015,11 @@ app.post("/api/vendor/pickup-addresses", verifyToken, async (req, res) => {
   const client = await pool.connect();
   try {
     const { location_name, address_line1, address_line2, city, state, pincode, is_default } = req.body;
-    
+
     if (!location_name || !address_line1 || !city || !state || !pincode) {
-      return res.status(400).json({ 
-        success: false, 
-        message: "Missing required fields" 
+      return res.status(400).json({
+        success: false,
+        message: "Missing required fields"
       });
     }
 
@@ -2039,16 +2039,16 @@ app.post("/api/vendor/pickup-addresses", verifyToken, async (req, res) => {
        RETURNING *`,
       [req.user.id, location_name, address_line1, address_line2 || null, city, state, pincode, is_default || false]
     );
-    
+
     const newAddress = result.rows[0];
-    
+
     // Sync with Shipmozo
     let shipmozoPickupId = null;
     let shipmozoError = null;
-    
+
     try {
       const token = await authenticateShipmozo();
-      
+
       const payload = {
         pickup_location: location_name,
         name: location_name,
@@ -2061,7 +2061,7 @@ app.post("/api/vendor/pickup-addresses", verifyToken, async (req, res) => {
         pincode: pincode,
         country: "India"
       };
-      
+
       const response = await fetch("https://api.shipmozo.com/v1/settings/company/pickup", {
         method: "POST",
         headers: {
@@ -2070,12 +2070,12 @@ app.post("/api/vendor/pickup-addresses", verifyToken, async (req, res) => {
         },
         body: JSON.stringify(payload)
       });
-      
+
       const shipmozoResult = await response.json();
-      
+
       if (response.ok && (shipmozoResult.success || shipmozoResult.data)) {
         shipmozoPickupId = shipmozoResult.data?.id || shipmozoResult.data?.pickup_location_id;
-        
+
         if (shipmozoPickupId) {
           await client.query(
             `UPDATE vendor_pickup_addresses 
@@ -2092,18 +2092,18 @@ app.post("/api/vendor/pickup-addresses", verifyToken, async (req, res) => {
     } catch (err) {
       shipmozoError = err.message;
     }
-    
+
     await client.query("COMMIT");
-    
-    res.json({ 
-      success: true, 
+
+    res.json({
+      success: true,
       address: newAddress,
       shipmozo_synced: !!shipmozoPickupId,
       shipmozo_pickup_id: shipmozoPickupId,
       shipmozo_error: shipmozoError || null,
       message: shipmozoPickupId ? "Address created and synced with Shipmozo!" : "Address created but Shipmozo sync failed."
     });
-    
+
   } catch (error) {
     await client.query("ROLLBACK");
     console.error("Create address error:", error);
@@ -2155,16 +2155,16 @@ app.put("/api/vendor/pickup-addresses/:id", verifyToken, async (req, res) => {
        RETURNING *`,
       [location_name, address_line1, address_line2 || null, city, state, pincode, is_default || false, id, req.user.id]
     );
-    
+
     const updatedAddress = result.rows[0];
     let shipmozoUpdated = false;
     let shipmozoError = null;
-    
+
     // Update in Shipmozo if it has an ID
     if (hasShipmozoId) {
       try {
         const token = await authenticateShipmozo();
-        
+
         const payload = {
           pickup_location: location_name,
           name: location_name,
@@ -2177,7 +2177,7 @@ app.put("/api/vendor/pickup-addresses/:id", verifyToken, async (req, res) => {
           pincode: pincode,
           country: "India"
         };
-        
+
         const response = await fetch(`https://api.shipmozo.com/v1/settings/company/pickup/${hasShipmozoId}`, {
           method: "PUT",
           headers: {
@@ -2186,7 +2186,7 @@ app.put("/api/vendor/pickup-addresses/:id", verifyToken, async (req, res) => {
           },
           body: JSON.stringify(payload)
         });
-        
+
         if (response.ok) {
           shipmozoUpdated = true;
           await client.query(
@@ -2201,17 +2201,17 @@ app.put("/api/vendor/pickup-addresses/:id", verifyToken, async (req, res) => {
         shipmozoError = err.message;
       }
     }
-    
+
     await client.query("COMMIT");
-    
-    res.json({ 
-      success: true, 
+
+    res.json({
+      success: true,
       address: updatedAddress,
       shipmozo_updated: shipmozoUpdated,
       shipmozo_error: shipmozoError || null,
       message: shipmozoUpdated ? "Address updated and synced with Shipmozo!" : "Address updated but Shipmozo sync failed."
     });
-    
+
   } catch (error) {
     await client.query("ROLLBACK");
     console.error("Update address error:", error);
@@ -2240,15 +2240,15 @@ app.delete("/api/vendor/pickup-addresses/:id", verifyToken, async (req, res) => 
     const shipmozoPickupId = address.shipmozo_pickup_id;
 
     await client.query("BEGIN");
-    
+
     // Delete from Shipmozo if it exists
     let shipmozoDeleted = false;
     let shipmozoError = null;
-    
+
     if (shipmozoPickupId) {
       try {
         const token = await authenticateShipmozo();
-        
+
         const response = await fetch(`https://api.shipmozo.com/v1/settings/company/pickup/${shipmozoPickupId}`, {
           method: "DELETE",
           headers: {
@@ -2256,7 +2256,7 @@ app.delete("/api/vendor/pickup-addresses/:id", verifyToken, async (req, res) => 
             "Authorization": `Bearer ${token}`
           }
         });
-        
+
         if (response.ok) {
           shipmozoDeleted = true;
         } else {
@@ -2269,7 +2269,7 @@ app.delete("/api/vendor/pickup-addresses/:id", verifyToken, async (req, res) => 
         console.warn("Shipmozo delete error:", shipmozoError);
       }
     }
-    
+
     // Delete from database
     await client.query(`DELETE FROM vendor_pickup_addresses WHERE id = $1`, [id]);
 
@@ -2288,14 +2288,14 @@ app.delete("/api/vendor/pickup-addresses/:id", verifyToken, async (req, res) => 
     }
 
     await client.query("COMMIT");
-    
-    res.json({ 
-      success: true, 
+
+    res.json({
+      success: true,
       message: shipmozoDeleted ? "Address deleted from both systems" : "Address deleted locally. Shipmozo deletion failed.",
       shipmozo_deleted: shipmozoDeleted,
       shipmozo_error: shipmozoError || null
     });
-    
+
   } catch (error) {
     await client.query("ROLLBACK");
     console.error("Delete address error:", error);
@@ -2344,30 +2344,30 @@ app.put("/api/vendor/pickup-addresses/:id/default", verifyToken, async (req, res
 app.post("/api/vendor/pickup-addresses/:id/sync", verifyToken, async (req, res) => {
   try {
     const { id } = req.params;
-    
+
     const addressResult = await pool.query(
       `SELECT * FROM vendor_pickup_addresses WHERE id = $1 AND vendor_id = $2`,
       [id, req.user.id]
     );
-    
+
     if (addressResult.rows.length === 0) {
       return res.status(404).json({ success: false, message: "Address not found" });
     }
-    
+
     const address = addressResult.rows[0];
-    
+
     if (address.shipmozo_synced && address.shipmozo_pickup_id) {
       return res.json({ success: true, message: "Already synced with Shipmozo" });
     }
-    
+
     const vendorResult = await pool.query(
       `SELECT email, phone FROM users WHERE id = $1`,
       [req.user.id]
     );
     const vendor = vendorResult.rows[0] || {};
-    
+
     const token = await authenticateShipmozo();
-    
+
     const payload = {
       pickup_location: address.location_name,
       name: address.location_name,
@@ -2380,7 +2380,7 @@ app.post("/api/vendor/pickup-addresses/:id/sync", verifyToken, async (req, res) 
       pincode: address.pincode,
       country: "India"
     };
-    
+
     const response = await fetch("https://api.shipmozo.com/v1/settings/company/pickup", {
       method: "POST",
       headers: {
@@ -2389,21 +2389,21 @@ app.post("/api/vendor/pickup-addresses/:id/sync", verifyToken, async (req, res) 
       },
       body: JSON.stringify(payload)
     });
-    
+
     const result = await response.json();
-    
+
     if (response.ok && (result.success || result.data)) {
       const pickupId = result.data?.id || result.data?.pickup_location_id;
-      
+
       await pool.query(
         `UPDATE vendor_pickup_addresses 
          SET shipmozo_pickup_id = $1, shipmozo_synced = true, updated_at = NOW() 
          WHERE id = $2`,
         [pickupId.toString(), id]
       );
-      
-      res.json({ 
-        success: true, 
+
+      res.json({
+        success: true,
         message: "Address synced with Shipmozo successfully!",
         shipmozo_pickup_id: pickupId
       });
@@ -2411,7 +2411,7 @@ app.post("/api/vendor/pickup-addresses/:id/sync", verifyToken, async (req, res) 
       let errorMessage = result.message || "Failed to sync with Shipmozo";
       res.status(400).json({ success: false, message: errorMessage });
     }
-    
+
   } catch (error) {
     console.error("Sync error:", error);
     res.status(500).json({ success: false, message: error.message });
@@ -3862,6 +3862,233 @@ app.get("/api/orders/:id", verifyToken, async (req, res) => {
   }
 });
 
+
+// ================= DELETE ORDER ENDPOINT =================
+app.delete("/api/admin/orders/:id", verifyToken, verifyAdminOrSuperAdmin, async (req, res) => {
+  const client = await pool.connect();
+  try {
+    const orderId = req.params.id;
+    const userRole = req.user.role?.toLowerCase();
+
+    await client.query("BEGIN");
+
+    // Check if order exists and verify permissions
+    let orderCheck;
+    if (userRole !== 'super_admin') {
+      orderCheck = await client.query(
+        `SELECT DISTINCT o.id FROM orders o
+         JOIN order_items oi ON o.id = oi.order_id
+         JOIN products p ON oi.product_id = p.id
+         WHERE o.id = $1 AND p.vendor_id = $2`,
+        [orderId, req.user.id]
+      );
+    } else {
+      orderCheck = await client.query(
+        "SELECT id FROM orders WHERE id = $1",
+        [orderId]
+      );
+    }
+
+    if (orderCheck.rows.length === 0) {
+      await client.query("ROLLBACK");
+      return res.status(404).json({
+        success: false,
+        message: "Order not found or you don't have permission to delete it"
+      });
+    }
+
+    // Get order details before deleting (for logging/reference)
+    const orderDetails = await client.query(
+      "SELECT * FROM orders WHERE id = $1",
+      [orderId]
+    );
+
+    if (orderDetails.rows.length === 0) {
+      await client.query("ROLLBACK");
+      return res.status(404).json({ success: false, message: "Order not found" });
+    }
+
+    const order = orderDetails.rows[0];
+
+    // Check if order is already delivered - optionally restrict deletion
+    if (order.order_status === 'Delivered') {
+      await client.query("ROLLBACK");
+      return res.status(400).json({
+        success: false,
+        message: "Cannot delete delivered orders. Please mark as returned or cancelled first."
+      });
+    }
+
+    // Restore stock quantities for products in this order
+    const orderItems = await client.query(
+      "SELECT product_id, quantity FROM order_items WHERE order_id = $1",
+      [orderId]
+    );
+
+    for (const item of orderItems.rows) {
+      await client.query(
+        "UPDATE products SET stock_quantity = stock_quantity + $1 WHERE id = $2",
+        [item.quantity, item.product_id]
+      );
+    }
+
+    // Delete order items first (due to foreign key constraint)
+    await client.query("DELETE FROM order_items WHERE order_id = $1", [orderId]);
+
+    // Delete the order
+    await client.query("DELETE FROM orders WHERE id = $1", [orderId]);
+
+    // If there was a coupon used, decrement its usage count
+    if (order.coupon_id) {
+      await client.query(
+        "UPDATE coupons SET used_count = used_count - 1 WHERE id = $1 AND used_count > 0",
+        [order.coupon_id]
+      );
+    }
+
+    // If there was a wallet transaction related to this order, update it
+    await client.query(
+      "UPDATE wallet_transactions SET status = 'cancelled', description = description || ' - Order Deleted' WHERE order_id = $1",
+      [orderId]
+    );
+
+    // If vendor earnings were added for this order, reverse them
+    if (order.order_status === 'Delivered') {
+      const vendorEarnings = await client.query(
+        "SELECT vendor_id, vendor_earning FROM order_items WHERE order_id = $1",
+        [orderId]
+      );
+
+      for (const earning of vendorEarnings.rows) {
+        if (earning.vendor_id && earning.vendor_earning > 0) {
+          await client.query(
+            "UPDATE users SET balance = balance - $1 WHERE id = $2",
+            [parseFloat(earning.vendor_earning), earning.vendor_id]
+          );
+        }
+      }
+    }
+
+    await client.query("COMMIT");
+
+    // Log the deletion (optional)
+    console.log(`✅ Order #${orderId} deleted by ${req.user.email || req.user.id} at ${new Date().toISOString()}`);
+
+    res.json({
+      success: true,
+      message: `Order #${orderId} deleted successfully. Stock has been restored.`
+    });
+
+  } catch (error) {
+    await client.query("ROLLBACK");
+    console.error("Delete order error:", error);
+    res.status(500).json({
+      success: false,
+      message: error.message || "Failed to delete order"
+    });
+  } finally {
+    client.release();
+  }
+});
+
+// Bulk delete orders endpoint
+app.post("/api/admin/orders/bulk-delete", verifyToken, verifyAdminOrSuperAdmin, async (req, res) => {
+  const client = await pool.connect();
+  try {
+    const { orderIds } = req.body;
+
+    if (!orderIds || !Array.isArray(orderIds) || orderIds.length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: "Please provide an array of order IDs to delete"
+      });
+    }
+
+    await client.query("BEGIN");
+
+    let deletedCount = 0;
+    let failedCount = 0;
+    const failedOrders = [];
+
+    for (const orderId of orderIds) {
+      try {
+        // Check permissions
+        let orderCheck;
+        if (req.user.role?.toLowerCase() !== 'super_admin') {
+          orderCheck = await client.query(
+            `SELECT DISTINCT o.id FROM orders o
+             JOIN order_items oi ON o.id = oi.order_id
+             JOIN products p ON oi.product_id = p.id
+             WHERE o.id = $1 AND p.vendor_id = $2`,
+            [orderId, req.user.id]
+          );
+        } else {
+          orderCheck = await client.query(
+            "SELECT id, order_status FROM orders WHERE id = $1",
+            [orderId]
+          );
+        }
+
+        if (orderCheck.rows.length === 0) {
+          failedCount++;
+          failedOrders.push({ orderId, reason: "Not found or no permission" });
+          continue;
+        }
+
+        const order = orderCheck.rows[0];
+
+        if (order.order_status === 'Delivered') {
+          failedCount++;
+          failedOrders.push({ orderId, reason: "Cannot delete delivered orders" });
+          continue;
+        }
+
+        // Restore stock
+        const orderItems = await client.query(
+          "SELECT product_id, quantity FROM order_items WHERE order_id = $1",
+          [orderId]
+        );
+
+        for (const item of orderItems.rows) {
+          await client.query(
+            "UPDATE products SET stock_quantity = stock_quantity + $1 WHERE id = $2",
+            [item.quantity, item.product_id]
+          );
+        }
+
+        // Delete order items and order
+        await client.query("DELETE FROM order_items WHERE order_id = $1", [orderId]);
+        await client.query("DELETE FROM orders WHERE id = $1", [orderId]);
+
+        deletedCount++;
+      } catch (err) {
+        failedCount++;
+        failedOrders.push({ orderId, reason: err.message });
+      }
+    }
+
+    await client.query("COMMIT");
+
+    res.json({
+      success: true,
+      message: `${deletedCount} order(s) deleted successfully. ${failedCount} failed.`,
+      deletedCount,
+      failedCount,
+      failedOrders: failedOrders.length > 0 ? failedOrders : undefined
+    });
+
+  } catch (error) {
+    await client.query("ROLLBACK");
+    console.error("Bulk delete error:", error);
+    res.status(500).json({
+      success: false,
+      message: error.message || "Failed to delete orders"
+    });
+  } finally {
+    client.release();
+  }
+});
+
 // ================= RAZORPAY ROUTES =================
 app.post("/api/razorpay/order", verifyToken, async (req, res) => {
   try {
@@ -5170,7 +5397,7 @@ const createWarehouse = async (address, publicKey, privateKey) => {
     });
 
     const data = await response.json();
-    
+
     if (data.result === "1" && data.data?.warehouse_id) {
       return data.data.warehouse_id;
     }
@@ -5190,7 +5417,7 @@ const getWarehouses = async (publicKey, privateKey) => {
     });
 
     const data = await response.json();
-    
+
     if (data.result === "1" && data.data) {
       return data.data;
     }
@@ -5205,7 +5432,7 @@ const getWarehouses = async (publicKey, privateKey) => {
 const pushOrderToShipmozo = async (order, items, pickupAddress, publicKey, privateKey) => {
   // Calculate weight in grams (convert from kg if needed)
   const weightInGrams = Math.round((order.total_weight || 0.5) * 1000);
-  
+
   // Prepare product details
   const productDetails = items.map(item => ({
     name: item.name.substring(0, 100),
@@ -5223,7 +5450,7 @@ const pushOrderToShipmozo = async (order, items, pickupAddress, publicKey, priva
     const warehouses = await getWarehouses(publicKey, privateKey);
     const defaultWarehouse = warehouses.find(w => w.default === "YES") || warehouses[0];
     warehouseId = defaultWarehouse?.id || null;
-    
+
     if (!warehouseId && pickupAddress) {
       warehouseId = await createWarehouse(pickupAddress, publicKey, privateKey);
     }
@@ -5538,8 +5765,8 @@ app.post("/api/admin/orders/:id/shipmozo", verifyToken, verifyAdminVendorIndivid
 
     // Validate address
     if (!order.pincode || !/^\d{6}$/.test(order.pincode)) {
-      return res.status(400).json({ 
-        success: false, 
+      return res.status(400).json({
+        success: false,
         message: "Invalid delivery pincode. Please update order address first."
       });
     }
@@ -5583,7 +5810,7 @@ app.post("/api/admin/orders/:id/shipmozo", verifyToken, verifyAdminVendorIndivid
     }
 
     // Calculate total weight in grams
-    const totalWeightGrams = itemsRes.rows.reduce((sum, item) => 
+    const totalWeightGrams = itemsRes.rows.reduce((sum, item) =>
       sum + (parseFloat(item.weight || 0.5) * parseInt(item.quantity)), 0) * 1000;
 
     // Authenticate with Shipmozo
@@ -5611,7 +5838,7 @@ app.post("/api/admin/orders/:id/shipmozo", verifyToken, verifyAdminVendorIndivid
 
       // Try auto-assign courier
       const autoAssignResult = await autoAssignOrder(pushResult.data?.reference_id || pushResult.data?.order_id, auth.public_key, auth.private_key);
-      
+
       if (autoAssignResult.result === "1" && autoAssignResult.data?.awb_number) {
         await pool.query(
           `UPDATE orders SET awb_code = $1 WHERE id = $2`,
@@ -5657,11 +5884,11 @@ app.post("/api/admin/orders/:id/awb", verifyToken, verifyAdminVendorIndividualAc
     const token = await authenticateShipmozo();
 
     const fetchRes = await fetch("https://api.shipmozo.com/v1/shipments/assign-awb", {
-      method: "POST", 
-      headers: { 
-        "Content-Type": "application/json", 
-        "Authorization": `Bearer ${token}` 
-      }, 
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${token}`
+      },
       body: JSON.stringify({ shipment_id: shipmentId })
     });
 
@@ -5688,15 +5915,15 @@ app.post("/api/admin/orders/:id/label", verifyToken, verifyAdminVendorIndividual
 
     const token = await authenticateShipmozo();
     const fetchRes = await fetch("https://api.shipmozo.com/v1/shipments/generate-label", {
-      method: "POST", 
-      headers: { 
-        "Content-Type": "application/json", 
-        "Authorization": `Bearer ${token}` 
-      }, 
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${token}`
+      },
       body: JSON.stringify({ shipment_id: shipmentId })
     });
     const result = await fetchRes.json();
-    
+
     if (result.label_url) return res.json({ success: true, label_url: result.label_url });
     else return res.status(400).json({ success: false, message: "Failed to fetch label" });
   } catch (error) {
@@ -5713,15 +5940,15 @@ app.post("/api/admin/orders/:id/invoice", verifyToken, verifyAdminVendorIndividu
 
     const token = await authenticateShipmozo();
     const fetchRes = await fetch("https://api.shipmozo.com/v1/orders/invoice", {
-      method: "POST", 
-      headers: { 
-        "Content-Type": "application/json", 
-        "Authorization": `Bearer ${token}` 
-      }, 
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${token}`
+      },
       body: JSON.stringify({ order_id: srOrderId })
     });
     const result = await fetchRes.json();
-    
+
     if (result.invoice_url) return res.json({ success: true, invoice_url: result.invoice_url });
     else return res.status(400).json({ success: false, message: "Failed to fetch invoice" });
   } catch (error) {
@@ -5777,7 +6004,7 @@ app.put("/api/admin/orders/:id/address", verifyToken, verifyAdminOrSuperAdmin, a
 app.get("/api/shipmozo/label/:awb", verifyToken, verifyAdminOrSuperAdmin, async (req, res) => {
   try {
     const { awb } = req.params;
-    
+
     let auth;
     try {
       auth = await authenticateShipmozo();
@@ -5786,7 +6013,7 @@ app.get("/api/shipmozo/label/:awb", verifyToken, verifyAdminOrSuperAdmin, async 
     }
 
     const labelResult = await getShipmozoLabel(awb, auth.public_key, auth.private_key);
-    
+
     if (labelResult.result === "1" && labelResult.data && labelResult.data[0]?.label) {
       res.json({
         success: true,
@@ -5823,7 +6050,7 @@ app.get("/api/shipmozo/serviceability", async (req, res) => {
     const pickupPincode = pickup_pincode || config.shipmozo_pickup_pincode || "518508";
 
     const serviceability = await checkPincodeServiceability(pickupPincode, delivery_pincode, auth.public_key, auth.private_key);
-    
+
     res.json({
       success: serviceability.result === "1",
       serviceable: serviceability.data?.serviceable === true,
@@ -5847,21 +6074,21 @@ app.get("/api/shipmozo/pincode/:pincode", async (req, res) => {
 
     const url = `https://api.shipmozo.com/v1/courier/serviceability?pickup_pincode=${pickupPincode}&delivery_pincode=${deliveryPincode}&weight=${weight}`;
 
-    const fetchRes = await fetch(url, { 
-      method: "GET", 
-      headers: { 
-        "Content-Type": "application/json", 
-        "Authorization": `Bearer ${token}` 
-      } 
+    const fetchRes = await fetch(url, {
+      method: "GET",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${token}`
+      }
     });
     const result = await fetchRes.json();
 
     if (result.success && result.data && result.data.serviceable) {
-      return res.json({ 
-        success: true, 
-        serviceable: true, 
+      return res.json({
+        success: true,
+        serviceable: true,
         estimated_days: result.data.estimated_days || 5,
-        courier: result.data.courier_name 
+        courier: result.data.courier_name
       });
     } else {
       return res.json({ success: true, serviceable: false, message: "Delivery not available to this pincode." });
@@ -5897,7 +6124,7 @@ app.get("/api/shipmozo/shipping-rates", async (req, res) => {
       order_amount: order_amount || 100,
       payment_type: payment_type || "PREPAID"
     }, auth.public_key, auth.private_key);
-    
+
     if (rates.result === "1" && rates.data) {
       const courierRates = rates.data.map(rate => ({
         courier_id: rate.courier_id,
@@ -6016,7 +6243,7 @@ app.get("/api/shipmozo/courier-recommendation", async (req, res) => {
 app.get("/api/shipmozo/track/:awb", async (req, res) => {
   try {
     const { awb } = req.params;
-    
+
     let auth;
     try {
       auth = await authenticateShipmozo();
@@ -6025,7 +6252,7 @@ app.get("/api/shipmozo/track/:awb", async (req, res) => {
     }
 
     const tracking = await trackShipmozoOrder(awb, auth.public_key, auth.private_key);
-    
+
     if (tracking.result === "1") {
       res.json({
         success: true,
@@ -7677,10 +7904,10 @@ app.post("/api/admin/shipmozo-test", verifyToken, verifyAdminOrSuperAdmin, async
 app.get("/api/admin/debug/shipmozo-connection", verifyToken, verifyAdminOrSuperAdmin, async (req, res) => {
   try {
     const config = await getShipmozoConfig(true);
-    
+
     const hasApiKey = !!config.shipmozo_api_key && config.shipmozo_api_key !== '';
     const hasApiSecret = !!config.shipmozo_api_secret && config.shipmozo_api_secret !== '' && config.shipmozo_api_secret !== '********';
-    
+
     if (!hasApiKey || !hasApiSecret) {
       return res.json({
         success: false,
@@ -7690,7 +7917,7 @@ app.get("/api/admin/debug/shipmozo-connection", verifyToken, verifyAdminOrSuperA
         apiKeyValue: config.shipmozo_api_key ? config.shipmozo_api_key.substring(0, 8) + '***' : null
       });
     }
-    
+
     try {
       const token = await authenticateShipmozo();
       return res.json({

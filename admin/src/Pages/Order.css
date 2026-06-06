@@ -59,7 +59,8 @@
 .order-thumbs {
   display: flex;
   align-items: center;
-  gap: -8px; /* overlap effect */
+  gap: -8px;
+  /* overlap effect */
 }
 
 .order-thumbs img {
@@ -68,7 +69,7 @@
   border-radius: 50%;
   border: 2px solid white;
   object-fit: cover;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
   margin-right: -12px;
   cursor: pointer;
   transition: transform 0.2s, z-index 0.2s;
@@ -99,7 +100,7 @@
   left: 0;
   width: 100%;
   height: 100%;
-  background: rgba(0,0,0,0.85);
+  background: rgba(0, 0, 0, 0.85);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -121,7 +122,7 @@
   max-width: 100%;
   max-height: 85vh;
   border-radius: 8px;
-  box-shadow: 0 20px 50px rgba(0,0,0,0.5);
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5);
   border: 4px solid white;
 }
 
@@ -138,12 +139,20 @@
 }
 
 @keyframes zoomIn {
-  from { transform: scale(0.9); opacity: 0; }
-  to { transform: scale(1); opacity: 1; }
+  from {
+    transform: scale(0.9);
+    opacity: 0;
+  }
+
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
 }
 
 .more-count {
-  width: 42px; /* updated for consistency */
+  width: 42px;
+  /* updated for consistency */
   height: 42px;
   border-radius: 50%;
   background: #f3f4f6;
@@ -174,11 +183,35 @@
   cursor: pointer;
 }
 
-.status-dropdown-admin.placed { background: #e0f2fe; color: #0369a1; border-color: #bae6fd; }
-.status-dropdown-admin.processing { background: #fef3c7; color: #92400e; border-color: #fde68a; }
-.status-dropdown-admin.shipped { background: #f3e8ff; color: #7e22ce; border-color: #e9d5ff; }
-.status-dropdown-admin.delivered { background: #dcfce7; color: #15803d; border-color: #bbf7d0; }
-.status-dropdown-admin.cancelled { background: #fee2e2; color: #b91c1c; border-color: #fecaca; }
+.status-dropdown-admin.placed {
+  background: #e0f2fe;
+  color: #0369a1;
+  border-color: #bae6fd;
+}
+
+.status-dropdown-admin.processing {
+  background: #fef3c7;
+  color: #92400e;
+  border-color: #fde68a;
+}
+
+.status-dropdown-admin.shipped {
+  background: #f3e8ff;
+  color: #7e22ce;
+  border-color: #e9d5ff;
+}
+
+.status-dropdown-admin.delivered {
+  background: #dcfce7;
+  color: #15803d;
+  border-color: #bbf7d0;
+}
+
+.status-dropdown-admin.cancelled {
+  background: #fee2e2;
+  color: #b91c1c;
+  border-color: #fecaca;
+}
 
 .view-btn-admin {
   background: #f3f4f6;
@@ -203,7 +236,7 @@
   left: 0;
   width: 100%;
   height: 100%;
-  background: rgba(0,0,0,0.5);
+  background: rgba(0, 0, 0, 0.5);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -216,7 +249,7 @@
   width: 100%;
   max-width: 650px;
   border-radius: 12px;
-  box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1);
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
   max-height: 90vh;
   display: flex;
   flex-direction: column;
@@ -256,7 +289,9 @@
   margin-bottom: 30px;
 }
 
-.cust-details-box h5, .order-summary-box h5, .items-list-admin h5 {
+.cust-details-box h5,
+.order-summary-box h5,
+.items-list-admin h5 {
   margin: 0 0 12px 0;
   font-size: 14px;
   color: #374151;
@@ -478,8 +513,15 @@
 }
 
 @keyframes popIn {
-  from { opacity: 0; transform: scale(0.9); }
-  to { opacity: 1; transform: scale(1); }
+  from {
+    opacity: 0;
+    transform: scale(0.9);
+  }
+
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
 }
 
 .orders-header-flex {
@@ -546,9 +588,9 @@
   color: #991b1b;
 }
 
-  .orders-header-flex {
-    align-items: flex-start;
-  }
+.orders-header-flex {
+  align-items: flex-start;
+}
 
 
 /* ================= SEARCH & PAGINATION ================= */
@@ -646,12 +688,12 @@
     flex-direction: column;
     text-align: center;
   }
-  
+
   .pagination-controls {
     justify-content: center;
     flex-wrap: wrap;
   }
-  
+
   .orders-filter-area {
     flex-direction: column;
     align-items: stretch;
@@ -779,7 +821,9 @@
 }
 
 @keyframes spin {
-  to { transform: rotate(360deg); }
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 /* Address Edit Modal */
@@ -813,6 +857,7 @@
     opacity: 0;
     transform: translateY(30px);
   }
+
   to {
     opacity: 1;
     transform: translateY(0);
@@ -946,7 +991,9 @@
 
 .edit-address-btn:hover {
   background: #d97706 !important;
-}/* Address Edit Modal Styles */
+}
+
+/* Address Edit Modal Styles */
 .address-edit-modal-overlay {
   position: fixed;
   top: 0;
@@ -977,6 +1024,7 @@
     opacity: 0;
     transform: translateY(30px);
   }
+
   to {
     opacity: 1;
     transform: translateY(0);
@@ -1117,4 +1165,185 @@
 
 .edit-address-btn:hover {
   background: #d97706 !important;
+}
+
+/* Delete Order Button */
+.delete-order-btn {
+  background: #fee2e2;
+  border: none;
+  color: #dc2626;
+  width: 32px;
+  height: 32px;
+  border-radius: 6px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+}
+
+.delete-order-btn:hover:not(:disabled) {
+  background: #dc2626;
+  color: white;
+  transform: scale(1.05);
+}
+
+.delete-order-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Bulk Delete Toolbar */
+.orders-table-toolbar {
+  margin-top: 16px;
+  display: flex;
+  justify-content: flex-end;
+}
+
+.bulk-delete-mode-btn {
+  background: #ef4444;
+  color: white;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  transition: all 0.2s;
+}
+
+.bulk-delete-mode-btn:hover {
+  background: #dc2626;
+  transform: translateY(-1px);
+}
+
+.bulk-delete-controls {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: #fff1f0;
+  padding: 8px 16px;
+  border-radius: 8px;
+  border: 1px solid #fecaca;
+}
+
+.select-all-btn {
+  background: transparent;
+  border: 1px solid #dc2626;
+  color: #dc2626;
+  padding: 6px 12px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 13px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.selected-count {
+  font-size: 13px;
+  color: #dc2626;
+  font-weight: 500;
+}
+
+.execute-bulk-delete-btn {
+  background: #dc2626;
+  color: white;
+  border: none;
+  padding: 6px 16px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.execute-bulk-delete-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.cancel-bulk-mode-btn {
+  background: #f3f4f6;
+  border: 1px solid #d1d5db;
+  color: #374151;
+  padding: 6px 12px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 13px;
+}
+
+/* Delete Confirmation Modal */
+.confirm-delete-btn {
+  background: #dc2626;
+  color: white;
+  border: none;
+  padding: 10px 24px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: 500;
+}
+
+.confirm-delete-btn:hover:not(:disabled) {
+  background: #b91c1c;
+}
+
+.warning-text {
+  font-size: 12px;
+  color: #dc2626;
+  margin-top: 8px;
+}
+
+.delete-icon {
+  background: #fee2e2;
+  color: #dc2626;
+}
+
+/* Checkbox styling */
+.orders-table-new input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  cursor: pointer;
+  accent-color: #dc2626;
+}
+
+/* Table responsive */
+.table-responsive {
+  overflow-x: auto;
+}
+
+.orders-table-new {
+  width: 100%;
+  border-collapse: collapse;
+  background: white;
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.orders-table-new th {
+  background: #f8fafc;
+  padding: 14px 12px;
+  text-align: left;
+  font-weight: 600;
+  font-size: 13px;
+  color: #475569;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.orders-table-new td {
+  padding: 14px 12px;
+  border-bottom: 1px solid #f1f5f9;
+  vertical-align: middle;
+}
+
+/* Disabled row checkbox */
+.orders-table-new input[type="checkbox"]:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
 }

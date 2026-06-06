@@ -61,7 +61,7 @@ const AddressEditModal = ({ order, isOpen, onClose, onUpdate }) => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
+
     // Validate required fields
     if (!addressForm.city.trim()) {
       toast.error("City is required");
@@ -75,7 +75,7 @@ const AddressEditModal = ({ order, isOpen, onClose, onUpdate }) => {
       toast.error("Valid 6-digit pincode is required");
       return;
     }
-    
+
     setUpdating(true);
     const success = await onUpdate(order.id, addressForm);
     setUpdating(false);
@@ -96,79 +96,79 @@ const AddressEditModal = ({ order, isOpen, onClose, onUpdate }) => {
             <div className="form-row">
               <div className="form-group">
                 <label>House/Flat No</label>
-                <input 
-                  type="text" 
-                  name="house_no" 
-                  value={addressForm.house_no} 
-                  onChange={handleChange} 
-                  placeholder="House No / Building" 
+                <input
+                  type="text"
+                  name="house_no"
+                  value={addressForm.house_no}
+                  onChange={handleChange}
+                  placeholder="House No / Building"
                 />
               </div>
               <div className="form-group">
                 <label>Street/Area</label>
-                <input 
-                  type="text" 
-                  name="street_area" 
-                  value={addressForm.street_area} 
-                  onChange={handleChange} 
-                  placeholder="Street name / Area" 
+                <input
+                  type="text"
+                  name="street_area"
+                  value={addressForm.street_area}
+                  onChange={handleChange}
+                  placeholder="Street name / Area"
                 />
               </div>
             </div>
             <div className="form-group">
               <label>Landmark (Optional)</label>
-              <input 
-                type="text" 
-                name="landmark" 
-                value={addressForm.landmark} 
-                onChange={handleChange} 
-                placeholder="Nearby landmark" 
+              <input
+                type="text"
+                name="landmark"
+                value={addressForm.landmark}
+                onChange={handleChange}
+                placeholder="Nearby landmark"
               />
             </div>
             <div className="form-row">
               <div className="form-group">
                 <label>City <span className="required">*</span></label>
-                <input 
-                  type="text" 
-                  name="city" 
-                  value={addressForm.city} 
-                  onChange={handleChange} 
-                  placeholder="City" 
-                  required 
+                <input
+                  type="text"
+                  name="city"
+                  value={addressForm.city}
+                  onChange={handleChange}
+                  placeholder="City"
+                  required
                 />
               </div>
               <div className="form-group">
                 <label>State <span className="required">*</span></label>
-                <input 
-                  type="text" 
-                  name="state" 
-                  value={addressForm.state} 
-                  onChange={handleChange} 
-                  placeholder="State" 
-                  required 
+                <input
+                  type="text"
+                  name="state"
+                  value={addressForm.state}
+                  onChange={handleChange}
+                  placeholder="State"
+                  required
                 />
               </div>
               <div className="form-group">
                 <label>Pincode <span className="required">*</span></label>
-                <input 
-                  type="text" 
-                  name="pincode" 
-                  value={addressForm.pincode} 
-                  onChange={handleChange} 
-                  placeholder="6-digit pincode" 
-                  maxLength="6" 
-                  required 
+                <input
+                  type="text"
+                  name="pincode"
+                  value={addressForm.pincode}
+                  onChange={handleChange}
+                  placeholder="6-digit pincode"
+                  maxLength="6"
+                  required
                 />
               </div>
             </div>
             <div className="form-group">
               <label>Full Address</label>
-              <textarea 
-                name="address" 
-                value={addressForm.address} 
-                onChange={handleChange} 
-                rows="2" 
-                placeholder="Complete address" 
+              <textarea
+                name="address"
+                value={addressForm.address}
+                onChange={handleChange}
+                rows="2"
+                placeholder="Complete address"
               />
               <small className="help-text">This will be auto-generated from components above if left empty.</small>
             </div>
@@ -195,6 +195,11 @@ const Orders = () => {
   const [statusUpdatingId, setStatusUpdatingId] = useState(null);
   const [pushLoading, setPushLoading] = useState(false);
   const [showAddressEditModal, setShowAddressEditModal] = useState(false);
+
+  const [deleteConfirmOrder, setDeleteConfirmOrder] = useState(null);
+  const [bulkDeleteMode, setBulkDeleteMode] = useState(false);
+  const [selectedOrders, setSelectedOrders] = useState([]);
+  const [bulkDeleting, setBulkDeleting] = useState(false);
 
   // Date filter state - default to today
   const [filterDate, setFilterDate] = useState(new Date().toISOString().split('T')[0]);
@@ -268,7 +273,7 @@ const Orders = () => {
       const response = await axios.put(`${API_URL}/admin/orders/${orderId}/address`, addressData, {
         headers: { Authorization: `Bearer ${token}` }
       });
-      
+
       if (response.data.success) {
         toast.success("Address updated successfully!");
         await fetchOrders(true);
@@ -373,13 +378,13 @@ const Orders = () => {
     const hasCity = order.city && order.city !== '' && order.city !== 'City' && order.city !== 'city';
     const hasState = order.state && order.state !== '' && order.state !== 'State' && order.state !== 'state';
     const hasPincode = order.pincode && order.pincode.toString().length === 6;
-    
+
     if (!hasCity || !hasState || !hasPincode) {
       const missing = [];
       if (!hasCity) missing.push('City');
       if (!hasState) missing.push('State');
       if (!hasPincode) missing.push('Pincode (6 digits)');
-      
+
       return {
         canPush: false,
         reason: `Missing delivery address details (${missing.join(', ')}). Please update the order address first.`
@@ -648,10 +653,10 @@ const Orders = () => {
               </thead>
               <tbody>
                 ${order.items && order.items.map((item, index) => {
-                  const price = parseFloat(item.price) || 0;
-                  const quantity = parseInt(item.quantity) || 0;
-                  const itemTotal = price * quantity;
-                  return `
+      const price = parseFloat(item.price) || 0;
+      const quantity = parseInt(item.quantity) || 0;
+      const itemTotal = price * quantity;
+      return `
                     <tr>
                       <td>${index + 1}</td>
                       <td>${escapeHtml(item.product_code || 'N/A')}</td>
@@ -661,7 +666,7 @@ const Orders = () => {
                       <td>₹${itemTotal.toFixed(2)}</td>
                     </tr>
                   `;
-                }).join('')}
+    }).join('')}
               </tbody>
             </table>
 
@@ -715,6 +720,88 @@ const Orders = () => {
     printWindow.document.close();
   };
 
+  // Add delete order function
+  const deleteOrder = async (orderId) => {
+    try {
+      setLoading(true);
+      const response = await axios.delete(`${API_URL}/admin/orders/${orderId}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+
+      if (response.data.success) {
+        toast.success(response.data.message);
+        await fetchOrders(true);
+        setDeleteConfirmOrder(null);
+        if (selectedOrder && selectedOrder.id === orderId) {
+          setSelectedOrder(null);
+        }
+      } else {
+        toast.error(response.data.message || "Failed to delete order");
+      }
+    } catch (err) {
+      console.error("Delete order error:", err);
+      toast.error(err.response?.data?.message || "Failed to delete order");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Add bulk delete function
+  const bulkDeleteOrders = async () => {
+    if (selectedOrders.length === 0) {
+      toast.warning("Please select orders to delete");
+      return;
+    }
+
+    if (!window.confirm(`Are you sure you want to delete ${selectedOrders.length} order(s)? This action cannot be undone.`)) {
+      return;
+    }
+
+    try {
+      setBulkDeleting(true);
+      setLoading(true);
+      const response = await axios.post(`${API_URL}/admin/orders/bulk-delete`,
+        { orderIds: selectedOrders },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+
+      if (response.data.success) {
+        toast.success(response.data.message);
+        setSelectedOrders([]);
+        setBulkDeleteMode(false);
+        await fetchOrders(true);
+      } else {
+        toast.error(response.data.message || "Failed to delete orders");
+      }
+    } catch (err) {
+      console.error("Bulk delete error:", err);
+      toast.error(err.response?.data?.message || "Failed to delete orders");
+    } finally {
+      setBulkDeleting(false);
+      setLoading(false);
+    }
+  };
+
+  // Handle single order selection for bulk delete
+  const toggleOrderSelection = (orderId) => {
+    setSelectedOrders(prev => {
+      if (prev.includes(orderId)) {
+        return prev.filter(id => id !== orderId);
+      } else {
+        return [...prev, orderId];
+      }
+    });
+  };
+
+  // Select/Deselect all orders
+  const selectAllOrders = () => {
+    if (selectedOrders.length === filteredOrders.length) {
+      setSelectedOrders([]);
+    } else {
+      setSelectedOrders(filteredOrders.map(order => order.id));
+    }
+  };
+
   return (
     <div className="orders-container">
       {loading && (
@@ -748,111 +835,205 @@ const Orders = () => {
       </div>
 
       <div className="orders-table">
-        <table>
-          <thead>
-            <tr>
-              <th>Order ID</th>
-              <th>Date</th>
-              <th>Customer</th>
-              <th>Products</th>
-              <th>P.Code</th>
-              <th>Total Amount</th>
-              <th>Status</th>
-              <th>Action</th>
-            </tr>
-          </thead>
 
-          <tbody>
-            {initialLoading ? (
+        <div className="table-responsive">
+          <table className="orders-table-new">
+            <thead>
               <tr>
-                <td colSpan="8" style={{ textAlign: 'center', padding: '40px' }}>
-                  <div className="cate-loader-overlay" style={{ position: 'relative', height: '100px' }}>
-                    <div className="cate-loader-container">
-                      <div className="cate-spinner"></div>
-                    </div>
-                  </div>
-                </td>
+                {bulkDeleteMode && <th style={{ width: '40px' }}><input type="checkbox" checked={selectedOrders.length === filteredOrders.length && filteredOrders.length > 0} onChange={selectAllOrders} /></th>}
+                <th>Order ID</th>
+                <th>Date</th>
+                <th>Customer</th>
+                <th>Products</th>
+                <th>P.Code</th>
+                <th>Total Amount</th>
+                <th>Status</th>
+                <th>Action</th>
+                {!bulkDeleteMode && <th>Delete</th>}
               </tr>
-            ) : filteredOrders.length === 0 ? (
-              <tr>
-                <td colSpan="8" style={{ textAlign: 'center', padding: '40px', color: '#64748b' }}>
-                  <i className="bi bi-inbox" style={{ fontSize: '2rem', display: 'block', marginBottom: '10px' }}></i>
-                  No orders found for {filterDate ? new Date(filterDate).toLocaleDateString() : "the selected period"}
-                </td>
-              </tr>
-            ) : (
-              filteredOrders.map(order => (
-                <tr key={order.id}>
-                  <td>ORD{order.id}</td>
-                  <td>{new Date(order.created_at).toLocaleDateString()}</td>
-                  <td>
-                    <div className="cust-info">
-                      <strong>{order.customer_name}</strong>
-                      <span>{order.phone}</span>
-                    </div>
-                  </td>
-                  <td>
-                    <div className="order-thumbs">
-                      {order.items && order.items.slice(0, 3).map((item, i) => (
-                        <img
-                          key={i}
-                          src={getImageUrl(item.image) || "/assets/placeholder-product.jpg"}
-                          alt={item.name}
-                          title={item.name}
-                          onClick={() => setPreviewImage(getImageUrl(item.image) || "/assets/placeholder-product.jpg")}
-                          className="clickable-thumb"
-                          onError={(e) => { e.target.src = "/assets/placeholder-product.jpg"; }}
-                        />
-                      ))}
-                      {order.items && order.items.length > 3 && (
-                        <span className="more-count">+{order.items.length - 3}</span>
-                      )}
-                    </div>
-                  </td>
-                  <td>
-                    <div className="pid-column">
-                      {order.items && order.items.map((item, i) => (
-                        <span key={i} className="pid-badge">{item.product_code || "N/A"}{i < order.items.length - 1 ? "," : ""} </span>
-                      ))}
-                    </div>
-                  </td>
-                  <td>₹{parseFloat(order.total_amount).toFixed(2)}</td>
-                  <td>
-                    <select
-                      value={order.order_status}
-                      onChange={(e) => updateOrderStatus(order.id, e.target.value)}
-                      className={`status-dropdown-admin ${order.order_status?.toLowerCase().replace(/\s+/g, '-') || ''}`}
-                      disabled={statusUpdatingId === order.id}
-                    >
-                      <option>Placed</option>
-                      <option>Processing</option>
-                      <option>Shipped</option>
-                      <option>Out for Delivery</option>
-                      <option>Delivered</option>
-                      <option>Returned</option>
-                      <option>Cancelled</option>
-                    </select>
-                    {statusUpdatingId === order.id && (
-                      <div className="status-updating-spinner">
-                        <div className="inline-spinner"></div>
+            </thead>
+            <tbody>
+              {initialLoading ? (
+                <tr>
+                  <td colSpan={bulkDeleteMode ? 10 : 9} style={{ textAlign: 'center', padding: '40px' }}>
+                    <div className="cate-loader-overlay" style={{ position: 'relative', height: '100px' }}>
+                      <div className="cate-loader-container">
+                        <div className="cate-spinner"></div>
                       </div>
-                    )}
-                  </td>
-                  <td>
-                    <button
-                      className="view-btn-admin"
-                      onClick={() => setSelectedOrder(order)}
-                      disabled={loading}
-                    >
-                      Details
-                    </button>
+                    </div>
                   </td>
                 </tr>
-              ))
-            )}
-          </tbody>
-        </table>
+              ) : filteredOrders.length === 0 ? (
+                <tr>
+                  <td colSpan={bulkDeleteMode ? 10 : 9} style={{ textAlign: 'center', padding: '40px', color: '#64748b' }}>
+                    <i className="bi bi-inbox" style={{ fontSize: '2rem', display: 'block', marginBottom: '10px' }}></i>
+                    No orders found for {filterDate ? new Date(filterDate).toLocaleDateString() : "the selected period"}
+                  </td>
+                </tr>
+              ) : (
+                filteredOrders.map(order => (
+                  <tr key={order.id}>
+                    {bulkDeleteMode && (
+                      <td>
+                        <input
+                          type="checkbox"
+                          checked={selectedOrders.includes(order.id)}
+                          onChange={() => toggleOrderSelection(order.id)}
+                          disabled={order.order_status === 'Delivered'}
+                        />
+                      </td>
+                    )}
+                    <td>ORD{order.id}</td>
+                    <td>{new Date(order.created_at).toLocaleDateString()}</td>
+                    <td>
+                      <div className="cust-info">
+                        <strong>{order.customer_name}</strong>
+                        <span>{order.phone}</span>
+                      </div>
+                    </td>
+                    <td>
+                      <div className="order-thumbs">
+                        {order.items && order.items.slice(0, 3).map((item, i) => (
+                          <img
+                            key={i}
+                            src={getImageUrl(item.image) || "/assets/placeholder-product.jpg"}
+                            alt={item.name}
+                            title={item.name}
+                            onClick={() => setPreviewImage(getImageUrl(item.image) || "/assets/placeholder-product.jpg")}
+                            className="clickable-thumb"
+                            onError={(e) => { e.target.src = "/assets/placeholder-product.jpg"; }}
+                          />
+                        ))}
+                        {order.items && order.items.length > 3 && (
+                          <span className="more-count">+{order.items.length - 3}</span>
+                        )}
+                      </div>
+                    </td>
+                    <td>
+                      <div className="pid-column">
+                        {order.items && order.items.map((item, i) => (
+                          <span key={i} className="pid-badge">{item.product_code || "N/A"}{i < order.items.length - 1 ? "," : ""} </span>
+                        ))}
+                      </div>
+                    </td>
+                    <td>₹{parseFloat(order.total_amount).toFixed(2)}</td>
+                    <td>
+                      <select
+                        value={order.order_status}
+                        onChange={(e) => updateOrderStatus(order.id, e.target.value)}
+                        className={`status-dropdown-admin ${order.order_status?.toLowerCase().replace(/\s+/g, '-') || ''}`}
+                        disabled={statusUpdatingId === order.id}
+                      >
+                        <option>Placed</option>
+                        <option>Processing</option>
+                        <option>Shipped</option>
+                        <option>Out for Delivery</option>
+                        <option>Delivered</option>
+                        <option>Returned</option>
+                        <option>Cancelled</option>
+                      </select>
+                      {statusUpdatingId === order.id && (
+                        <div className="status-updating-spinner">
+                          <div className="inline-spinner"></div>
+                        </div>
+                      )}
+                    </td>
+                    <td>
+                      <button
+                        className="view-btn-admin"
+                        onClick={() => setSelectedOrder(order)}
+                        disabled={loading}
+                      >
+                        Details
+                      </button>
+                    </td>
+                    {!bulkDeleteMode && (
+                      <td>
+                        <button
+                          className="delete-order-btn"
+                          onClick={() => setDeleteConfirmOrder(order)}
+                          disabled={loading || order.order_status === 'Delivered'}
+                          title={order.order_status === 'Delivered' ? "Cannot delete delivered orders" : "Delete order"}
+                        >
+                          <i className="bi bi-trash3"></i>
+                        </button>
+                      </td>
+                    )}
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+        <div className="orders-table-toolbar">
+          {!bulkDeleteMode ? (
+            <button
+              className="bulk-delete-mode-btn"
+              onClick={() => setBulkDeleteMode(true)}
+              disabled={initialLoading || filteredOrders.length === 0}
+            >
+              <i className="bi bi-trash3"></i> Bulk Delete
+            </button>
+          ) : (
+            <div className="bulk-delete-controls">
+              <button
+                className="select-all-btn"
+                onClick={selectAllOrders}
+              >
+                <i className={`bi ${selectedOrders.length === filteredOrders.length ? 'bi-check-square-fill' : 'bi-square'}`}></i>
+                {selectedOrders.length === filteredOrders.length ? 'Deselect All' : 'Select All'}
+              </button>
+              <span className="selected-count">{selectedOrders.length} selected</span>
+              <button
+                className="execute-bulk-delete-btn"
+                onClick={bulkDeleteOrders}
+                disabled={selectedOrders.length === 0 || bulkDeleting}
+              >
+                {bulkDeleting ? (
+                  <>
+                    <div className="btn-spinner-small"></div>
+                    Deleting...
+                  </>
+                ) : (
+                  <>
+                    <i className="bi bi-trash3"></i> Delete Selected
+                  </>
+                )}
+              </button>
+              <button
+                className="cancel-bulk-mode-btn"
+                onClick={() => {
+                  setBulkDeleteMode(false);
+                  setSelectedOrders([]);
+                }}
+              >
+                Cancel
+              </button>
+            </div>
+          )}
+        </div>
+
       </div>
+
+      {/* Delete Confirmation Modal */}
+      {deleteConfirmOrder && (
+        <div className="custom-confirm-overlay" onClick={() => setDeleteConfirmOrder(null)}>
+          <div className="custom-confirm-box" onClick={(e) => e.stopPropagation()}>
+            <div className="confirm-icon delete-icon"><i class="bi bi-trash-fill"></i></div>
+            <h5>Delete Order #{deleteConfirmOrder.id}</h5>
+            <p>Are you sure you want to delete this order? This action cannot be undone.</p>
+            <p className="warning-text">⚠️ This will restore product stock and remove all order records.</p>
+            <div className="confirm-actions">
+              <button className="confirm-cancel-btn" onClick={() => setDeleteConfirmOrder(null)} disabled={loading}>
+                Cancel
+              </button>
+              <button className="confirm-delete-btn" onClick={() => deleteOrder(deleteConfirmOrder.id)} disabled={loading}>
+                {loading ? "Deleting..." : "Yes, Delete Order"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ================= ORDER DETAILS MODAL ================= */}
       {selectedOrder && (
@@ -928,7 +1109,7 @@ const Orders = () => {
                 <i className="bi bi-search"></i> Check Courier
               </button>
 
-             
+
 
               {(() => {
                 const pushCheck = canPushToShipmozo(selectedOrder);
