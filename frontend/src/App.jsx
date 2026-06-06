@@ -21,6 +21,8 @@ import LoginModal from "./components/LoginModal";
 import LoadingSpinner from "./components/LoadingSpinner";
 import MobileBottomNav from "./components/MobileBottomNav";
 
+import OrderSuccessPage from "./Pages/OrderSuccessPage/OrderSuccessPage";
+
 // Lazy load page components for faster initial load
 const Home = lazy(() => import("./Pages/Home"));
 const AllProducts = lazy(() => import("./Pages/AllProducts"));
@@ -109,6 +111,7 @@ const AppContent = () => {
             <Route path="/exchange-policy" element={<ExchangePolicy />} />
             <Route path="/terms-and-conditions" element={<TermsOfService />} />
             <Route path="/shipping-policy" element={<ShippingPolicy />} />
+            <Route path="/order-success" element={<OrderSuccessPage />} />
           </Routes>
         </Suspense>
 

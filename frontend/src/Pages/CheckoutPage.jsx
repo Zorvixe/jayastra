@@ -180,7 +180,7 @@ const CheckoutPage = () => {
             showToast("Please select a delivery address", "error");
             return;
         }
-        
+
         const selectedAddress = addresses.find(a => a.id === selectedAddressId);
         if (!selectedAddress) {
             showToast("Selected address not found", "error");
@@ -270,7 +270,7 @@ const CheckoutPage = () => {
     const saveAddressEdit = async () => {
         try {
             const payload = { ...editForm };
-            
+
             // Build full address string from components
             if (!payload.address && payload.house_no && payload.street_area) {
                 payload.address = `${payload.house_no}, ${payload.street_area}`;
@@ -374,16 +374,19 @@ const CheckoutPage = () => {
                         <div className={`checkout-step-box mb-3 ${currentStep < 2 ? 'dimmed' : ''} ${currentStep !== 2 ? 'minimized' : ''}`}>
                             <div className="step-header">
                                 <div className="step-info">
-                                    <span className="step-count">2</span>
-                                    <h6>DELIVERY ADDRESS</h6>
-                                    {selectedAddress && currentStep > 2 && (
-                                        <div className="selection-preview">
-                                            <span>{selectedAddress.name}</span>
-                                            <p>{selectedAddress.house_no}, {selectedAddress.street_area}, {selectedAddress.city}</p>
-                                        </div>
-                                    )}
+                                    <div className={`step-count-wrap ${currentStep === 2 ? 'active' : ''}`}>
+                                        <span className="step-count">2</span>
+                                        <h6>DELIVERY ADDRESS</h6>
+                                    </div>
+                                    {currentStep > 2 && <button className="change-btn" onClick={() => setCurrentStep(2)}>CHANGE</button>}
+
                                 </div>
-                                {currentStep > 2 && <button className="change-btn" onClick={() => setCurrentStep(2)}>CHANGE</button>}
+                                {selectedAddress && currentStep > 2 && (
+                                    <div className="selection-preview">
+                                        <span>{selectedAddress.name}</span>
+                                        <p>{selectedAddress.house_no}, {selectedAddress.street_area}, {selectedAddress.city}</p>
+                                    </div>
+                                )}
                             </div>
 
                             {currentStep === 2 && (
@@ -423,12 +426,12 @@ const CheckoutPage = () => {
                                                         <div className="row g-3">
                                                             <div className="col-md-6">
                                                                 <div className="form-floating mb-2">
-                                                                    <input 
-                                                                        type="text" 
-                                                                        className="form-control" 
-                                                                        placeholder="Full Name" 
-                                                                        value={editForm.name} 
-                                                                        onChange={e => setEditForm({ ...editForm, name: e.target.value })} 
+                                                                    <input
+                                                                        type="text"
+                                                                        className="form-control"
+                                                                        placeholder="Full Name"
+                                                                        value={editForm.name}
+                                                                        onChange={e => setEditForm({ ...editForm, name: e.target.value })}
                                                                         required
                                                                     />
                                                                     <label>Full Name *</label>
@@ -436,12 +439,12 @@ const CheckoutPage = () => {
                                                             </div>
                                                             <div className="col-md-6">
                                                                 <div className="form-floating mb-2">
-                                                                    <input 
-                                                                        type="tel" 
-                                                                        className="form-control" 
-                                                                        placeholder="Phone" 
-                                                                        value={editForm.phone} 
-                                                                        onChange={e => setEditForm({ ...editForm, phone: e.target.value })} 
+                                                                    <input
+                                                                        type="tel"
+                                                                        className="form-control"
+                                                                        placeholder="Phone"
+                                                                        value={editForm.phone}
+                                                                        onChange={e => setEditForm({ ...editForm, phone: e.target.value })}
                                                                         required
                                                                     />
                                                                     <label>Phone Number *</label>
@@ -449,12 +452,12 @@ const CheckoutPage = () => {
                                                             </div>
                                                             <div className="col-md-6">
                                                                 <div className="form-floating mb-2">
-                                                                    <input 
-                                                                        type="text" 
-                                                                        className="form-control" 
-                                                                        placeholder="House No" 
-                                                                        value={editForm.house_no} 
-                                                                        onChange={e => setEditForm({ ...editForm, house_no: e.target.value })} 
+                                                                    <input
+                                                                        type="text"
+                                                                        className="form-control"
+                                                                        placeholder="House No"
+                                                                        value={editForm.house_no}
+                                                                        onChange={e => setEditForm({ ...editForm, house_no: e.target.value })}
                                                                         required
                                                                     />
                                                                     <label>House / Flat No *</label>
@@ -462,12 +465,12 @@ const CheckoutPage = () => {
                                                             </div>
                                                             <div className="col-md-6">
                                                                 <div className="form-floating mb-2">
-                                                                    <input 
-                                                                        type="text" 
-                                                                        className="form-control" 
-                                                                        placeholder="Street" 
-                                                                        value={editForm.street_area} 
-                                                                        onChange={e => setEditForm({ ...editForm, street_area: e.target.value })} 
+                                                                    <input
+                                                                        type="text"
+                                                                        className="form-control"
+                                                                        placeholder="Street"
+                                                                        value={editForm.street_area}
+                                                                        onChange={e => setEditForm({ ...editForm, street_area: e.target.value })}
                                                                         required
                                                                     />
                                                                     <label>Area / Street *</label>
@@ -475,50 +478,50 @@ const CheckoutPage = () => {
                                                             </div>
                                                             <div className="col-md-12">
                                                                 <div className="form-floating mb-2">
-                                                                    <input 
-                                                                        type="text" 
-                                                                        className="form-control" 
-                                                                        placeholder="Landmark" 
-                                                                        value={editForm.landmark} 
-                                                                        onChange={e => setEditForm({ ...editForm, landmark: e.target.value })} 
+                                                                    <input
+                                                                        type="text"
+                                                                        className="form-control"
+                                                                        placeholder="Landmark"
+                                                                        value={editForm.landmark}
+                                                                        onChange={e => setEditForm({ ...editForm, landmark: e.target.value })}
                                                                     />
                                                                     <label>Landmark (Optional)</label>
                                                                 </div>
                                                             </div>
                                                             <div className="col-md-4">
-                                                                <input 
-                                                                    type="text" 
-                                                                    className="form-control p-3 mb-2" 
-                                                                    placeholder="City *" 
-                                                                    value={editForm.city} 
-                                                                    onChange={e => setEditForm({ ...editForm, city: e.target.value })} 
+                                                                <input
+                                                                    type="text"
+                                                                    className="form-control p-3 mb-2"
+                                                                    placeholder="City *"
+                                                                    value={editForm.city}
+                                                                    onChange={e => setEditForm({ ...editForm, city: e.target.value })}
                                                                     required
                                                                 />
                                                             </div>
                                                             <div className="col-md-4">
-                                                                <input 
-                                                                    type="text" 
-                                                                    className="form-control p-3 mb-2" 
-                                                                    placeholder="State *" 
-                                                                    value={editForm.state} 
-                                                                    onChange={e => setEditForm({ ...editForm, state: e.target.value })} 
+                                                                <input
+                                                                    type="text"
+                                                                    className="form-control p-3 mb-2"
+                                                                    placeholder="State *"
+                                                                    value={editForm.state}
+                                                                    onChange={e => setEditForm({ ...editForm, state: e.target.value })}
                                                                     required
                                                                 />
                                                             </div>
                                                             <div className="col-md-4">
-                                                                <input 
-                                                                    type="text" 
-                                                                    className="form-control p-3 mb-2" 
-                                                                    placeholder="Pincode *" 
-                                                                    value={editForm.pincode} 
-                                                                    onChange={e => setEditForm({ ...editForm, pincode: e.target.value })} 
+                                                                <input
+                                                                    type="text"
+                                                                    className="form-control p-3 mb-2"
+                                                                    placeholder="Pincode *"
+                                                                    value={editForm.pincode}
+                                                                    onChange={e => setEditForm({ ...editForm, pincode: e.target.value })}
                                                                     maxLength="6"
                                                                     required
                                                                 />
                                                             </div>
                                                         </div>
-                                                        <button 
-                                                            className="btn-save-address-new w-100 mt-4" 
+                                                        <button
+                                                            className="btn-save-address-new w-100 mt-4"
                                                             onClick={saveAddressEdit}
                                                             disabled={!editForm.name || !editForm.phone || !editForm.house_no || !editForm.street_area || !editForm.city || !editForm.state || !editForm.pincode}
                                                         >
@@ -560,9 +563,9 @@ const CheckoutPage = () => {
                                                 </div>
                                             ))}
                                             <button className="add-address-btn-new" onClick={() => {
-                                                setEditForm({ 
-                                                    name: "", phone: "", address: "", city: "", state: "", pincode: "", type: "HOME", 
-                                                    house_no: "", street_area: "", landmark: "", id: null 
+                                                setEditForm({
+                                                    name: "", phone: "", address: "", city: "", state: "", pincode: "", type: "HOME",
+                                                    house_no: "", street_area: "", landmark: "", id: null
                                                 });
                                                 setIsEditingAddress(true);
                                                 setLocationStep("choice");
@@ -577,8 +580,10 @@ const CheckoutPage = () => {
                         <div className={`checkout-step-box mb-3 ${currentStep < 3 ? 'dimmed' : ''} ${currentStep !== 3 ? 'minimized' : ''}`}>
                             <div className="step-header">
                                 <div className="step-info">
-                                    <span className="step-count">3</span>
-                                    <h6>ORDER SUMMARY</h6>
+                                    <div className={`step-count-wrap ${currentStep === 3 ? 'active' : ''}`}>
+                                        <span className="step-count">3</span>
+                                        <h6>ORDER SUMMARY</h6>
+                                    </div>
                                 </div>
                             </div>
                             {currentStep === 3 && (
@@ -612,9 +617,9 @@ const CheckoutPage = () => {
                                             </div>
                                         ))}
                                     </div>
-                                    <div className="summary-footer d-none d-lg-flex">
-                                        <button 
-                                            className="btn-continue-to-payment" 
+                                    <div className="summary-footer d-none d-lg-none">
+                                        <button
+                                            className="btn-continue-to-payment"
                                             onClick={handleProceedToPayment}
                                             disabled={!selectedAddressId}
                                         >
@@ -659,7 +664,7 @@ const CheckoutPage = () => {
             </div>
 
             {/* MOBILE STICKY FOOTER FOR CHECKOUT */}
-            <div className="mobile-checkout-footer d-lg-none">
+            <div className="mobile-checkout-footer">
                 <div className="price-info">
                     <span className="label">Total Amount</span>
                     <span className="val">₹{finalAmount.toFixed(2)}</span>
@@ -716,8 +721,8 @@ const CheckoutPage = () => {
                             {coupons.length > 0 && <h6 className="available-coupons-title mb-3" style={{ fontSize: '0.9rem', color: '#666', fontWeight: 600 }}>Available Offers</h6>}
 
                             {coupons.map(c => {
-                                const discountAmount = c.discount_type === 'percentage' 
-                                    ? (totalPrice * c.discount_value / 100).toFixed(2) 
+                                const discountAmount = c.discount_type === 'percentage'
+                                    ? (totalPrice * c.discount_value / 100).toFixed(2)
                                     : c.discount_value;
                                 return (
                                     <div key={c.id} className="coupon-item" onClick={() => handleApplyCoupon(c)}>

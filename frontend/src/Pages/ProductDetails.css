@@ -1300,6 +1300,7 @@
   }
 
   .btn-group {
+    margin-bottom: calc( 10.5vh);
     position: fixed;
     bottom: 0;
     left: 0;

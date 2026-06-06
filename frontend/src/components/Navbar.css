@@ -656,6 +656,7 @@
 
 /* Mobile bottom navigation bar */
 .mobile-bottom-nav {
+  margin-top: 100px;
   position: fixed;
   bottom: 0;
   left: 0;

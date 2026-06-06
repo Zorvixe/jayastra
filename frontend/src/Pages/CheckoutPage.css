@@ -134,13 +134,15 @@
 .step-header {
     padding: 15px 24px;
     display: flex;
+    flex-direction: column;
     justify-content: space-between;
-    align-items: center;
     border-bottom: 1px solid #f0f0f0;
 }
 
 .step-info {
     display: flex;
+    flex-direction: row;
+    justify-content: space-between;
     align-items: center;
     gap: 15px;
 }
@@ -163,6 +165,12 @@
     color: #878787;
     font-size: 14px;
     font-weight: 600;
+}
+.step-count-wrap{
+    display: flex;
+    flex-direction: row;
+    justify-content: space-between;
+    gap: 10px;
 }
 
 .checkout-step-box.active .step-header {
@@ -187,7 +195,7 @@
 
 .change-btn {
     background: #fff;
-    border: 1px solid #e0e0e0;
+    border: none;
     color: #8E2139;
     padding: 8px 24px;
     font-weight: 600;
@@ -874,5 +882,14 @@
     .toast-content {
         min-width: unset;
         width: 100%;
+    }
+     .mobile-checkout-footer {
+       margin-bottom: calc(10.5vh); /* Move above keyboard */
+    }
+}
+
+@media (max-width: 400px) {
+    .mobile-checkout-footer {
+       margin-bottom: calc(10.5vh); /* Move above keyboard */
     }
 }
