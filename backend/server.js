@@ -103,187 +103,6 @@ app.use(
   })
 );
 
-// ================= SHIPMOZO WEBHOOK =================
-app.post("/api/webhooks/order-tracking", express.raw({ type: 'application/json' }), async (req, res) => {
-  try {
-    // Get the webhook secret from database
-    const config = await getShipmozoConfig(true);
-    const webhookSecret = config.shipmozo_webhook_secret || process.env.SHIPMOZO_WEBHOOK_SECRET || "JayastraWebhookSecure123";
-
-    // Get signature from headers
-    const apiKey = req.headers['x-api-key'];
-    const rawBody = req.body.toString();
-
-    console.log("📦 Webhook received at:", new Date().toISOString());
-    console.log("Headers:", JSON.stringify(req.headers, null, 2));
-    console.log("Raw body length:", rawBody.length);
-
-    // Verify the API key
-    if (webhookSecret && webhookSecret !== "JayastraWebhookSecure123") {
-      if (apiKey !== webhookSecret) {
-        console.warn("⚠️ Invalid webhook API key received");
-        return res.status(401).json({ success: false, message: "Invalid API key" });
-      } else {
-        console.log("✅ Webhook API key verified");
-      }
-    } else {
-      console.log("⚠️ Webhook secret not configured, accepting any key");
-    }
-
-    let payload;
-    try {
-      payload = JSON.parse(rawBody);
-    } catch (e) {
-      console.error("Failed to parse webhook body:", e.message);
-      return res.status(400).json({ success: false, message: "Invalid JSON" });
-    }
-
-    console.log("📦 Webhook payload:", JSON.stringify(payload, null, 2));
-
-    const { shipment_id, order_id, status, awb_code, event } = payload;
-
-    let dbStatus = null;
-    let eventType = event || payload.status;
-
-    // Map Shipmozo status to your order status
-    if (eventType) {
-      const s = eventType.toLowerCase();
-
-      if (s.includes("pickup") || s.includes("manifest") || s === "pickup_generated") {
-        dbStatus = "Processing";
-      } else if (s.includes("ship") || s === "shipped" || s.includes("transit")) {
-        dbStatus = "Shipped";
-      } else if (s.includes("out for delivery") || s === "out_for_delivery") {
-        dbStatus = "Out for Delivery";
-      } else if (s.includes("delivered") || s === "delivered") {
-        dbStatus = "Delivered";
-      } else if (s.includes("return") || s.includes("rto") || s === "return_to_origin") {
-        dbStatus = "Returned";
-      } else if (s.includes("cancel") || s === "cancelled") {
-        dbStatus = "Cancelled";
-      }
-    }
-
-    // Update order in database
-    if (dbStatus && (shipment_id || order_id)) {
-      let query = "UPDATE orders SET order_status = $1, updated_at = NOW()";
-      let params = [dbStatus];
-      let condition = "";
-      let conditionParam = "";
-
-      if (shipment_id) {
-        condition = " WHERE shipmozo_shipment_id = $2";
-        conditionParam = shipment_id.toString();
-        params.push(conditionParam);
-      } else if (order_id) {
-        condition = " WHERE shipmozo_order_id = $2";
-        conditionParam = order_id.toString();
-        params.push(conditionParam);
-      }
-
-      if (condition) {
-        const result = await pool.query(query + condition, params);
-
-        if (result.rowCount > 0) {
-          console.log(`✅ Updated order status to ${dbStatus} for ${conditionParam}`);
-
-          if (dbStatus === "Delivered") {
-            await pool.query(
-              `UPDATE orders SET payment_status = 'Completed' WHERE ${condition}`,
-              params
-            );
-          }
-
-          io.emit('order_status_updated', {
-            order_id: conditionParam,
-            status: dbStatus,
-            awb_code: awb_code
-          });
-        } else {
-          console.log(`⚠️ No order found with ${conditionParam}`);
-        }
-      }
-    }
-
-    // Update AWB code if provided
-    if (awb_code && shipment_id) {
-      await pool.query(
-        `UPDATE orders SET awb_code = $1 WHERE shipmozo_shipment_id = $2 AND (awb_code IS NULL OR awb_code = '')`,
-        [awb_code, shipment_id.toString()]
-      );
-      console.log(`✅ Updated AWB ${awb_code} for shipment ${shipment_id}`);
-    }
-
-    res.status(200).json({ success: true, message: "Webhook processed" });
-  } catch (error) {
-    console.error("❌ Webhook error:", error);
-    res.status(200).json({ success: false, message: error.message });
-  }
-});
-
-// Test endpoint for webhook
-app.get("/api/webhooks/order-tracking", (req, res) => {
-  res.status(200).json({
-    success: true,
-    message: "Webhook endpoint is working. Use POST method for webhook events.",
-    timestamp: new Date().toISOString()
-  });
-});
-
-app.post("/api/razorpay/webhook", express.raw({ type: 'application/json' }), async (req, res) => {
-  try {
-    const webhookSecret = process.env.RAZORPAY_WEBHOOK_SECRET;
-    const signature = req.headers['x-razorpay-signature'];
-
-    // Get the raw body as string
-    const rawBody = req.body.toString();
-
-    const expectedSignature = crypto
-      .createHmac('sha256', webhookSecret)
-      .update(rawBody)
-      .digest('hex');
-
-    console.log("Webhook received - signature valid:", signature === expectedSignature);
-
-    if (signature !== expectedSignature) {
-      console.error("Invalid webhook signature");
-      return res.status(400).json({ success: false, message: 'Invalid webhook signature' });
-    }
-
-    const event = JSON.parse(rawBody);
-    console.log("Webhook event:", event.event);
-
-    if (event.event === 'payment.captured') {
-      const payment = event.payload.payment.entity;
-      const orderId = payment.order_id;
-      const paymentId = payment.id;
-
-      // Update order payment status
-      await pool.query(
-        `UPDATE orders 
-         SET payment_status = 'Completed', 
-             razorpay_payment_id = $1, 
-             updated_at = NOW() 
-         WHERE razorpay_order_id = $2 AND payment_status != 'Completed'`,
-        [paymentId, orderId]
-      );
-
-      console.log(`✅ Payment captured for order: ${orderId}`);
-    }
-
-    if (event.event === 'payment.failed') {
-      const payment = event.payload.payment.entity;
-      console.log(`❌ Payment failed for order: ${payment.order_id}`);
-      // Optionally update order status
-    }
-
-    res.json({ success: true });
-  } catch (error) {
-    console.error("Webhook error:", error);
-    res.status(500).json({ success: false, message: error.message });
-  }
-});
-
 
 app.use(express.json({ limit: '50mb' }));
 
@@ -487,49 +306,15 @@ const verifyAdminVendorIndividualAccess = (req, res, next) => {
 };
 
 // ================= DATABASE INIT =================
-// ================= DATABASE INIT =================
 const initDatabase = async () => {
   try {
-    // 1. Create settings table FIRST (before any other tables that might need it)
-    await pool.query(`
-      CREATE TABLE IF NOT EXISTS settings(
-        id SERIAL PRIMARY KEY,
-        key VARCHAR(100) UNIQUE NOT NULL,
-        value TEXT NOT NULL,
-        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-      )
-    `);
-    console.log("✅ Settings table created/verified");
-
-    // 2. Insert default settings if they don't exist
-    const defaultSettings = [
-      { key: 'platform_fee_percent', value: '10.00' },
-      { key: 'online_payment_discount', value: '0' },
-      { key: 'cod_fee', value: '0' },
-      { key: 'razorpay_key_id', value: '' },
-      { key: 'razorpay_key_secret', value: '' },
-      { key: 'shipmozo_username', value: '' },
-      { key: 'shipmozo_password', value: '' },
-      { key: 'shipmozo_pickup_pincode', value: '518508' },
-      { key: 'shipmozo_webhook_secret', value: '' }
-    ];
-
-    for (const setting of defaultSettings) {
-      await pool.query(`
-        INSERT INTO settings(key, value)
-        VALUES($1, $2)
-        ON CONFLICT(key) DO NOTHING
-      `, [setting.key, setting.value]);
-    }
-    console.log("✅ Default settings inserted");
-
-    // 3. users table
+    // 1. users
     await pool.query(`
       CREATE TABLE IF NOT EXISTS users (
         id SERIAL PRIMARY KEY,
         name VARCHAR(255) NOT NULL,
-        email VARCHAR(255) UNIQUE,
-        password TEXT,
+        email VARCHAR(255) UNIQUE NOT NULL,
+        password TEXT NOT NULL,
         role VARCHAR(20) DEFAULT 'user',
         phone VARCHAR(20),
         status VARCHAR(20) DEFAULT 'Active',
@@ -568,7 +353,8 @@ const initDatabase = async () => {
         ADD COLUMN IF NOT EXISTS pickup_location_name VARCHAR(255)
       `);
 
-    // 4. vendor_pickup_addresses
+
+
     await pool.query(`
         CREATE TABLE IF NOT EXISTS vendor_pickup_addresses (
           id SERIAL PRIMARY KEY,
@@ -594,12 +380,11 @@ const initDatabase = async () => {
       `);
 
     await pool.query(`
-      ALTER TABLE vendor_pickup_addresses 
-      ADD COLUMN IF NOT EXISTS shipmozo_pickup_id VARCHAR(100),
-      ADD COLUMN IF NOT EXISTS shipmozo_synced BOOLEAN DEFAULT false
-    `);
-
-    // 5. addresses
+    ALTER TABLE vendor_pickup_addresses 
+    ADD COLUMN IF NOT EXISTS shiprocket_pickup_id VARCHAR(100),
+    ADD COLUMN IF NOT EXISTS shiprocket_synced BOOLEAN DEFAULT false
+  `);
+    // 2. addresses
     await pool.query(`
       CREATE TABLE IF NOT EXISTS addresses(
         id SERIAL PRIMARY KEY,
@@ -621,21 +406,21 @@ const initDatabase = async () => {
       ALTER TABLE addresses 
       ADD COLUMN IF NOT EXISTS house_no VARCHAR(255),
       ADD COLUMN IF NOT EXISTS street_area VARCHAR(255),
-      ADD COLUMN IF NOT EXISTS landmark VARCHAR(255);
+        ADD COLUMN IF NOT EXISTS landmark VARCHAR(255);
     `);
 
-    // 6. categories
+    // 3. categories
     await pool.query(`
       CREATE TABLE IF NOT EXISTS categories(
-        id SERIAL PRIMARY KEY,
-        name VARCHAR(255) UNIQUE NOT NULL,
-        description TEXT,
-        image_url VARCHAR(500),
-        is_active BOOLEAN DEFAULT true,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-      )
-    `);
+      id SERIAL PRIMARY KEY,
+      name VARCHAR(255) UNIQUE NOT NULL,
+      description TEXT,
+      image_url VARCHAR(500),
+      is_active BOOLEAN DEFAULT true,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )
+      `);
     await pool.query(`
       ALTER TABLE categories 
       ADD COLUMN IF NOT EXISTS image_url VARCHAR(500),
@@ -643,83 +428,87 @@ const initDatabase = async () => {
     `);
 
     await pool.query(`ALTER TABLE categories ADD COLUMN IF NOT EXISTS slug VARCHAR(255) UNIQUE; `);
-    await pool.query(`
-      ALTER TABLE categories 
-      ADD COLUMN IF NOT EXISTS show_in_navbar BOOLEAN DEFAULT true,
-      ADD COLUMN IF NOT EXISTS nav_order INTEGER DEFAULT 0
-    `);
 
-    // 7. sub_categories
+    // 4. sub_categories
     await pool.query(`
       CREATE TABLE IF NOT EXISTS sub_categories(
-        id SERIAL PRIMARY KEY,
-        name VARCHAR(255) NOT NULL,
-        category_id INTEGER REFERENCES categories(id) ON DELETE CASCADE,
-        description TEXT,
-        is_active BOOLEAN DEFAULT true,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        UNIQUE(name, category_id)
-      )
-    `);
+      id SERIAL PRIMARY KEY,
+      name VARCHAR(255) NOT NULL,
+      category_id INTEGER REFERENCES categories(id) ON DELETE CASCADE,
+      description TEXT,
+      is_active BOOLEAN DEFAULT true,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      UNIQUE(name, category_id)
+    )
+      `);
     await pool.query(`
       ALTER TABLE sub_categories 
       ADD COLUMN IF NOT EXISTS vendor_id INTEGER REFERENCES users(id) ON DELETE CASCADE;
     `);
 
-    // 8. products
+    // Add this inside your initDatabase() function, after creating categories table
+    await pool.query(`
+      ALTER TABLE categories 
+      ADD COLUMN IF NOT EXISTS show_in_navbar BOOLEAN DEFAULT true,
+      ADD COLUMN IF NOT EXISTS nav_order INTEGER DEFAULT 0
+        `);
+
+    // 5. products
     await pool.query(`
       CREATE TABLE IF NOT EXISTS products(
-        id SERIAL PRIMARY KEY,
-        name VARCHAR(255) NOT NULL,
-        description TEXT,
-        old_price DECIMAL(10, 2),
-        price DECIMAL(10, 2) NOT NULL,
-        category_id INTEGER REFERENCES categories(id) ON DELETE SET NULL,
-        sub_category_id INTEGER REFERENCES sub_categories(id) ON DELETE SET NULL,
-        main_image_url VARCHAR(500),
-        video_url VARCHAR(500),
-        sku VARCHAR(100) UNIQUE,
-        stock_quantity INTEGER DEFAULT 0,
-        is_featured BOOLEAN DEFAULT false,
-        is_active BOOLEAN DEFAULT true,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        vendor_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
-        platform_fee_percent DECIMAL(5, 2) DEFAULT 10.00
-      )
-    `);
+          id SERIAL PRIMARY KEY,
+          name VARCHAR(255) NOT NULL,
+          description TEXT,
+          old_price DECIMAL(10, 2),
+          price DECIMAL(10, 2) NOT NULL,
+          category_id INTEGER REFERENCES categories(id) ON DELETE SET NULL,
+          sub_category_id INTEGER REFERENCES sub_categories(id) ON DELETE SET NULL,
+          main_image_url VARCHAR(500),
+          video_url VARCHAR(500),
+          sku VARCHAR(100) UNIQUE,
+          stock_quantity INTEGER DEFAULT 0,
+          is_featured BOOLEAN DEFAULT false,
+          is_active BOOLEAN DEFAULT true,
+          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+          updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+          vendor_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+          platform_fee_percent DECIMAL(5, 2) DEFAULT 10.00
+        )
+      `);
     await pool.query(`
       ALTER TABLE products 
+      ADD COLUMN IF NOT EXISTS video_url VARCHAR(500),
       ADD COLUMN IF NOT EXISTS color VARCHAR(50),
-      ADD COLUMN IF NOT EXISTS product_code VARCHAR(100) UNIQUE,
-      ADD COLUMN IF NOT EXISTS weight DECIMAL(10, 2) DEFAULT 0.7,
-      ADD COLUMN IF NOT EXISTS length DECIMAL(10, 2) DEFAULT 30,
-      ADD COLUMN IF NOT EXISTS width DECIMAL(10, 2) DEFAULT 20,
-      ADD COLUMN IF NOT EXISTS height DECIMAL(10, 2) DEFAULT 5,
-      ADD COLUMN IF NOT EXISTS platform_fee_percent DECIMAL(5, 2) DEFAULT 10.00
+        ADD COLUMN IF NOT EXISTS product_code VARCHAR(100) UNIQUE,
+          ADD COLUMN IF NOT EXISTS weight DECIMAL(10, 2) DEFAULT 0.7,
+            ADD COLUMN IF NOT EXISTS length DECIMAL(10, 2) DEFAULT 30,
+              ADD COLUMN IF NOT EXISTS width DECIMAL(10, 2) DEFAULT 20,
+                ADD COLUMN IF NOT EXISTS height DECIMAL(10, 2) DEFAULT 5,
+                  ADD COLUMN IF NOT EXISTS vendor_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+                    ADD COLUMN IF NOT EXISTS platform_fee_percent DECIMAL(5, 2) DEFAULT 10.00
     `);
 
     await pool.query(`CREATE EXTENSION IF NOT EXISTS "pgcrypto"; `);
     await pool.query(`
-      ALTER TABLE products 
-      ADD COLUMN IF NOT EXISTS uuid UUID DEFAULT gen_random_uuid() NOT NULL UNIQUE
-    `);
+          ALTER TABLE products 
+          ADD COLUMN IF NOT EXISTS uuid UUID DEFAULT gen_random_uuid() NOT NULL UNIQUE
+        `);
     await pool.query(`CREATE INDEX IF NOT EXISTS idx_products_uuid ON products(uuid)`);
     await pool.query(`UPDATE products SET uuid = gen_random_uuid() WHERE uuid IS NULL`);
 
-    // 9. product_images
+    // 6. product_images
     await pool.query(`
       CREATE TABLE IF NOT EXISTS product_images(
-        id SERIAL PRIMARY KEY,
-        product_id INTEGER REFERENCES products(id) ON DELETE CASCADE,
-        image_url VARCHAR(500) NOT NULL,
-        display_order INTEGER DEFAULT 0,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-      )
-    `);
+                      id SERIAL PRIMARY KEY,
+                      product_id INTEGER REFERENCES products(id) ON DELETE CASCADE,
+                      image_url VARCHAR(500) NOT NULL,
+                      display_order INTEGER DEFAULT 0,
+                      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                    )
+      `);
 
-    // 10. cart_items
+    // 7. cart_items
     await pool.query(`
       CREATE TABLE IF NOT EXISTS cart_items(
         id SERIAL PRIMARY KEY,
@@ -729,9 +518,9 @@ const initDatabase = async () => {
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         UNIQUE(user_id, product_id)
       )
-    `);
+      `);
 
-    // 11. wishlist
+    // 8. wishlist
     await pool.query(`
       CREATE TABLE IF NOT EXISTS wishlist(
         id SERIAL PRIMARY KEY,
@@ -740,9 +529,9 @@ const initDatabase = async () => {
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         UNIQUE(user_id, product_id)
       )
-    `);
+      `);
 
-    // 12. coupons 
+    // 9. coupons 
     await pool.query(`
       CREATE TABLE IF NOT EXISTS coupons(
         id SERIAL PRIMARY KEY,
@@ -762,91 +551,91 @@ const initDatabase = async () => {
     await pool.query(`ALTER TABLE coupons ADD COLUMN IF NOT EXISTS is_hidden BOOLEAN DEFAULT false; `);
     await pool.query(`ALTER TABLE coupons ADD COLUMN IF NOT EXISTS vendor_id INTEGER REFERENCES users(id) ON DELETE CASCADE; `);
 
-    // 13. orders 
+    // 10. orders 
     await pool.query(`
       CREATE TABLE IF NOT EXISTS orders(
-        id SERIAL PRIMARY KEY,
-        user_id INTEGER REFERENCES users(id),
-        customer_name VARCHAR(255) NOT NULL,
-        email VARCHAR(255),
-        phone VARCHAR(20) NOT NULL,
-        address TEXT NOT NULL,
-        total_amount DECIMAL(10, 2) NOT NULL,
-        status VARCHAR(50) DEFAULT 'Pending',
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-      )
-    `);
+      id SERIAL PRIMARY KEY,
+      user_id INTEGER REFERENCES users(id),
+      customer_name VARCHAR(255) NOT NULL,
+      email VARCHAR(255),
+      phone VARCHAR(20) NOT NULL,
+      address TEXT NOT NULL,
+      total_amount DECIMAL(10, 2) NOT NULL,
+      status VARCHAR(50) DEFAULT 'Pending',
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )
+      `);
     await pool.query(`
       ALTER TABLE orders 
       ADD COLUMN IF NOT EXISTS discount DECIMAL(10, 2) DEFAULT 0,
       ADD COLUMN IF NOT EXISTS coupon_id INTEGER REFERENCES coupons(id),
-      ADD COLUMN IF NOT EXISTS payment_method VARCHAR(50) DEFAULT 'COD',
-      ADD COLUMN IF NOT EXISTS payment_status VARCHAR(50) DEFAULT 'Pending',
-      ADD COLUMN IF NOT EXISTS order_status VARCHAR(50) DEFAULT 'Placed',
-      ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-      ADD COLUMN IF NOT EXISTS shipmozo_order_id VARCHAR(100),
-      ADD COLUMN IF NOT EXISTS shipmozo_shipment_id VARCHAR(100),
-      ADD COLUMN IF NOT EXISTS awb_code VARCHAR(100),
-      ADD COLUMN IF NOT EXISTS house_no VARCHAR(255),
-      ADD COLUMN IF NOT EXISTS street_area VARCHAR(255),
-      ADD COLUMN IF NOT EXISTS landmark VARCHAR(255),
-      ADD COLUMN IF NOT EXISTS razorpay_order_id VARCHAR(255),
-      ADD COLUMN IF NOT EXISTS razorpay_payment_id VARCHAR(255),
-      ADD COLUMN IF NOT EXISTS city VARCHAR(100),
-      ADD COLUMN IF NOT EXISTS state VARCHAR(100),
-      ADD COLUMN IF NOT EXISTS pincode VARCHAR(10),
-      ADD COLUMN IF NOT EXISTS country VARCHAR(50) DEFAULT 'India'
+        ADD COLUMN IF NOT EXISTS payment_method VARCHAR(50) DEFAULT 'COD',
+          ADD COLUMN IF NOT EXISTS payment_status VARCHAR(50) DEFAULT 'Pending',
+            ADD COLUMN IF NOT EXISTS order_status VARCHAR(50) DEFAULT 'Placed',
+              ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                ADD COLUMN IF NOT EXISTS shiprocket_order_id VARCHAR(100),
+                  ADD COLUMN IF NOT EXISTS shiprocket_shipment_id VARCHAR(100),
+                    ADD COLUMN IF NOT EXISTS awb_code VARCHAR(100),
+                      ADD COLUMN IF NOT EXISTS house_no VARCHAR(255),
+                        ADD COLUMN IF NOT EXISTS street_area VARCHAR(255),
+                          ADD COLUMN IF NOT EXISTS landmark VARCHAR(255),
+                            ADD COLUMN IF NOT EXISTS razorpay_order_id VARCHAR(255),
+                              ADD COLUMN IF NOT EXISTS razorpay_payment_id VARCHAR(255),
+                                ADD COLUMN IF NOT EXISTS city VARCHAR(100),
+                                  ADD COLUMN IF NOT EXISTS state VARCHAR(100),
+                                    ADD COLUMN IF NOT EXISTS pincode VARCHAR(10),
+                                      ADD COLUMN IF NOT EXISTS country VARCHAR(50) DEFAULT 'India';
     `);
 
-    // 14. order_items
+    // 11. order_items
     await pool.query(`
       CREATE TABLE IF NOT EXISTS order_items(
-        id SERIAL PRIMARY KEY,
-        order_id INTEGER REFERENCES orders(id) ON DELETE CASCADE,
-        product_id INTEGER REFERENCES products(id),
-        quantity INTEGER NOT NULL,
-        price DECIMAL(10, 2) NOT NULL,
-        vendor_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
-        vendor_earning DECIMAL(10, 2) DEFAULT 0
-      )
-    `);
+      id SERIAL PRIMARY KEY,
+      order_id INTEGER REFERENCES orders(id) ON DELETE CASCADE,
+      product_id INTEGER REFERENCES products(id),
+      quantity INTEGER NOT NULL,
+      price DECIMAL(10, 2) NOT NULL,
+      vendor_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+      vendor_earning DECIMAL(10, 2) DEFAULT 0
+    )
+      `);
     await pool.query(`
       ALTER TABLE order_items 
       ADD COLUMN IF NOT EXISTS vendor_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
       ADD COLUMN IF NOT EXISTS vendor_earning DECIMAL(10, 2) DEFAULT 0;
     `);
 
-    // 15. payouts
+    // PAYOUTS
     await pool.query(`
       CREATE TABLE IF NOT EXISTS payouts(
-        id SERIAL PRIMARY KEY,
-        vendor_id INTEGER REFERENCES users(id),
-        amount DECIMAL(10, 2) NOT NULL,
-        status VARCHAR(50) DEFAULT 'Pending',
-        bank_details TEXT,
-        requested_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        processed_at TIMESTAMP
-      );
+      id SERIAL PRIMARY KEY,
+      vendor_id INTEGER REFERENCES users(id),
+      amount DECIMAL(10, 2) NOT NULL,
+      status VARCHAR(50) DEFAULT 'Pending',
+      bank_details TEXT,
+      requested_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      processed_at TIMESTAMP
+    );
     `);
 
     await pool.query(`
       ALTER TABLE payouts 
       ADD COLUMN IF NOT EXISTS rejection_reason TEXT,
       ADD COLUMN IF NOT EXISTS cancellation_reason TEXT,
-      ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-    `);
+        ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+          `);
 
-    // 16. inventory
+    // 12. inventory
     await pool.query(`
       CREATE TABLE IF NOT EXISTS inventory(
-        id SERIAL PRIMARY KEY,
-        product_id INTEGER REFERENCES products(id) ON DELETE CASCADE,
-        stock_quantity INTEGER DEFAULT 0,
-        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-      )
-    `);
+            id SERIAL PRIMARY KEY,
+            product_id INTEGER REFERENCES products(id) ON DELETE CASCADE,
+            stock_quantity INTEGER DEFAULT 0,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+          )
+      `);
 
-    // 17. banners
+    // 13. banners
     await pool.query(`
       CREATE TABLE IF NOT EXISTS banners(
         id SERIAL PRIMARY KEY,
@@ -866,7 +655,7 @@ const initDatabase = async () => {
     await pool.query(`ALTER TABLE banners ADD COLUMN IF NOT EXISTS category_id INTEGER REFERENCES categories(id) ON DELETE SET NULL; `);
     await pool.query(`ALTER TABLE banners ADD COLUMN IF NOT EXISTS vendor_id INTEGER REFERENCES users(id) ON DELETE CASCADE; `);
 
-    // 18. reviews
+    // 14. reviews
     await pool.query(`
       CREATE TABLE IF NOT EXISTS reviews(
         id SERIAL PRIMARY KEY,
@@ -876,35 +665,35 @@ const initDatabase = async () => {
         comment TEXT,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       )
-    `);
+      `);
     await pool.query(`
       ALTER TABLE reviews 
       ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
       ADD COLUMN IF NOT EXISTS images TEXT[],
-      ADD COLUMN IF NOT EXISTS status VARCHAR(20) DEFAULT 'approved'
+        ADD COLUMN IF NOT EXISTS status VARCHAR(20) DEFAULT 'approved';
     `);
     await pool.query(`
       ALTER TABLE reviews 
       DROP CONSTRAINT IF EXISTS unique_user_product_review,
       ADD CONSTRAINT unique_user_product_review UNIQUE(user_id, product_id)
-    `);
+        `);
 
-    // 19. returns
+    // 15. returns
     await pool.query(`
       CREATE TABLE IF NOT EXISTS returns(
-        id SERIAL PRIMARY KEY,
-        order_id INTEGER REFERENCES orders(id) ON DELETE CASCADE,
-        user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
-        video_url VARCHAR(500) NOT NULL,
-        reason TEXT,
-        status VARCHAR(50) DEFAULT 'Pending',
-        admin_comment TEXT,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-      )
-    `);
+          id SERIAL PRIMARY KEY,
+          order_id INTEGER REFERENCES orders(id) ON DELETE CASCADE,
+          user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+          video_url VARCHAR(500) NOT NULL,
+          reason TEXT,
+          status VARCHAR(50) DEFAULT 'Pending',
+          admin_comment TEXT,
+          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+          updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+      `);
 
-    // 20. menus & menu_items
+    // 16. menus & menu_items
     await pool.query(`
       CREATE TABLE IF NOT EXISTS menus(
         id SERIAL PRIMARY KEY,
@@ -912,7 +701,7 @@ const initDatabase = async () => {
         slug VARCHAR(255) UNIQUE NOT NULL,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       )
-    `);
+      `);
     await pool.query(`
       CREATE TABLE IF NOT EXISTS menu_items(
         id SERIAL PRIMARY KEY,
@@ -924,9 +713,9 @@ const initDatabase = async () => {
         is_active BOOLEAN DEFAULT true,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       )
-    `);
+      `);
 
-    // 21. stock_notifications
+    // 17. stock_notifications
     await pool.query(`
       CREATE TABLE IF NOT EXISTS stock_notifications(
         id SERIAL PRIMARY KEY,
@@ -938,38 +727,40 @@ const initDatabase = async () => {
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         UNIQUE(user_id, product_id, email, phone)
       )
-    `);
+      `);
     await pool.query(`
       DO $$
-      BEGIN 
-          IF NOT EXISTS(SELECT 1 FROM information_schema.columns WHERE table_name = 'stock_notifications' AND column_name = 'customer_name') THEN
-              ALTER TABLE stock_notifications ADD COLUMN customer_name VARCHAR(255);
-          END IF;
+    BEGIN 
+        IF NOT EXISTS(SELECT 1 FROM information_schema.columns WHERE table_name = 'stock_notifications' AND column_name = 'customer_name') THEN
+          ALTER TABLE stock_notifications ADD COLUMN customer_name VARCHAR(255);
+        END IF;
       END $$;
     `);
     await pool.query(`ALTER TABLE stock_notifications ADD COLUMN IF NOT EXISTS vendor_id INTEGER REFERENCES users(id); `);
 
-    // 22. wallet_transactions
+
     await pool.query(`
       CREATE TABLE IF NOT EXISTS wallet_transactions(
-        id SERIAL PRIMARY KEY,
-        vendor_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
-        transaction_type VARCHAR(50) NOT NULL,
+      id SERIAL PRIMARY KEY,
+      vendor_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+      transaction_type VARCHAR(50) NOT NULL, -- 'credit', 'debit'
         amount DECIMAL(10, 2) NOT NULL,
-        status VARCHAR(50) DEFAULT 'completed',
-        description TEXT,
-        order_id INTEGER REFERENCES orders(id),
-        payout_id INTEGER REFERENCES payouts(id),
-        platform_fee DECIMAL(10, 2) DEFAULT 0,
-        coupon_discount_applied DECIMAL(10, 2) DEFAULT 0,
-        original_amount DECIMAL(10, 2),
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-      )
-    `);
+      status VARCHAR(50) DEFAULT 'completed',
+      description TEXT,
+      order_id INTEGER REFERENCES orders(id),
+      payout_id INTEGER REFERENCES payouts(id),
+      platform_fee DECIMAL(10, 2) DEFAULT 0,
+      coupon_discount_applied DECIMAL(10, 2) DEFAULT 0,
+      original_amount DECIMAL(10, 2),
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )
+      `);
 
-    // 23. user_pins
+
+    // Add PIN verification table for users
+    // Add PIN verification table for users
     await pool.query(`
-      CREATE TABLE IF NOT EXISTS user_pins(
+  CREATE TABLE IF NOT EXISTS user_pins(
         id SERIAL PRIMARY KEY,
         user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
         pin_hash TEXT NOT NULL,
@@ -978,11 +769,11 @@ const initDatabase = async () => {
         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         UNIQUE(user_id)
       )
-    `);
+      `);
 
-    // 24. pin_login_attempts
+    // Add PIN login attempts tracking for security
     await pool.query(`
-      CREATE TABLE IF NOT EXISTS pin_login_attempts(
+  CREATE TABLE IF NOT EXISTS pin_login_attempts(
         id SERIAL PRIMARY KEY,
         user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
         attempt_count INTEGER DEFAULT 0,
@@ -990,23 +781,62 @@ const initDatabase = async () => {
         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         UNIQUE(user_id)
       )
-    `);
+      `);
 
-    // 25. vendor_bank_accounts
+    // Add this inside your initDatabase() function, after existing settings insertion
+
+    // Add Shiprocket settings if not exists
     await pool.query(`
-      CREATE TABLE IF NOT EXISTS vendor_bank_accounts(
+  INSERT INTO settings(key, value)
+    VALUES
+      ('shiprocket_email', ''),
+      ('shiprocket_password', ''),
+      ('shiprocket_pickup_pincode', ''),
+      ('shiprocket_webhook_secret', '')
+  ON CONFLICT(key) DO NOTHING
+      `);
+
+
+
+    // SETTINGS TABLE
+    await pool.query(`
+          CREATE TABLE IF NOT EXISTS settings(
         id SERIAL PRIMARY KEY,
-        vendor_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
-        bank_details TEXT NOT NULL,
-        is_default BOOLEAN DEFAULT false,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        key VARCHAR(100) UNIQUE NOT NULL,
+        value TEXT NOT NULL,
         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       )
-    `);
+      `);
 
-    console.log("✅ All database tables created/verified");
+    await pool.query(`
+        INSERT INTO settings(key, value)
+    VALUES('platform_fee_percent', '10.00')
+        ON CONFLICT(key) DO NOTHING
+      `);
 
-    // SILENT SEED - Create super admin if not exists
+    // In initDatabase() function, add these settings if not exists
+    await pool.query(`
+      INSERT INTO settings(key, value)
+    VALUES
+      ('razorpay_key_id', ''),
+      ('razorpay_key_secret', '')
+      ON CONFLICT(key) DO NOTHING
+      `);
+
+    const defaultSettings = [
+      { key: 'online_payment_discount', value: '0' },
+      { key: 'cod_fee', value: '0' }
+    ];
+
+    for (const setting of defaultSettings) {
+      await pool.query(`
+        INSERT INTO settings(key, value)
+    VALUES($1, $2)
+        ON CONFLICT(key) DO NOTHING
+      `, [setting.key, setting.value]);
+    }
+
+    // SILENT SEED
     const adminEmail = (process.env.ADMIN_EMAIL || "admin@example.com").toLowerCase().trim();
     const defaultAdminPassword = process.env.DEFAULT_ADMIN_PASSWORD || "Admin@123";
 
@@ -1024,18 +854,15 @@ const initDatabase = async () => {
       const hashedPassword = await bcrypt.hash(defaultAdminPassword, 10);
       await pool.query(`
         INSERT INTO users(name, email, password, role, status)
-        VALUES($1, $2, $3, $4, $5)
+    VALUES($1, $2, $3, $4, $5)
       `, ["Super Admin", adminEmail, hashedPassword, "super_admin", "Active"]);
-      console.log(`✅ Super Admin created: ${adminEmail}`);
     }
-
-    console.log("✅ Database initialization complete!");
 
   } catch (error) {
     console.error("❌ Database initialization error:", error);
-    throw error; // Re-throw to ensure server doesn't start with broken DB
   }
 };
+
 // ================= AUTH ROUTES =================
 // ================= REGISTRATION ENDPOINT WITH PIN =================
 app.post("/api/auth/register", async (req, res) => {
@@ -2010,7 +1837,7 @@ app.get("/api/vendor/pickup-addresses", verifyToken, async (req, res) => {
   }
 });
 
-// Create pickup address and sync with Shipmozo
+// Create pickup address and sync with Shiprocket
 app.post("/api/vendor/pickup-addresses", verifyToken, async (req, res) => {
   const client = await pool.connect();
   try {
@@ -2042,12 +1869,12 @@ app.post("/api/vendor/pickup-addresses", verifyToken, async (req, res) => {
     
     const newAddress = result.rows[0];
     
-    // Sync with Shipmozo
-    let shipmozoPickupId = null;
-    let shipmozoError = null;
+    // Sync with Shiprocket
+    let shiprocketPickupId = null;
+    let shiprocketError = null;
     
     try {
-      const token = await authenticateShipmozo();
+      const token = await authenticateShiprocket();
       
       const payload = {
         pickup_location: location_name,
@@ -2062,7 +1889,7 @@ app.post("/api/vendor/pickup-addresses", verifyToken, async (req, res) => {
         country: "India"
       };
       
-      const response = await fetch("https://api.shipmozo.com/v1/settings/company/pickup", {
+      const response = await fetch("https://apiv2.shiprocket.in/v1/external/settings/company/pickup", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -2071,26 +1898,26 @@ app.post("/api/vendor/pickup-addresses", verifyToken, async (req, res) => {
         body: JSON.stringify(payload)
       });
       
-      const shipmozoResult = await response.json();
+      const shiprocketResult = await response.json();
       
-      if (response.ok && (shipmozoResult.success || shipmozoResult.data)) {
-        shipmozoPickupId = shipmozoResult.data?.id || shipmozoResult.data?.pickup_location_id;
+      if (response.ok && (shiprocketResult.success || shiprocketResult.data)) {
+        shiprocketPickupId = shiprocketResult.data?.id || shiprocketResult.data?.pickup_location_id;
         
-        if (shipmozoPickupId) {
+        if (shiprocketPickupId) {
           await client.query(
             `UPDATE vendor_pickup_addresses 
-             SET shipmozo_pickup_id = $1, shipmozo_synced = true, updated_at = NOW() 
+             SET shiprocket_pickup_id = $1, shiprocket_synced = true, updated_at = NOW() 
              WHERE id = $2`,
-            [shipmozoPickupId.toString(), newAddress.id]
+            [shiprocketPickupId.toString(), newAddress.id]
           );
-          newAddress.shipmozo_pickup_id = shipmozoPickupId;
-          newAddress.shipmozo_synced = true;
+          newAddress.shiprocket_pickup_id = shiprocketPickupId;
+          newAddress.shiprocket_synced = true;
         }
       } else {
-        shipmozoError = shipmozoResult.message || "Failed to create in Shipmozo";
+        shiprocketError = shiprocketResult.message || "Failed to create in Shiprocket";
       }
     } catch (err) {
-      shipmozoError = err.message;
+      shiprocketError = err.message;
     }
     
     await client.query("COMMIT");
@@ -2098,10 +1925,10 @@ app.post("/api/vendor/pickup-addresses", verifyToken, async (req, res) => {
     res.json({ 
       success: true, 
       address: newAddress,
-      shipmozo_synced: !!shipmozoPickupId,
-      shipmozo_pickup_id: shipmozoPickupId,
-      shipmozo_error: shipmozoError || null,
-      message: shipmozoPickupId ? "Address created and synced with Shipmozo!" : "Address created but Shipmozo sync failed."
+      shiprocket_synced: !!shiprocketPickupId,
+      shiprocket_pickup_id: shiprocketPickupId,
+      shiprocket_error: shiprocketError || null,
+      message: shiprocketPickupId ? "Address created and synced with Shiprocket!" : "Address created but Shiprocket sync failed."
     });
     
   } catch (error) {
@@ -2113,7 +1940,7 @@ app.post("/api/vendor/pickup-addresses", verifyToken, async (req, res) => {
   }
 });
 
-// Update pickup address and sync with Shipmozo
+// Update pickup address and sync with Shiprocket
 app.put("/api/vendor/pickup-addresses/:id", verifyToken, async (req, res) => {
   const client = await pool.connect();
   try {
@@ -2122,7 +1949,7 @@ app.put("/api/vendor/pickup-addresses/:id", verifyToken, async (req, res) => {
 
     // Check ownership
     const check = await client.query(
-      `SELECT id, shipmozo_pickup_id FROM vendor_pickup_addresses WHERE id = $1 AND vendor_id = $2`,
+      `SELECT id, shiprocket_pickup_id FROM vendor_pickup_addresses WHERE id = $1 AND vendor_id = $2`,
       [id, req.user.id]
     );
     if (check.rows.length === 0) {
@@ -2130,7 +1957,7 @@ app.put("/api/vendor/pickup-addresses/:id", verifyToken, async (req, res) => {
     }
 
     const oldAddress = check.rows[0];
-    const hasShipmozoId = oldAddress.shipmozo_pickup_id;
+    const hasShiprocketId = oldAddress.shiprocket_pickup_id;
 
     await client.query("BEGIN");
 
@@ -2157,13 +1984,13 @@ app.put("/api/vendor/pickup-addresses/:id", verifyToken, async (req, res) => {
     );
     
     const updatedAddress = result.rows[0];
-    let shipmozoUpdated = false;
-    let shipmozoError = null;
+    let shiprocketUpdated = false;
+    let shiprocketError = null;
     
-    // Update in Shipmozo if it has an ID
-    if (hasShipmozoId) {
+    // Update in Shiprocket if it has an ID
+    if (hasShiprocketId) {
       try {
-        const token = await authenticateShipmozo();
+        const token = await authenticateShiprocket();
         
         const payload = {
           pickup_location: location_name,
@@ -2178,7 +2005,9 @@ app.put("/api/vendor/pickup-addresses/:id", verifyToken, async (req, res) => {
           country: "India"
         };
         
-        const response = await fetch(`https://api.shipmozo.com/v1/settings/company/pickup/${hasShipmozoId}`, {
+        // Shiprocket doesn't have a direct PUT endpoint, so we need to update by creating new and deleting old
+        // Or we can use their edit endpoint if available
+        const response = await fetch(`https://apiv2.shiprocket.in/v1/external/settings/company/pickup/${hasShiprocketId}`, {
           method: "PUT",
           headers: {
             "Content-Type": "application/json",
@@ -2188,17 +2017,17 @@ app.put("/api/vendor/pickup-addresses/:id", verifyToken, async (req, res) => {
         });
         
         if (response.ok) {
-          shipmozoUpdated = true;
+          shiprocketUpdated = true;
           await client.query(
-            `UPDATE vendor_pickup_addresses SET shipmozo_synced = true WHERE id = $1`,
+            `UPDATE vendor_pickup_addresses SET shiprocket_synced = true WHERE id = $1`,
             [id]
           );
         } else {
           const errorData = await response.json();
-          shipmozoError = errorData.message || "Failed to update in Shipmozo";
+          shiprocketError = errorData.message || "Failed to update in Shiprocket";
         }
       } catch (err) {
-        shipmozoError = err.message;
+        shiprocketError = err.message;
       }
     }
     
@@ -2207,9 +2036,9 @@ app.put("/api/vendor/pickup-addresses/:id", verifyToken, async (req, res) => {
     res.json({ 
       success: true, 
       address: updatedAddress,
-      shipmozo_updated: shipmozoUpdated,
-      shipmozo_error: shipmozoError || null,
-      message: shipmozoUpdated ? "Address updated and synced with Shipmozo!" : "Address updated but Shipmozo sync failed."
+      shiprocket_updated: shiprocketUpdated,
+      shiprocket_error: shiprocketError || null,
+      message: shiprocketUpdated ? "Address updated and synced with Shiprocket!" : "Address updated but Shiprocket sync failed."
     });
     
   } catch (error) {
@@ -2221,14 +2050,14 @@ app.put("/api/vendor/pickup-addresses/:id", verifyToken, async (req, res) => {
   }
 });
 
-// Delete pickup address and remove from Shipmozo
+// Delete pickup address and remove from Shiprocket
 app.delete("/api/vendor/pickup-addresses/:id", verifyToken, async (req, res) => {
   const client = await pool.connect();
   try {
     const { id } = req.params;
 
     const check = await client.query(
-      `SELECT id, is_default, shipmozo_pickup_id FROM vendor_pickup_addresses WHERE id = $1 AND vendor_id = $2`,
+      `SELECT id, is_default, shiprocket_pickup_id FROM vendor_pickup_addresses WHERE id = $1 AND vendor_id = $2`,
       [id, req.user.id]
     );
     if (check.rows.length === 0) {
@@ -2237,19 +2066,19 @@ app.delete("/api/vendor/pickup-addresses/:id", verifyToken, async (req, res) => 
 
     const address = check.rows[0];
     const isDefault = address.is_default;
-    const shipmozoPickupId = address.shipmozo_pickup_id;
+    const shiprocketPickupId = address.shiprocket_pickup_id;
 
     await client.query("BEGIN");
     
-    // Delete from Shipmozo if it exists
-    let shipmozoDeleted = false;
-    let shipmozoError = null;
+    // Delete from Shiprocket if it exists
+    let shiprocketDeleted = false;
+    let shiprocketError = null;
     
-    if (shipmozoPickupId) {
+    if (shiprocketPickupId) {
       try {
-        const token = await authenticateShipmozo();
+        const token = await authenticateShiprocket();
         
-        const response = await fetch(`https://api.shipmozo.com/v1/settings/company/pickup/${shipmozoPickupId}`, {
+        const response = await fetch(`https://apiv2.shiprocket.in/v1/external/settings/company/pickup/${shiprocketPickupId}`, {
           method: "DELETE",
           headers: {
             "Content-Type": "application/json",
@@ -2258,15 +2087,15 @@ app.delete("/api/vendor/pickup-addresses/:id", verifyToken, async (req, res) => 
         });
         
         if (response.ok) {
-          shipmozoDeleted = true;
+          shiprocketDeleted = true;
         } else {
           const errorData = await response.json();
-          shipmozoError = errorData.message || "Failed to delete from Shipmozo";
-          console.warn("Shipmozo delete warning:", shipmozoError);
+          shiprocketError = errorData.message || "Failed to delete from Shiprocket";
+          console.warn("Shiprocket delete warning:", shiprocketError);
         }
       } catch (err) {
-        shipmozoError = err.message;
-        console.warn("Shipmozo delete error:", shipmozoError);
+        shiprocketError = err.message;
+        console.warn("Shiprocket delete error:", shiprocketError);
       }
     }
     
@@ -2291,9 +2120,9 @@ app.delete("/api/vendor/pickup-addresses/:id", verifyToken, async (req, res) => 
     
     res.json({ 
       success: true, 
-      message: shipmozoDeleted ? "Address deleted from both systems" : "Address deleted locally. Shipmozo deletion failed.",
-      shipmozo_deleted: shipmozoDeleted,
-      shipmozo_error: shipmozoError || null
+      message: shiprocketDeleted ? "Address deleted from both systems" : "Address deleted locally. Shiprocket deletion failed.",
+      shiprocket_deleted: shiprocketDeleted,
+      shiprocket_error: shiprocketError || null
     });
     
   } catch (error) {
@@ -2340,7 +2169,7 @@ app.put("/api/vendor/pickup-addresses/:id/default", verifyToken, async (req, res
   }
 });
 
-// Sync existing address with Shipmozo (manual sync)
+// Sync existing address with Shiprocket (manual sync)
 app.post("/api/vendor/pickup-addresses/:id/sync", verifyToken, async (req, res) => {
   try {
     const { id } = req.params;
@@ -2356,8 +2185,8 @@ app.post("/api/vendor/pickup-addresses/:id/sync", verifyToken, async (req, res) 
     
     const address = addressResult.rows[0];
     
-    if (address.shipmozo_synced && address.shipmozo_pickup_id) {
-      return res.json({ success: true, message: "Already synced with Shipmozo" });
+    if (address.shiprocket_synced && address.shiprocket_pickup_id) {
+      return res.json({ success: true, message: "Already synced with Shiprocket" });
     }
     
     const vendorResult = await pool.query(
@@ -2366,7 +2195,7 @@ app.post("/api/vendor/pickup-addresses/:id/sync", verifyToken, async (req, res) 
     );
     const vendor = vendorResult.rows[0] || {};
     
-    const token = await authenticateShipmozo();
+    const token = await authenticateShiprocket();
     
     const payload = {
       pickup_location: address.location_name,
@@ -2381,7 +2210,7 @@ app.post("/api/vendor/pickup-addresses/:id/sync", verifyToken, async (req, res) 
       country: "India"
     };
     
-    const response = await fetch("https://api.shipmozo.com/v1/settings/company/pickup", {
+    const response = await fetch("https://apiv2.shiprocket.in/v1/external/settings/company/pickup", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -2397,18 +2226,18 @@ app.post("/api/vendor/pickup-addresses/:id/sync", verifyToken, async (req, res) 
       
       await pool.query(
         `UPDATE vendor_pickup_addresses 
-         SET shipmozo_pickup_id = $1, shipmozo_synced = true, updated_at = NOW() 
+         SET shiprocket_pickup_id = $1, shiprocket_synced = true, updated_at = NOW() 
          WHERE id = $2`,
         [pickupId.toString(), id]
       );
       
       res.json({ 
         success: true, 
-        message: "Address synced with Shipmozo successfully!",
-        shipmozo_pickup_id: pickupId
+        message: "Address synced with Shiprocket successfully!",
+        shiprocket_pickup_id: pickupId
       });
     } else {
-      let errorMessage = result.message || "Failed to sync with Shipmozo";
+      let errorMessage = result.message || "Failed to sync with Shiprocket";
       res.status(400).json({ success: false, message: errorMessage });
     }
     
@@ -2722,7 +2551,7 @@ app.post("/api/admin/categories", verifyToken, verifyAdminVendorIndividualAccess
       });
     }
 
-    const image_url = req.file ? `/uploads/${req.file.filename} ` : null;
+    const image_url = req.file ? `/ uploads / ${req.file.filename} ` : null;
 
     const result = await pool.query(
       `INSERT INTO categories(name, description, image_url, is_active, display_order)
@@ -2821,7 +2650,7 @@ app.put("/api/admin/categories/:id", verifyToken, verifyAdminOrSuperAdmin, uploa
         const oldPath = path.join(UPLOAD_BASE_PATH, image_url.replace('/uploads/', ''));
         if (fs.existsSync(oldPath)) fs.unlinkSync(oldPath);
       }
-      image_url = `/uploads/${req.file.filename} `;
+      image_url = `/ uploads / ${req.file.filename} `;
     }
 
     const result = await pool.query(
@@ -3124,8 +2953,8 @@ app.post(
       if (!name || !price || !category_id) throw new Error("Name, price and category required");
 
       let main_image_url = null; let video_url = null;
-      if (req.files?.image) { main_image_url = `/uploads/products/images/${req.files.image[0].filename} `; uploadedFiles.push(req.files.image[0].path); }
-      if (req.files?.video) { video_url = `/uploads/products/videos/${req.files.video[0].filename} `; uploadedFiles.push(req.files.video[0].path); }
+      if (req.files?.image) { main_image_url = `/ uploads / products / images / ${req.files.image[0].filename} `; uploadedFiles.push(req.files.image[0].path); }
+      if (req.files?.video) { video_url = `/ uploads / products / videos / ${req.files.video[0].filename} `; uploadedFiles.push(req.files.video[0].path); }
 
       const result = await pool.query(
         `INSERT INTO products(name, description, old_price, price, category_id, sub_category_id, main_image_url, video_url, sku, stock_quantity, is_featured, color, product_code, weight, length, width, height, vendor_id) VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18) RETURNING * `,
@@ -3273,8 +3102,8 @@ app.put(
       const subCategoryId = sub_category_id !== undefined && sub_category_id !== "" ? Number(sub_category_id) : undefined;
 
       let main_image_url = null; let video_url = null;
-      if (req.files?.image) { main_image_url = `/uploads/products/images/${req.files.image[0].filename} `; uploadedFiles.push(req.files.image[0].path); }
-      if (req.files?.video) { video_url = `/uploads/products/videos/${req.files.video[0].filename} `; uploadedFiles.push(req.files.video[0].path); }
+      if (req.files?.image) { main_image_url = `/ uploads / products / images / ${req.files.image[0].filename} `; uploadedFiles.push(req.files.image[0].path); }
+      if (req.files?.video) { video_url = `/ uploads / products / videos / ${req.files.video[0].filename} `; uploadedFiles.push(req.files.video[0].path); }
 
       const updates = []; const values = []; let paramCount = 1;
       const addField = (field, value) => { if (value !== undefined) { updates.push(`${field} = $${paramCount++} `); values.push(value); } };
@@ -3506,7 +3335,7 @@ app.post("/api/admin/products/:id/images", verifyToken, verifyAdminVendorIndivid
     if (userRole !== 'super_admin' && existing.rows[0]?.vendor_id !== req.user.id) return res.status(403).json({ message: "Unauthorized" });
 
     for (let i = 0; i < req.files.length; i++) {
-      const imageUrl = `/uploads/${req.files[i].filename} `;
+      const imageUrl = `/ uploads / ${req.files[i].filename} `;
       await pool.query(`INSERT INTO product_images(product_id, image_url, display_order) VALUES($1, $2, $3)`, [id, imageUrl, i]);
     }
     res.json({ success: true, message: "Images uploaded successfully" });
@@ -4372,7 +4201,7 @@ app.post("/api/reviews", verifyToken, upload.array("images", 5), async (req, res
 
     let imagePaths = [];
     if (req.files && req.files.length > 0) {
-      imagePaths = req.files.map(file => `/uploads/${file.filename} `);
+      imagePaths = req.files.map(file => `/ uploads / ${file.filename} `);
     }
 
     const result = await pool.query(
@@ -4488,8 +4317,8 @@ app.post("/api/admin/banner", verifyToken, verifyAdminVendorIndividualAccess, up
     const vendor_id = req.user.role === 'super_admin' ? null : req.user.id;
 
     let image_url = null, video_url = null;
-    if (req.files?.image) { image_url = `/uploads/banners/${req.files.image[0].filename} `; uploadedFiles.push(req.files.image[0].path); }
-    if (req.files?.video) { video_url = `/uploads/banners/${req.files.video[0].filename} `; uploadedFiles.push(req.files.video[0].path); }
+    if (req.files?.image) { image_url = `/ uploads / banners / ${req.files.image[0].filename} `; uploadedFiles.push(req.files.image[0].path); }
+    if (req.files?.video) { video_url = `/ uploads / banners / ${req.files.video[0].filename} `; uploadedFiles.push(req.files.video[0].path); }
 
     let position = req.body.position ? parseInt(req.body.position) : null;
     if (!position) {
@@ -4533,12 +4362,12 @@ app.put("/api/admin/banner/:id", verifyToken, verifyAdminVendorIndividualAccess,
 
     // Only update image if a new file was uploaded
     if (req.files?.image && req.files.image.length > 0) {
-      image_url = `/uploads/banners/${req.files.image[0].filename} `;
+      image_url = `/ uploads / banners / ${req.files.image[0].filename} `;
     }
 
     // Only update video if a new file was uploaded
     if (req.files?.video && req.files.video.length > 0) {
-      video_url = `/uploads/banners/${req.files.video[0].filename} `;
+      video_url = `/ uploads / banners / ${req.files.video[0].filename} `;
     }
 
     let cleanCategoryId = category_id;
@@ -4746,7 +4575,7 @@ app.post("/api/user/orders/:id/return", verifyToken, uploadReturnVideo.single("v
     const { reason } = req.body;
     if (!req.file) throw new Error("Unboxing video is required for returns");
     uploadedFilePath = req.file.path;
-    const videoUrl = `/uploads/returns/${req.file.filename} `;
+    const videoUrl = `/ uploads / returns / ${req.file.filename} `;
 
     const orderCheck = await pool.query("SELECT * FROM orders WHERE id=$1 AND user_id=$2 AND order_status='Delivered'", [orderId, req.user.id]);
     if (orderCheck.rows.length === 0) throw new Error("Order not found or not eligible for return");
@@ -5045,349 +4874,170 @@ app.get("/api/admin/dashboard/today-stats", verifyToken, verifyAnyAdmin, async (
   }
 });
 
-// ================= SHIPMOZO INTEGRATION (DATABASE DRIVEN) =================
-let shipmozoToken = null;
-let shipmozoPublicKey = null;
-let shipmozoPrivateKey = null;
-let shipmozoTokenExpiry = null;
-let cachedShipmozoConfig = null;
-let shipmozoConfigLastFetched = null;
+// ================= SHIPROCKET INTEGRATION (DATABASE DRIVEN) =================
+let shiprocketToken = null;
+let tokenExpiry = null;
+let cachedShiprocketConfig = null;
+let configLastFetched = null;
 
-const getShipmozoConfig = async () => {
-  if (cachedShipmozoConfig && shipmozoConfigLastFetched && (Date.now() - shipmozoConfigLastFetched) < 60000) {
-    return cachedShipmozoConfig;
+const getShiprocketConfig = async (returnRealPassword = false) => {
+  // Cache config for 1 minute to reduce DB calls
+  if (cachedShiprocketConfig && configLastFetched && (Date.now() - configLastFetched) < 60000) {
+    return cachedShiprocketConfig;
   }
 
   try {
     const result = await pool.query(
-      "SELECT key, value FROM settings WHERE key IN ('shipmozo_username', 'shipmozo_password', 'shipmozo_pickup_pincode', 'shipmozo_webhook_secret')"
+      "SELECT key, value FROM settings WHERE key IN ('shiprocket_email', 'shiprocket_password', 'shiprocket_pickup_pincode', 'shiprocket_webhook_secret')"
     );
 
     const config = {
-      shipmozo_username: '',
-      shipmozo_password: '',
-      shipmozo_pickup_pincode: '518508',
-      shipmozo_webhook_secret: ''
+      shiprocket_email: '',
+      shiprocket_password: '',
+      shiprocket_pickup_pincode: '518508',
+      shiprocket_webhook_secret: ''
     };
 
     result.rows.forEach(row => {
-      if (row.key === 'shipmozo_password') {
+      if (row.key === 'shiprocket_password') {
         config[row.key] = row.value || '';
       } else {
         config[row.key] = row.value || '';
       }
     });
 
-    cachedShipmozoConfig = config;
-    shipmozoConfigLastFetched = Date.now();
+    console.log("Shiprocket config loaded from DB:", {
+      hasEmail: !!config.shiprocket_email,
+      hasPassword: !!config.shiprocket_password && config.shiprocket_password !== '********',
+      passwordLength: config.shiprocket_password ? config.shiprocket_password.length : 0,
+      pickupPincode: config.shiprocket_pickup_pincode
+    });
+
+    cachedShiprocketConfig = config;
+    configLastFetched = Date.now();
 
     return config;
   } catch (error) {
-    console.error("Failed to fetch Shipmozo config:", error);
+    console.error("Failed to fetch Shiprocket config:", error);
     return {
-      shipmozo_username: '',
-      shipmozo_password: '',
-      shipmozo_pickup_pincode: '518508',
-      shipmozo_webhook_secret: ''
+      shiprocket_email: '',
+      shiprocket_password: '',
+      shiprocket_pickup_pincode: '518508',
+      shiprocket_webhook_secret: ''
     };
   }
 };
 
-const clearShipmozoCache = () => {
-  cachedShipmozoConfig = null;
-  shipmozoConfigLastFetched = null;
-  shipmozoToken = null;
-  shipmozoPublicKey = null;
-  shipmozoPrivateKey = null;
-  shipmozoTokenExpiry = null;
-  console.log("Shipmozo cache cleared");
+// Clear Shiprocket cache when settings are updated
+const clearShiprocketCache = () => {
+  cachedShiprocketConfig = null;
+  configLastFetched = null;
+  shiprocketToken = null;
+  tokenExpiry = null;
+  console.log("Shiprocket cache cleared");
 };
 
-
-// Authenticate with Shipmozo using username/password
-const authenticateShipmozo = async () => {
-  if (shipmozoToken && shipmozoTokenExpiry && Date.now() < shipmozoTokenExpiry) {
-    return { token: shipmozoToken, public_key: shipmozoPublicKey, private_key: shipmozoPrivateKey };
+const authenticateShiprocket = async (retryCount = 0) => {
+  // Check if token is still valid (9 days expiry)
+  if (shiprocketToken && tokenExpiry && Date.now() < tokenExpiry) {
+    console.log("Using cached Shiprocket token, expires in:", Math.round((tokenExpiry - Date.now()) / 1000 / 60 / 60), "hours");
+    return shiprocketToken;
   }
 
-  const config = await getShipmozoConfig();
-  const username = config.shipmozo_username;
-  const password = config.shipmozo_password;
+  // Get credentials from database
+  const config = await getShiprocketConfig(true);
+  const email = config.shiprocket_email;
+  const password = config.shiprocket_password;
 
-  if (!username || username === '' || !password || password === '') {
-    throw new Error("Shipmozo credentials not configured. Please add username and password in Settings.");
+  console.log("Authenticating with Shiprocket - Email:", email ? email.substring(0, 3) + '***' : 'none');
+  console.log("Has password:", !!password && password !== '********');
+
+  if (!email || email === '' || !password || password === '' || password === '********') {
+    console.error("Shiprocket credentials not configured in settings");
+    throw new Error("Shiprocket credentials not configured. Please add them in Settings page.");
   }
 
   try {
-    const response = await fetch("https://shipping-api.com/app/api/v1/login", {
+    console.log("Calling Shiprocket login API...");
+    console.log("API URL: https://apiv2.shiprocket.in/v1/external/auth/login");
+
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
+
+    const response = await fetch("https://apiv2.shiprocket.in/v1/external/auth/login", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ username: username.trim(), password: password })
+      headers: {
+        "Content-Type": "application/json",
+        "Accept": "application/json"
+      },
+      body: JSON.stringify({
+        email: email.trim(),
+        password: password
+      }),
+      signal: controller.signal
     });
 
-    const data = await response.json();
+    clearTimeout(timeoutId);
 
-    if (data.result === "1" && data.data && data.data.length > 0) {
-      shipmozoToken = data.data[0].public_key; // Using public_key as token
-      shipmozoPublicKey = data.data[0].public_key;
-      shipmozoPrivateKey = data.data[0].private_key;
-      shipmozoTokenExpiry = Date.now() + (23 * 60 * 60 * 1000);
-      console.log("✅ Shipmozo authenticated successfully");
-      return { token: shipmozoToken, public_key: shipmozoPublicKey, private_key: shipmozoPrivateKey };
+    console.log("Shiprocket response status:", response.status);
+    console.log("Shiprocket response headers:", JSON.stringify(Object.fromEntries(response.headers.entries()), null, 2));
+
+    // Get response text first for debugging
+    const responseText = await response.text();
+    console.log("Shiprocket raw response:", responseText.substring(0, 500));
+
+    let data;
+    try {
+      data = JSON.parse(responseText);
+    } catch (parseError) {
+      console.error("Failed to parse Shiprocket response:", parseError.message);
+      console.error("Raw response:", responseText);
+      throw new Error(`Invalid response from Shiprocket: ${responseText.substring(0, 100)}`);
+    }
+
+    if (response.status === 200 && data.token) {
+      shiprocketToken = data.token;
+      tokenExpiry = Date.now() + (9 * 24 * 60 * 60 * 1000);
+      console.log("✅ Shiprocket authenticated successfully, token expires in 9 days");
+      return shiprocketToken;
     } else {
-      throw new Error(data.message || "Authentication failed");
+      console.error("Shiprocket auth failed:", data);
+      
+      let errorMessage = "Shiprocket authentication failed";
+      if (data.message) {
+        if (data.message.toLowerCase().includes("invalid") || data.message.toLowerCase().includes("wrong")) {
+          errorMessage = "Invalid Shiprocket credentials. Please check your email and password in Settings.";
+        } else if (data.message.toLowerCase().includes("not found")) {
+          errorMessage = "Shiprocket account not found. Please verify your credentials.";
+        } else {
+          errorMessage = data.message;
+        }
+      }
+      
+      if (response.status === 401) {
+        errorMessage = "Authentication failed (401). Invalid Shiprocket credentials.";
+      } else if (response.status === 403) {
+        errorMessage = "Access denied (403). Please ensure your Shiprocket account has API access enabled.";
+      } else if (response.status === 404) {
+        errorMessage = "Shiprocket API endpoint not found. Please check your internet connection.";
+      }
+      
+      throw new Error(errorMessage);
     }
-  } catch (error) {
-    console.error("Shipmozo Auth Error:", error.message);
-    throw error;
-  }
-};
-
-// Helper function to get headers with auth keys
-const getShipmozoHeaders = (publicKey, privateKey) => ({
-  "Content-Type": "application/json",
-  "public-key": publicKey,
-  "private-key": privateKey
-});
-
-// Create warehouse if needed
-const createWarehouse = async (address, publicKey, privateKey) => {
-  try {
-    const payload = {
-      address_title: address.location_name || "Default Warehouse",
-      name: address.name || "Warehouse Contact",
-      phone: address.phone || "9652896180",
-      email: address.email || "jayastrastore@gmail.com",
-      address_line_one: address.address_line1,
-      address_line_two: address.address_line2 || "",
-      pin_code: parseInt(address.pincode)
-    };
-
-    const response = await fetch("https://shipping-api.com/app/api/v1/create-warehouse", {
-      method: "POST",
-      headers: getShipmozoHeaders(publicKey, privateKey),
-      body: JSON.stringify(payload)
-    });
-
-    const data = await response.json();
+  } catch (err) {
+    console.error("Shiprocket Auth Error:", err.message);
     
-    if (data.result === "1" && data.data?.warehouse_id) {
-      return data.data.warehouse_id;
+    if (err.name === 'AbortError') {
+      throw new Error("Shiprocket connection timeout. Please check your internet connection.");
     }
-    return null;
-  } catch (error) {
-    console.error("Create warehouse error:", error);
-    return null;
-  }
-};
-
-// Get existing warehouses
-const getWarehouses = async (publicKey, privateKey) => {
-  try {
-    const response = await fetch("https://shipping-api.com/app/api/v1/get-warehouses", {
-      method: "GET",
-      headers: getShipmozoHeaders(publicKey, privateKey)
-    });
-
-    const data = await response.json();
     
-    if (data.result === "1" && data.data) {
-      return data.data;
+    if (err.message.includes("fetch") || err.message.includes("network")) {
+      throw new Error("Network error connecting to Shiprocket. Please check your internet connection and firewall settings.");
     }
-    return [];
-  } catch (error) {
-    console.error("Get warehouses error:", error);
-    return [];
-  }
-};
-
-// Push order to Shipmozo
-const pushOrderToShipmozo = async (order, items, pickupAddress, publicKey, privateKey) => {
-  // Calculate weight in grams (convert from kg if needed)
-  const weightInGrams = Math.round((order.total_weight || 0.5) * 1000);
-  
-  // Prepare product details
-  const productDetails = items.map(item => ({
-    name: item.name.substring(0, 100),
-    sku_number: item.sku || item.product_code || `SKU-${item.product_id}`,
-    quantity: parseInt(item.quantity),
-    discount: "",
-    hsn: "",
-    unit_price: parseFloat(item.price),
-    product_category: "Other"
-  }));
-
-  // Get warehouse ID
-  let warehouseId = pickupAddress.shipmozo_warehouse_id;
-  if (!warehouseId) {
-    const warehouses = await getWarehouses(publicKey, privateKey);
-    const defaultWarehouse = warehouses.find(w => w.default === "YES") || warehouses[0];
-    warehouseId = defaultWarehouse?.id || null;
     
-    if (!warehouseId && pickupAddress) {
-      warehouseId = await createWarehouse(pickupAddress, publicKey, privateKey);
-    }
+    throw err;
   }
-
-  const payload = {
-    order_id: `JAYASTRA-${order.id}`,
-    order_date: new Date(order.created_at).toISOString().split('T')[0],
-    order_type: "ESSENTIALS",
-    consignee_name: (order.customer_name || "Customer").substring(0, 100),
-    consignee_phone: parseInt((order.phone || "9999999999").replace(/\D/g, '').slice(0, 10)),
-    consignee_alternate_phone: null,
-    consignee_email: (order.email || "customer@example.com").substring(0, 100),
-    consignee_address_line_one: (order.address || "").substring(0, 200),
-    consignee_address_line_two: (order.street_area || "").substring(0, 100),
-    consignee_pin_code: parseInt(order.pincode || "500001"),
-    consignee_city: order.city || "Unknown City",
-    consignee_state: order.state || "Unknown State",
-    product_detail: productDetails,
-    payment_type: (order.payment_method === 'COD' || order.payment_method === 'cod') ? "COD" : "PREPAID",
-    cod_amount: (order.payment_method === 'COD' || order.payment_method === 'cod') ? parseFloat(order.total_amount).toString() : "",
-    weight: weightInGrams,
-    length: parseInt(order.length || 10),
-    width: parseInt(order.width || 10),
-    height: parseInt(order.height || 5),
-    warehouse_id: warehouseId ? warehouseId.toString() : "",
-    gst_ewaybill_number: "",
-    gstin_number: ""
-  };
-
-  const response = await fetch("https://shipping-api.com/app/api/v1/push-order", {
-    method: "POST",
-    headers: getShipmozoHeaders(publicKey, privateKey),
-    body: JSON.stringify(payload)
-  });
-
-  const data = await response.json();
-  return data;
 };
-
-// Assign courier to order
-const assignCourierToOrder = async (orderId, courierId, publicKey, privateKey) => {
-  const response = await fetch("https://shipping-api.com/app/api/v1/assign-courier", {
-    method: "POST",
-    headers: getShipmozoHeaders(publicKey, privateKey),
-    body: JSON.stringify({
-      order_id: orderId,
-      courier_id: courierId
-    })
-  });
-
-  return await response.json();
-};
-
-// Schedule pickup
-const schedulePickup = async (orderId, publicKey, privateKey) => {
-  const response = await fetch("https://shipping-api.com/app/api/v1/schedule-pickup", {
-    method: "POST",
-    headers: getShipmozoHeaders(publicKey, privateKey),
-    body: JSON.stringify({ order_id: orderId })
-  });
-
-  return await response.json();
-};
-
-// Auto assign order
-const autoAssignOrder = async (orderId, publicKey, privateKey) => {
-  const response = await fetch("https://shipping-api.com/app/api/v1/auto-assign-order", {
-    method: "POST",
-    headers: getShipmozoHeaders(publicKey, privateKey),
-    body: JSON.stringify({ order_id: orderId })
-  });
-
-  return await response.json();
-};
-
-// Cancel order
-const cancelShipmozoOrder = async (orderId, awbNumber, publicKey, privateKey) => {
-  const response = await fetch("https://shipping-api.com/app/api/v1/cancel-order", {
-    method: "POST",
-    headers: getShipmozoHeaders(publicKey, privateKey),
-    body: JSON.stringify({
-      order_id: orderId,
-      awb_number: parseInt(awbNumber)
-    })
-  });
-
-  return await response.json();
-};
-
-// Get order details
-const getShipmozoOrderDetail = async (orderId, publicKey, privateKey) => {
-  const response = await fetch(`https://shipping-api.com/app/api/v1/get-order-detail/${orderId}`, {
-    method: "GET",
-    headers: getShipmozoHeaders(publicKey, privateKey)
-  });
-
-  return await response.json();
-};
-
-// Track order by AWB
-const trackShipmozoOrder = async (awbNumber, publicKey, privateKey) => {
-  const response = await fetch(`https://shipping-api.com/app/api/v1/track-order?awb_number=${awbNumber}`, {
-    method: "GET",
-    headers: getShipmozoHeaders(publicKey, privateKey)
-  });
-
-  return await response.json();
-};
-
-// Get order label
-const getShipmozoLabel = async (awbNumber, publicKey, privateKey) => {
-  const response = await fetch(`https://shipping-api.com/app/api/v1/get-order-label/${awbNumber}`, {
-    method: "GET",
-    headers: getShipmozoHeaders(publicKey, privateKey)
-  });
-
-  return await response.json();
-};
-
-// Check pincode serviceability
-const checkPincodeServiceability = async (pickupPincode, deliveryPincode, publicKey, privateKey) => {
-  const response = await fetch("https://shipping-api.com/app/api/v1/pincode-serviceability", {
-    method: "POST",
-    headers: getShipmozoHeaders(publicKey, privateKey),
-    body: JSON.stringify({
-      pickup_pincode: parseInt(pickupPincode),
-      delivery_pincode: parseInt(deliveryPincode)
-    })
-  });
-
-  return await response.json();
-};
-
-// Calculate shipping rates
-const calculateShippingRates = async (params, publicKey, privateKey) => {
-  const payload = {
-    order_id: params.order_id || "",
-    pickup_pincode: parseInt(params.pickup_pincode),
-    delivery_pincode: parseInt(params.delivery_pincode),
-    payment_type: params.payment_type || "PREPAID",
-    shipment_type: "FORWARD",
-    order_amount: parseFloat(params.order_amount || 0),
-    type_of_package: "SPS",
-    rov_type: "ROV_OWNER",
-    cod_amount: params.cod_amount || "",
-    weight: parseInt(params.weight || 500),
-    dimensions: [{
-      no_of_box: "1",
-      length: params.length || "10",
-      width: params.width || "10",
-      height: params.height || "10"
-    }]
-  };
-
-  const response = await fetch("https://shipping-api.com/app/api/v1/rate-calculator", {
-    method: "POST",
-    headers: getShipmozoHeaders(publicKey, privateKey),
-    body: JSON.stringify(payload)
-  });
-
-  return await response.json();
-};
-
 
 // Helper function to extract address components from order
 const extractAddressComponents = async (order) => {
@@ -5422,6 +5072,7 @@ const extractAddressComponents = async (order) => {
 
   // Try to extract city from full address if not already present
   if (!city && fullAddress) {
+    // Try common patterns
     const patterns = [
       /city[:\s]+([A-Za-z\s]+)/i,
       /,\s*([A-Za-z\s]+?)\s*,\s*[A-Za-z\s]+?\s*\d{6}/,
@@ -5436,6 +5087,7 @@ const extractAddressComponents = async (order) => {
       }
     }
 
+    // If still no city, try splitting by commas
     if (!city && fullAddress.includes(',')) {
       const parts = fullAddress.split(',');
       if (parts.length >= 3) {
@@ -5446,6 +5098,7 @@ const extractAddressComponents = async (order) => {
     }
   }
 
+  // Try to extract state from full address if not already present
   if (!state && fullAddress) {
     const stateMatch = fullAddress.match(/state[:\s]+([A-Za-z\s]+)/i);
     if (stateMatch && stateMatch[1]) {
@@ -5454,6 +5107,7 @@ const extractAddressComponents = async (order) => {
       const parts = fullAddress.split(',');
       if (parts.length >= 2) {
         const possibleState = parts[parts.length - 2]?.trim() || '';
+        // Check if it's a state (not a city with pincode)
         if (possibleState && !possibleState.match(/\d/) && possibleState.length > 2) {
           state = possibleState;
         }
@@ -5461,6 +5115,7 @@ const extractAddressComponents = async (order) => {
     }
   }
 
+  // Ensure all required fields have valid values
   if (!city || city === '' || city === 'City' || city === 'city' || city === 'NA' || city === 'n/a') {
     city = "Unknown City";
   }
@@ -5470,19 +5125,22 @@ const extractAddressComponents = async (order) => {
   }
 
   if (!pincode || pincode === '' || !/^\d{6}$/.test(pincode)) {
-    pincode = "500001";
+    pincode = "500001"; // Default pincode
   }
 
+  // Ensure address is not empty
   if (!fullAddress || fullAddress === '') {
     fullAddress = `${houseNo ? houseNo + ', ' : ''}${streetArea ? streetArea : ''}${city ? ', ' + city : ''}${state ? ', ' + state : ''} ${pincode} `;
   }
 
+  // Clean up address - remove any undefined or null values
   fullAddress = fullAddress.replace(/undefined/g, '').replace(/null/g, '').replace(/,\s*,/g, ',').replace(/,\s+$/g, '').trim();
 
   if (!fullAddress || fullAddress === '') {
     fullAddress = "Address not specified";
   }
 
+  // Limit address length
   fullAddress = fullAddress.substring(0, 200);
 
   console.log("Extracted Address Components:", {
@@ -5508,12 +5166,17 @@ const extractAddressComponents = async (order) => {
   };
 };
 
-// ================= SHIPMOZO ORDER PUSH (UPDATED) =================
 
-app.post("/api/admin/orders/:id/shipmozo", verifyToken, verifyAdminVendorIndividualAccess, async (req, res) => {
+// Updated push endpoint - uses each vendor's own pickup location
+// ================= SHIPROCKET ORDER PUSH (UPDATED WITH BETTER PICKUP HANDLING) =================
+
+// ================= SHIPROCKET ORDER PUSH (FIXED WITH BETTER ERROR HANDLING) =================
+
+app.post("/api/admin/orders/:id/shiprocket", verifyToken, verifyAdminVendorIndividualAccess, async (req, res) => {
   try {
     const orderId = req.params.id;
 
+    // Check authorization for non-super admins
     if (req.user.role !== 'super_admin') {
       const orderCheck = await pool.query(
         `SELECT DISTINCT o.id FROM orders o
@@ -5526,25 +5189,35 @@ app.post("/api/admin/orders/:id/shipmozo", verifyToken, verifyAdminVendorIndivid
       }
     }
 
+    // Get order details
     const orderRes = await pool.query(`SELECT * FROM orders WHERE id = $1`, [orderId]);
     if (orderRes.rows.length === 0) {
       return res.status(404).json({ success: false, message: "Order not found" });
     }
     const order = orderRes.rows[0];
 
-    if (order.shipmozo_order_id) {
-      return res.status(400).json({ success: false, message: "Order already pushed to Shipmozo" });
+    // Check if already pushed
+    if (order.shiprocket_order_id) {
+      return res.status(400).json({ success: false, message: "Order already pushed to Shiprocket" });
     }
 
-    // Validate address
-    if (!order.pincode || !/^\d{6}$/.test(order.pincode)) {
+    // Extract and validate address components
+    const addressComponents = await extractAddressComponents(order);
+    
+    const missingFields = [];
+    if (!addressComponents.city || addressComponents.city === 'Unknown City') missingFields.push('City');
+    if (!addressComponents.state || addressComponents.state === 'Unknown State') missingFields.push('State');
+    if (!addressComponents.pincode || addressComponents.pincode === '500001') missingFields.push('Pincode');
+    
+    if (missingFields.length > 0) {
       return res.status(400).json({ 
         success: false, 
-        message: "Invalid delivery pincode. Please update order address first."
+        message: `Missing delivery address: ${missingFields.join(', ')}. Please update order address first.`,
+        missingFields
       });
     }
 
-    // Get vendor ID and pickup address
+    // Get vendor ID from order items
     const vendorIdResult = await pool.query(
       `SELECT DISTINCT vendor_id FROM order_items WHERE order_id = $1 LIMIT 1`,
       [orderId]
@@ -5554,22 +5227,190 @@ app.post("/api/admin/orders/:id/shipmozo", verifyToken, verifyAdminVendorIndivid
     }
     const vendorId = vendorIdResult.rows[0].vendor_id;
 
+    // Get vendor's default pickup address with Shiprocket ID
+    let pickupAddress = null;
+    let shiprocketPickupId = null;
+    let pickupLocationName = null;
+
+    // First try to get from vendor_pickup_addresses table
     const pickupRes = await pool.query(
-      `SELECT * FROM vendor_pickup_addresses 
+      `SELECT id, location_name, address_line1, address_line2, city, state, pincode, shiprocket_pickup_id, shiprocket_synced
+       FROM vendor_pickup_addresses 
        WHERE vendor_id = $1 AND is_default = true 
        LIMIT 1`,
       [vendorId]
     );
 
-    let pickupAddress = pickupRes.rows[0];
+    if (pickupRes.rows.length > 0) {
+      pickupAddress = pickupRes.rows[0];
+      shiprocketPickupId = pickupAddress.shiprocket_pickup_id;
+      pickupLocationName = pickupAddress.location_name;
+      console.log("Using pickup from vendor_pickup_addresses:", pickupAddress.location_name);
+    } else {
+      // Fallback to user's pickup details from users table
+      const userPickupRes = await pool.query(
+        `SELECT pickup_location_name, pickup_address_line1, pickup_address_line2, pickup_city, pickup_state, pickup_pincode 
+         FROM users 
+         WHERE id = $1`,
+        [vendorId]
+      );
+
+      const userPickup = userPickupRes.rows[0];
+      if (userPickup && userPickup.pickup_pincode) {
+        pickupAddress = {
+          id: null,
+          location_name: userPickup.pickup_location_name || "Default Warehouse",
+          address_line1: userPickup.pickup_address_line1 || "",
+          address_line2: userPickup.pickup_address_line2 || "",
+          city: userPickup.pickup_city || "",
+          state: userPickup.pickup_state || "",
+          pincode: userPickup.pickup_pincode,
+          shiprocket_pickup_id: null,
+          shiprocket_synced: false
+        };
+        pickupLocationName = pickupAddress.location_name;
+        console.log("Using pickup from users table:", pickupAddress.location_name);
+      }
+    }
+
+    // Validate pickup address exists
     if (!pickupAddress || !pickupAddress.pincode) {
       return res.status(400).json({
         success: false,
-        message: "Vendor has not set a default pickup address. Please add a pickup address in profile settings."
+        message: "Vendor has not set a default pickup address. Please go to Profile -> Pickup Addresses and add/set a default address.",
+        suggestion: "Add a pickup address and set it as default in your profile settings."
       });
     }
 
-    // Get order items
+    // Ensure pickup location exists in Shiprocket
+    if (!shiprocketPickupId) {
+      console.log("No Shiprocket pickup ID found, creating new pickup location...");
+      
+      let token;
+      try {
+        token = await authenticateShiprocket();
+      } catch (authError) {
+        console.error("Shiprocket auth error:", authError.message);
+        return res.status(401).json({
+          success: false,
+          message: "Shiprocket authentication failed. Please check your Shiprocket credentials in Settings.",
+          error: authError.message
+        });
+      }
+      
+      // Get vendor contact info
+      const vendorRes = await pool.query(
+        `SELECT email, phone, name FROM users WHERE id = $1`,
+        [vendorId]
+      );
+      const vendor = vendorRes.rows[0] || {};
+      
+      const createPayload = {
+        pickup_location: pickupAddress.location_name,
+        name: pickupAddress.location_name,
+        email: vendor.email || "jayastrastore@gmail.com",
+        phone: vendor.phone || "9652896180",
+        address: pickupAddress.address_line1,
+        address_2: pickupAddress.address_line2 || "",
+        city: pickupAddress.city,
+        state: pickupAddress.state,
+        pincode: pickupAddress.pincode,
+        country: "India"
+      };
+      
+      console.log("Creating pickup location with payload:", JSON.stringify(createPayload, null, 2));
+      
+      let createResult;
+      let createResponse;
+      
+      try {
+        createResponse = await fetch("https://apiv2.shiprocket.in/v1/external/settings/company/pickup", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${token}`
+          },
+          body: JSON.stringify(createPayload)
+        });
+        
+        const responseText = await createResponse.text();
+        console.log("Shiprocket create pickup raw response:", responseText);
+        
+        try {
+          createResult = JSON.parse(responseText);
+        } catch (parseError) {
+          console.error("Failed to parse Shiprocket response:", parseError.message);
+          return res.status(502).json({
+            success: false,
+            message: "Shiprocket API returned an invalid response. Please try again.",
+            raw_response: responseText.substring(0, 200)
+          });
+        }
+      } catch (fetchError) {
+        console.error("Network error calling Shiprocket:", fetchError.message);
+        return res.status(502).json({
+          success: false,
+          message: "Network error connecting to Shiprocket. Please check your internet connection and try again.",
+          error: fetchError.message
+        });
+      }
+      
+      console.log("Shiprocket create pickup response:", JSON.stringify(createResult, null, 2));
+      
+      if (createResponse.ok && (createResult.success || createResult.data)) {
+        shiprocketPickupId = createResult.data?.id || createResult.data?.pickup_location_id;
+        
+        if (shiprocketPickupId) {
+          // Save the ID to database
+          if (pickupAddress.id) {
+            await pool.query(
+              `UPDATE vendor_pickup_addresses 
+               SET shiprocket_pickup_id = $1, shiprocket_synced = true, updated_at = NOW() 
+               WHERE id = $2`,
+              [shiprocketPickupId.toString(), pickupAddress.id]
+            );
+          } else {
+            // Create a record in vendor_pickup_addresses for future use
+            await pool.query(
+              `INSERT INTO vendor_pickup_addresses 
+               (vendor_id, location_name, address_line1, address_line2, city, state, pincode, is_default, shiprocket_pickup_id, shiprocket_synced)
+               VALUES ($1, $2, $3, $4, $5, $6, $7, true, $8, true)`,
+              [vendorId, pickupAddress.location_name, pickupAddress.address_line1, pickupAddress.address_line2, 
+               pickupAddress.city, pickupAddress.state, pickupAddress.pincode, shiprocketPickupId]
+            );
+          }
+          console.log(`✅ Pickup location created in Shiprocket with ID: ${shiprocketPickupId}`);
+        } else {
+          console.error("Shiprocket created pickup but no ID returned:", createResult);
+          return res.status(400).json({
+            success: false,
+            message: "Pickup location created but no ID returned from Shiprocket. Please try again.",
+            response: createResult
+          });
+        }
+      } else {
+        const errorMsg = createResult?.message || "Failed to create pickup location";
+        console.error("Shiprocket create pickup failed:", errorMsg);
+        
+        // Check for duplicate pickup location
+        if (errorMsg.toLowerCase().includes("already exists") || errorMsg.toLowerCase().includes("duplicate")) {
+          return res.status(400).json({
+            success: false,
+            message: "Pickup location with this name already exists in Shiprocket. Please use a different location name or sync manually.",
+            suggestion: "Go to Profile -> Pickup Addresses and click the sync button for this address."
+          });
+        }
+        
+        return res.status(400).json({
+          success: false,
+          message: `Cannot push order: ${errorMsg}`,
+          details: createResult?.errors || createResult,
+          suggestion: "Please verify your pickup address details are correct and try again."
+        });
+      }
+    }
+
+    // Get order items with product details
     const itemsRes = await pool.query(
       `SELECT oi.*, p.name, p.sku, p.weight, p.length, p.width, p.height, p.product_code
        FROM order_items oi
@@ -5582,62 +5423,193 @@ app.post("/api/admin/orders/:id/shipmozo", verifyToken, verifyAdminVendorIndivid
       return res.status(400).json({ success: false, message: "No items found in order" });
     }
 
-    // Calculate total weight in grams
-    const totalWeightGrams = itemsRes.rows.reduce((sum, item) => 
-      sum + (parseFloat(item.weight || 0.5) * parseInt(item.quantity)), 0) * 1000;
+    // Prepare order items for Shiprocket
+    const orderItems = itemsRes.rows.map(item => ({
+      name: item.name.substring(0, 100),
+      sku: item.sku || item.product_code || `SKU-${item.product_id}`,
+      units: parseInt(item.quantity),
+      selling_price: parseFloat(item.price),
+      discount: "",
+      tax: ""
+    }));
 
-    // Authenticate with Shipmozo
-    let auth;
+    // Calculate package dimensions
+    const pkgWeight = itemsRes.rows.reduce((sum, item) => sum + (parseFloat(item.weight || 0.5) * parseInt(item.quantity)), 0.5);
+    const maxLen = Math.max(...itemsRes.rows.map(i => parseFloat(i.length || 10)), 10);
+    const maxWid = Math.max(...itemsRes.rows.map(i => parseFloat(i.width || 10)), 10);
+    const maxHei = itemsRes.rows.reduce((sum, item) => sum + (parseFloat(item.height || 5) * parseInt(item.quantity)), 5);
+
+    // Authenticate for order creation
+    let token;
     try {
-      auth = await authenticateShipmozo();
+      token = await authenticateShiprocket();
     } catch (authError) {
+      console.error("Shiprocket auth error for order creation:", authError.message);
       return res.status(401).json({
         success: false,
-        message: authError.message || "Shipmozo authentication failed. Please check credentials in Settings."
+        message: "Shiprocket authentication failed. Please check your credentials in Settings.",
+        error: authError.message
       });
     }
 
-    // Push order to Shipmozo
-    const pushResult = await pushOrderToShipmozo(order, itemsRes.rows, pickupAddress, auth.public_key, auth.private_key);
+    // Build billing address
+    let billingAddress = addressComponents.fullAddress;
+    if (!billingAddress || billingAddress === 'Address not specified') {
+      billingAddress = `${addressComponents.houseNo ? addressComponents.houseNo + ', ' : ''}${addressComponents.streetArea ? addressComponents.streetArea : ''}`;
+    }
+    
+    if (!billingAddress || billingAddress === '') {
+      billingAddress = "Address not specified";
+    }
+    
+    billingAddress = billingAddress.substring(0, 200);
 
-    if (pushResult.result === "1") {
-      // Update order with Shipmozo IDs
+    // Determine payment method
+    const isPrepaid = order.payment_method === 'Prepaid' || order.payment_method === 'RAZORPAY' || order.payment_method === 'Online';
+    
+    // Create Shiprocket order payload
+    const payload = {
+      order_id: `JAYASTRA-${order.id}`,
+      order_date: new Date(order.created_at).toISOString().split('T')[0] + " 10:00",
+      pickup_location_id: parseInt(shiprocketPickupId), // Convert to number
+      billing_customer_name: (order.customer_name || "Customer").substring(0, 100),
+      billing_last_name: "",
+      billing_address: billingAddress,
+      billing_address_2: (addressComponents.landmark || "").substring(0, 100),
+      billing_city: addressComponents.city,
+      billing_pincode: addressComponents.pincode,
+      billing_state: addressComponents.state,
+      billing_country: addressComponents.country,
+      billing_email: (order.email || "customer@example.com").substring(0, 100),
+      billing_phone: (order.phone || "9999999999").substring(0, 20),
+      shipping_is_billing: true,
+      order_items: orderItems,
+      payment_method: isPrepaid ? 'Prepaid' : 'COD',
+      sub_total: parseFloat(order.total_amount),
+      length: Math.max(maxLen, 10),
+      breadth: Math.max(maxWid, 10),
+      height: Math.max(maxHei, 5),
+      weight: Math.max(pkgWeight, 0.5)
+    };
+
+    console.log("Shiprocket order payload:", JSON.stringify(payload, null, 2));
+
+    // Create order in Shiprocket
+    let fetchRes;
+    let result;
+    
+    try {
+      fetchRes = await fetch("https://apiv2.shiprocket.in/v1/external/orders/create/adhoc", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`
+        },
+        body: JSON.stringify(payload)
+      });
+      
+      const responseText = await fetchRes.text();
+      console.log("Shiprocket order creation raw response:", responseText);
+      
+      try {
+        result = JSON.parse(responseText);
+      } catch (parseError) {
+        console.error("Failed to parse Shiprocket order response:", parseError.message);
+        return res.status(502).json({
+          success: false,
+          message: "Shiprocket API returned an invalid response. Please try again.",
+          raw_response: responseText.substring(0, 200)
+        });
+      }
+    } catch (fetchError) {
+      console.error("Network error creating Shiprocket order:", fetchError.message);
+      return res.status(502).json({
+        success: false,
+        message: "Network error connecting to Shiprocket. Please check your internet connection and try again.",
+        error: fetchError.message
+      });
+    }
+    
+    console.log("Shiprocket order creation response:", JSON.stringify(result, null, 2));
+
+    if (fetchRes.ok && (result.order_id || result.shipment_id)) {
+      const srOrderId = result.order_id ? result.order_id.toString() : null;
+      const srShipmentId = result.shipment_id ? result.shipment_id.toString() : null;
+      
+      // Update local order with Shiprocket IDs
       await pool.query(
         `UPDATE orders 
-         SET shipmozo_order_id = $1, updated_at = NOW() 
-         WHERE id = $2`,
-        [pushResult.data?.reference_id || pushResult.data?.order_id, orderId]
+         SET shiprocket_order_id = $1, shiprocket_shipment_id = $2, updated_at = NOW() 
+         WHERE id = $3`,
+        [srOrderId, srShipmentId, orderId]
       );
 
-      // Try auto-assign courier
-      const autoAssignResult = await autoAssignOrder(pushResult.data?.reference_id || pushResult.data?.order_id, auth.public_key, auth.private_key);
-      
-      if (autoAssignResult.result === "1" && autoAssignResult.data?.awb_number) {
-        await pool.query(
-          `UPDATE orders SET awb_code = $1 WHERE id = $2`,
-          [autoAssignResult.data.awb_number, orderId]
-        );
+      // Try to auto-generate AWB
+      if (srShipmentId) {
+        try {
+          const awbRes = await fetch("https://apiv2.shiprocket.in/v1/external/courier/assign/awb", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "Authorization": `Bearer ${token}`
+            },
+            body: JSON.stringify({ shipment_id: parseInt(srShipmentId) })
+          });
+          const awbData = await awbRes.json();
+          if (awbData.awb_code) {
+            await pool.query(`UPDATE orders SET awb_code = $1 WHERE id = $2`, [awbData.awb_code, orderId]);
+          }
+        } catch (awbErr) {
+          console.warn("Auto AWB assignment failed:", awbErr.message);
+        }
       }
 
-      return res.json({
-        success: true,
-        message: "Order successfully pushed to Shipmozo!",
-        data: pushResult.data,
-        auto_assigned: autoAssignResult.result === "1" ? autoAssignResult.data : null
+      return res.json({ 
+        success: true, 
+        message: "Order successfully pushed to Shiprocket! 🚀",
+        pickup_location_used: pickupLocationName,
+        shiprocket_order_id: srOrderId,
+        shiprocket_shipment_id: srShipmentId,
+        data: result 
       });
     } else {
+      console.error("Shiprocket order creation failed:", result);
+      
+      let errorMessage = result?.message || "Failed to push to Shiprocket";
+      if (result?.errors) {
+        if (Array.isArray(result.errors)) {
+          errorMessage = result.errors.join(", ");
+        } else if (typeof result.errors === 'object') {
+          errorMessage = Object.values(result.errors).flat().join(", ");
+        }
+      }
+
+      // Handle specific error cases
+      if (errorMessage.toLowerCase().includes("pickup") && errorMessage.toLowerCase().includes("not found")) {
+        errorMessage = "Pickup location not found in Shiprocket. Please sync your pickup address again.";
+      } else if (errorMessage.toLowerCase().includes("pincode")) {
+        errorMessage = "Invalid pincode. Please verify the delivery address pincode.";
+      } else if (errorMessage.toLowerCase().includes("weight")) {
+        errorMessage = "Invalid package weight. Please check product weights.";
+      }
+
       return res.status(400).json({
         success: false,
-        message: pushResult.message || "Failed to push order to Shipmozo",
-        errors: pushResult.data
+        message: errorMessage,
+        errors: result?.errors,
+        pickup_location_used: pickupLocationName,
+        pickup_location_id: shiprocketPickupId
       });
     }
   } catch (error) {
-    console.error("Shipmozo push error:", error);
-    res.status(500).json({ success: false, message: error.message });
+    console.error("Shiprocket push error:", error);
+    res.status(500).json({ 
+      success: false, 
+      message: error.message || "Server error pushing order",
+      suggestion: "Please try again or contact support if issue persists."
+    });
   }
 });
-
 
 app.post("/api/admin/orders/:id/awb", verifyToken, verifyAdminVendorIndividualAccess, async (req, res) => {
   try {
@@ -5647,34 +5619,52 @@ app.post("/api/admin/orders/:id/awb", verifyToken, verifyAdminVendorIndividualAc
       if (orderCheck.rows.length === 0) return res.status(403).json({ success: false, message: "Unauthorized" });
     }
 
-    const orderRes = await pool.query(`SELECT shipmozo_shipment_id, awb_code FROM orders WHERE id = $1`, [orderId]);
+    const orderRes = await pool.query(`SELECT shiprocket_shipment_id, awb_code FROM orders WHERE id = $1`, [orderId]);
     if (orderRes.rows.length === 0) return res.status(404).json({ success: false, message: "Order not found" });
 
-    const shipmentId = orderRes.rows[0].shipmozo_shipment_id;
-    if (!shipmentId) return res.status(400).json({ success: false, message: "Push order to Shipmozo first" });
+    const shipmentId = orderRes.rows[0].shiprocket_shipment_id;
+    if (!shipmentId) return res.status(400).json({ success: false, message: "Push order to Shiprocket first" });
     if (orderRes.rows[0].awb_code) return res.status(400).json({ success: false, message: "AWB already generated" });
 
-    const token = await authenticateShipmozo();
+    const token = await authenticateShiprocket();
 
-    const fetchRes = await fetch("https://api.shipmozo.com/v1/shipments/assign-awb", {
-      method: "POST", 
-      headers: { 
-        "Content-Type": "application/json", 
-        "Authorization": `Bearer ${token}` 
-      }, 
-      body: JSON.stringify({ shipment_id: shipmentId })
+    const fetchRes = await fetch("https://apiv2.shiprocket.in/v1/external/courier/assign/awb", {
+      method: "POST", headers: { "Content-Type": "application/json", "Authorization": `Bearer ${token} ` }, body: JSON.stringify({ shipment_id: shipmentId, courier_id: "", status: "" })
     });
 
     const result = await fetchRes.json();
+    let awbCode = null;
 
-    if (result.awb_code) {
-      await pool.query(`UPDATE orders SET awb_code = $1 WHERE id = $2`, [result.awb_code, orderId]);
-      return res.json({ success: true, message: "AWB generated successfully!", awb_code: result.awb_code });
+    if (result.awb_assign_status) {
+      awbCode = result.response?.data?.awb_code;
     } else {
-      return res.status(400).json({ success: false, message: result.message || "Failed to generate AWB" });
+      try {
+        const shipDetailRes = await fetch(`https://apiv2.shiprocket.in/v1/external/shipments/${shipmentId}`, { method: "GET", headers: { "Content-Type": "application/json", "Authorization": `Bearer ${token}` } });
+        const shipData = await shipDetailRes.json();
+        awbCode = shipData.data?.awb_code || shipData.awb_code || shipData.data?.awb;
+      } catch (e) { }
+
+      if (!awbCode) {
+        try {
+          const orderResSR = await pool.query(`SELECT shiprocket_order_id FROM orders WHERE id = $1`, [orderId]);
+          const srOrderId = orderResSR.rows[0]?.shiprocket_order_id;
+          if (srOrderId) {
+            const orderDetailRes = await fetch(`https://apiv2.shiprocket.in/v1/external/orders/show/${srOrderId}`, { method: "GET", headers: { "Content-Type": "application/json", "Authorization": `Bearer ${token}` } });
+            const orderData = await orderDetailRes.json();
+            awbCode = orderData.data?.shipments?.[0]?.awb || orderData.data?.awb_code;
+          }
+        } catch (e) { }
+      }
+    }
+
+    if (awbCode) {
+      await pool.query(`UPDATE orders SET awb_code = $1 WHERE id = $2`, [awbCode, orderId]);
+      return res.json({ success: true, message: "AWB synchronized successfully!", awb_code: awbCode });
+    } else {
+      const errorMessage = result.message || "Could not find AWB for this order.";
+      return res.status(400).json({ success: false, message: `Shiprocket Sync: ${errorMessage}` });
     }
   } catch (error) {
-    console.error("AWB generation error:", error);
     res.status(500).json({ success: false, message: "Server error generating AWB" });
   }
 });
@@ -5682,22 +5672,16 @@ app.post("/api/admin/orders/:id/awb", verifyToken, verifyAdminVendorIndividualAc
 app.post("/api/admin/orders/:id/label", verifyToken, verifyAdminVendorIndividualAccess, async (req, res) => {
   try {
     const orderId = req.params.id;
-    const orderRes = await pool.query(`SELECT shipmozo_shipment_id FROM orders WHERE id = $1`, [orderId]);
-    const shipmentId = orderRes.rows[0]?.shipmozo_shipment_id;
+    const orderRes = await pool.query(`SELECT shiprocket_shipment_id FROM orders WHERE id = $1`, [orderId]);
+    const shipmentId = orderRes.rows[0]?.shiprocket_shipment_id;
     if (!shipmentId) return res.status(400).json({ success: false, message: "No shipment ID found" });
 
-    const token = await authenticateShipmozo();
-    const fetchRes = await fetch("https://api.shipmozo.com/v1/shipments/generate-label", {
-      method: "POST", 
-      headers: { 
-        "Content-Type": "application/json", 
-        "Authorization": `Bearer ${token}` 
-      }, 
-      body: JSON.stringify({ shipment_id: shipmentId })
+    const token = await authenticateShiprocket();
+    const fetchRes = await fetch("https://apiv2.shiprocket.in/v1/external/courier/generate/label", {
+      method: "POST", headers: { "Content-Type": "application/json", "Authorization": `Bearer ${token}` }, body: JSON.stringify({ shipment_id: [shipmentId] })
     });
     const result = await fetchRes.json();
-    
-    if (result.label_url) return res.json({ success: true, label_url: result.label_url });
+    if (result.label_created) return res.json({ success: true, label_url: result.label_url });
     else return res.status(400).json({ success: false, message: "Failed to fetch label" });
   } catch (error) {
     res.status(500).json({ success: false, message: "Server error fetching label" });
@@ -5707,22 +5691,16 @@ app.post("/api/admin/orders/:id/label", verifyToken, verifyAdminVendorIndividual
 app.post("/api/admin/orders/:id/invoice", verifyToken, verifyAdminVendorIndividualAccess, async (req, res) => {
   try {
     const orderId = req.params.id;
-    const orderRes = await pool.query(`SELECT shipmozo_order_id FROM orders WHERE id = $1`, [orderId]);
-    const srOrderId = orderRes.rows[0]?.shipmozo_order_id;
-    if (!srOrderId) return res.status(400).json({ success: false, message: "No Shipmozo Order ID found" });
+    const orderRes = await pool.query(`SELECT shiprocket_order_id FROM orders WHERE id = $1`, [orderId]);
+    const srOrderId = orderRes.rows[0]?.shiprocket_order_id;
+    if (!srOrderId) return res.status(400).json({ success: false, message: "No Shiprocket Order ID found" });
 
-    const token = await authenticateShipmozo();
-    const fetchRes = await fetch("https://api.shipmozo.com/v1/orders/invoice", {
-      method: "POST", 
-      headers: { 
-        "Content-Type": "application/json", 
-        "Authorization": `Bearer ${token}` 
-      }, 
-      body: JSON.stringify({ order_id: srOrderId })
+    const token = await authenticateShiprocket();
+    const fetchRes = await fetch("https://apiv2.shiprocket.in/v1/external/orders/print/invoice", {
+      method: "POST", headers: { "Content-Type": "application/json", "Authorization": `Bearer ${token}` }, body: JSON.stringify({ ids: [srOrderId] })
     });
     const result = await fetchRes.json();
-    
-    if (result.invoice_url) return res.json({ success: true, invoice_url: result.invoice_url });
+    if (result.is_invoice_created) return res.json({ success: true, invoice_url: result.invoice_url });
     else return res.status(400).json({ success: false, message: "Failed to fetch invoice" });
   } catch (error) {
     res.status(500).json({ success: false, message: "Server error fetching invoice" });
@@ -5734,6 +5712,7 @@ app.put("/api/admin/orders/:id/address", verifyToken, verifyAdminOrSuperAdmin, a
     const { id } = req.params;
     const { city, state, pincode, house_no, street_area, landmark, address } = req.body;
 
+    // Build the full address if components are provided
     let fullAddress = address;
     if (!fullAddress && (house_no || street_area || city || state || pincode)) {
       const parts = [];
@@ -5771,98 +5750,28 @@ app.put("/api/admin/orders/:id/address", verifyToken, verifyAdminOrSuperAdmin, a
     res.status(500).json({ success: false, message: error.message });
   }
 });
+// ================= SHIPROCKET WEBHOOK (SECURE VERSION) =================
+// ================= SHIPROCKET WEBHOOK (SECURE VERSION) =================
 
-// ================= SHIPMOZO WEBHOOK (SECURE VERSION) =================
 
-app.get("/api/shipmozo/label/:awb", verifyToken, verifyAdminOrSuperAdmin, async (req, res) => {
-  try {
-    const { awb } = req.params;
-    
-    let auth;
-    try {
-      auth = await authenticateShipmozo();
-    } catch (authError) {
-      return res.status(401).json({ success: false, message: authError.message });
-    }
-
-    const labelResult = await getShipmozoLabel(awb, auth.public_key, auth.private_key);
-    
-    if (labelResult.result === "1" && labelResult.data && labelResult.data[0]?.label) {
-      res.json({
-        success: true,
-        label: labelResult.data[0].label,
-        created_at: labelResult.data[0].created_at
-      });
-    } else {
-      res.status(400).json({
-        success: false,
-        message: labelResult.message || "Failed to fetch label"
-      });
-    }
-  } catch (error) {
-    console.error("Label fetch error:", error);
-    res.status(500).json({ success: false, message: error.message });
-  }
-});
-app.get("/api/shipmozo/serviceability", async (req, res) => {
-  try {
-    const { pickup_pincode, delivery_pincode } = req.query;
-
-    if (!delivery_pincode || !/^\d{6}$/.test(delivery_pincode)) {
-      return res.status(400).json({ success: false, message: "Invalid delivery pincode" });
-    }
-
-    let auth;
-    try {
-      auth = await authenticateShipmozo();
-    } catch (authError) {
-      return res.status(401).json({ success: false, message: authError.message });
-    }
-
-    const config = await getShipmozoConfig();
-    const pickupPincode = pickup_pincode || config.shipmozo_pickup_pincode || "518508";
-
-    const serviceability = await checkPincodeServiceability(pickupPincode, delivery_pincode, auth.public_key, auth.private_key);
-    
-    res.json({
-      success: serviceability.result === "1",
-      serviceable: serviceability.data?.serviceable === true,
-      message: serviceability.message
-    });
-  } catch (error) {
-    console.error("Serviceability error:", error);
-    res.status(500).json({ success: false, message: error.message });
-  }
-});
-
-app.get("/api/shipmozo/pincode/:pincode", async (req, res) => {
+app.get("/api/shiprocket/pincode/:pincode", async (req, res) => {
   try {
     const deliveryPincode = req.params.pincode;
     if (!/^[1-9][0-9]{5}$/.test(deliveryPincode)) return res.status(400).json({ success: false, message: "Invalid pincode format" });
 
-    const token = await authenticateShipmozo();
-    const config = await getShipmozoConfig();
-    const pickupPincode = config.shipmozo_pickup_pincode || "581322";
+    const token = await authenticateShiprocket();
+    const config = await getShiprocketConfig();
+    const pickupPincode = config.shiprocket_pickup_pincode || "581322";
     const weight = req.query.weight || 0.5;
 
-    const url = `https://api.shipmozo.com/v1/courier/serviceability?pickup_pincode=${pickupPincode}&delivery_pincode=${deliveryPincode}&weight=${weight}`;
+    const url = `https://apiv2.shiprocket.in/v1/external/courier/serviceability?pickup_postcode=${pickupPincode}&delivery_postcode=${deliveryPincode}&weight=${weight}&cod=0`;
 
-    const fetchRes = await fetch(url, { 
-      method: "GET", 
-      headers: { 
-        "Content-Type": "application/json", 
-        "Authorization": `Bearer ${token}` 
-      } 
-    });
+    const fetchRes = await fetch(url, { method: "GET", headers: { "Content-Type": "application/json", "Authorization": `Bearer ${token}` } });
     const result = await fetchRes.json();
 
-    if (result.success && result.data && result.data.serviceable) {
-      return res.json({ 
-        success: true, 
-        serviceable: true, 
-        estimated_days: result.data.estimated_days || 5,
-        courier: result.data.courier_name 
-      });
+    if (result.status === 200 && result.data && result.data.available_courier_companies.length > 0) {
+      const fastest = result.data.available_courier_companies.reduce((prev, current) => { return (prev.etd_hours < current.etd_hours) ? prev : current; });
+      return res.json({ success: true, serviceable: true, estimated_days: Math.ceil(fastest.etd_hours / 24) || 5, courier: fastest.courier_name });
     } else {
       return res.json({ success: true, serviceable: false, message: "Delivery not available to this pincode." });
     }
@@ -5871,92 +5780,26 @@ app.get("/api/shipmozo/pincode/:pincode", async (req, res) => {
   }
 });
 
-// ================= SHIPMOZO SHIPPING RATES =================
-app.get("/api/shipmozo/shipping-rates", async (req, res) => {
-  try {
-    const { pickup_pincode, delivery_pincode, weight, order_amount, payment_type } = req.query;
+// ================= SHIPROCKET ENHANCED INTEGRATION =================
 
-    if (!delivery_pincode || !/^\d{6}$/.test(delivery_pincode)) {
+// Add this near your existing authenticateShiprocket function (around line 2900+)
+
+// Get live shipping rates for checkout
+app.get("/api/shiprocket/shipping-rates", async (req, res) => {
+  try {
+    const { pickup_pincode, delivery_pincode, weight, cod } = req.query;
+
+    if (!delivery_pincode || !/^[1-9][0-9]{5}$/.test(delivery_pincode)) {
       return res.status(400).json({ success: false, message: "Invalid delivery pincode" });
     }
 
-    let auth;
-    try {
-      auth = await authenticateShipmozo();
-    } catch (authError) {
-      return res.status(401).json({ success: false, message: authError.message });
-    }
+    const token = await authenticateShiprocket();
+    const codParam = cod === 'true' ? 1 : 0;
 
-    const config = await getShipmozoConfig();
-    const pickupPincode = pickup_pincode || config.shipmozo_pickup_pincode || "518508";
+    // Use vendor's pickup pincode or fallback to default
+    let pickupPostcode = pickup_pincode || process.env.SHIPROCKET_PICKUP_PINCODE || "581322";
 
-    const rates = await calculateShippingRates({
-      pickup_pincode: pickupPincode,
-      delivery_pincode: delivery_pincode,
-      weight: weight || 500,
-      order_amount: order_amount || 100,
-      payment_type: payment_type || "PREPAID"
-    }, auth.public_key, auth.private_key);
-    
-    if (rates.result === "1" && rates.data) {
-      const courierRates = rates.data.map(rate => ({
-        courier_id: rate.courier_id,
-        courier_name: rate.courier_name,
-        rate: parseFloat(rate.rate || 0),
-        estimated_days: rate.estimated_days || 5,
-        serviceable: true
-      }));
-
-      courierRates.sort((a, b) => a.rate - b.rate);
-
-      res.json({
-        success: true,
-        serviceable: true,
-        rates: courierRates,
-        recommended: courierRates[0] || null
-      });
-    } else {
-      res.json({
-        success: false,
-        serviceable: false,
-        message: rates.message || "No courier available for this pincode",
-        rates: []
-      });
-    }
-  } catch (error) {
-    console.error("Shipping rates error:", error);
-    res.status(500).json({ success: false, message: error.message });
-  }
-});
-
-
-app.get("/api/shipmozo/courier-recommendation", async (req, res) => {
-  try {
-    const { delivery_pincode, amount, weight } = req.query;
-
-    if (!delivery_pincode) {
-      return res.status(400).json({ success: false, message: "Delivery pincode is required" });
-    }
-
-    if (!/^[1-9][0-9]{5}$/.test(delivery_pincode)) {
-      return res.status(400).json({ success: false, message: "Invalid pincode format" });
-    }
-
-    let token;
-    try {
-      token = await authenticateShipmozo();
-    } catch (authError) {
-      return res.status(401).json({
-        success: false,
-        message: "Shipping service not configured. Please add Shipmozo credentials in Settings."
-      });
-    }
-
-    const config = await getShipmozoConfig();
-    const pickupPostcode = config.shipmozo_pickup_pincode || "581322";
-    const weightParam = parseFloat(weight) || 0.5;
-
-    const url = `https://api.shipmozo.com/v1/courier/serviceability?pickup_pincode=${pickupPostcode}&delivery_pincode=${delivery_pincode}&weight=${weightParam}`;
+    const url = `https://apiv2.shiprocket.in/v1/external/courier/serviceability?pickup_postcode=${pickupPostcode}&delivery_postcode=${delivery_pincode}&weight=${weight || 0.5}&cod=${codParam}`;
 
     const fetchRes = await fetch(url, {
       method: "GET",
@@ -5968,7 +5811,83 @@ app.get("/api/shipmozo/courier-recommendation", async (req, res) => {
 
     const result = await fetchRes.json();
 
-    if (!result.success) {
+    if (result.status === 200 && result.data?.available_courier_companies?.length > 0) {
+      const rates = result.data.available_courier_companies.map(courier => ({
+        courier_id: courier.courier_id,
+        courier_name: courier.courier_name,
+        rate: parseFloat(courier.rate),
+        estimated_days: Math.ceil(courier.etd_hours / 24),
+        estimated_delivery: `${Math.ceil(courier.etd_hours / 24)}-${Math.ceil(courier.etd_hours / 24) + 2} days`,
+        serviceability: true
+      }));
+
+      // Sort by rate (cheapest first)
+      rates.sort((a, b) => a.rate - b.rate);
+
+      return res.json({
+        success: true,
+        serviceable: true,
+        rates: rates,
+        recommended: rates[0]
+      });
+    } else {
+      return res.json({
+        success: true,
+        serviceable: false,
+        message: "No courier service available for this pincode",
+        rates: []
+      });
+    }
+  } catch (error) {
+    console.error("Shipping rates error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to fetch shipping rates"
+    });
+  }
+});
+
+// Get courier recommendation for COD vs Prepaid
+app.get("/api/shiprocket/courier-recommendation", async (req, res) => {
+  try {
+    const { delivery_pincode, amount, is_cod, weight } = req.query;
+
+    if (!delivery_pincode) {
+      return res.status(400).json({ success: false, message: "Delivery pincode is required" });
+    }
+
+    if (!/^[1-9][0-9]{5}$/.test(delivery_pincode)) {
+      return res.status(400).json({ success: false, message: "Invalid pincode format" });
+    }
+
+    let token;
+    try {
+      token = await authenticateShiprocket();
+    } catch (authError) {
+      return res.status(401).json({
+        success: false,
+        message: "Shipping service not configured. Please add Shiprocket credentials in Settings."
+      });
+    }
+
+    const config = await getShiprocketConfig();
+    const pickupPostcode = config.shiprocket_pickup_pincode || "581322";
+    const codParam = is_cod === 'true' ? 1 : 0;
+    const weightParam = parseFloat(weight) || 0.5;
+
+    const url = `https://apiv2.shiprocket.in/v1/external/courier/serviceability?pickup_postcode=${pickupPostcode}&delivery_postcode=${delivery_pincode}&weight=${weightParam}&cod=${codParam}`;
+
+    const fetchRes = await fetch(url, {
+      method: "GET",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${token}`
+      }
+    });
+
+    const result = await fetchRes.json();
+
+    if (fetchRes.status !== 200) {
       return res.status(400).json({
         success: false,
         serviceable: false,
@@ -5976,9 +5895,23 @@ app.get("/api/shipmozo/courier-recommendation", async (req, res) => {
       });
     }
 
-    if (result.data?.rates?.length > 0) {
-      const cheapest = [...result.data.rates].sort((a, b) => parseFloat(a.rate) - parseFloat(b.rate))[0];
-      const fastest = [...result.data.rates].sort((a, b) => (a.estimated_days || 99) - (b.estimated_days || 99))[0];
+    if (result.status === 200 && result.data?.available_courier_companies?.length > 0) {
+      let couriers = result.data.available_courier_companies;
+
+      if (is_cod === 'true') {
+        couriers = couriers.filter(c => c.cod_available === true);
+      }
+
+      if (couriers.length === 0) {
+        return res.json({
+          success: true,
+          serviceable: false,
+          message: "No courier available for COD on this pincode"
+        });
+      }
+
+      const cheapest = [...couriers].sort((a, b) => parseFloat(a.rate) - parseFloat(b.rate))[0];
+      const fastest = [...couriers].sort((a, b) => a.etd_hours - b.etd_hours)[0];
 
       return res.json({
         success: true,
@@ -5987,21 +5920,29 @@ app.get("/api/shipmozo/courier-recommendation", async (req, res) => {
           courier_id: cheapest.courier_id,
           courier_name: cheapest.courier_name,
           rate: parseFloat(cheapest.rate),
-          estimated_days: cheapest.estimated_days || 5
+          etd_hours: cheapest.etd_hours,
+          estimated_days: Math.ceil(cheapest.etd_hours / 24)
         },
         fastest_courier: {
           courier_id: fastest.courier_id,
           courier_name: fastest.courier_name,
           rate: parseFloat(fastest.rate),
-          estimated_days: fastest.estimated_days || 5
+          etd_hours: fastest.etd_hours,
+          estimated_days: Math.ceil(fastest.etd_hours / 24)
         },
-        all_couriers: result.data.rates
+        all_couriers: couriers.map(c => ({
+          courier_id: c.courier_id,
+          courier_name: c.courier_name,
+          rate: parseFloat(c.rate),
+          etd_hours: c.etd_hours,
+          cod_available: c.cod_available
+        }))
       });
     } else {
       return res.json({
         success: true,
         serviceable: false,
-        message: "No courier available for this pincode"
+        message: result.message || "No courier available for this pincode"
       });
     }
   } catch (error) {
@@ -6012,29 +5953,31 @@ app.get("/api/shipmozo/courier-recommendation", async (req, res) => {
     });
   }
 });
-
-app.get("/api/shipmozo/track/:awb", async (req, res) => {
+// Track shipment by AWB number
+app.get("/api/shiprocket/track/:awb", async (req, res) => {
   try {
     const { awb } = req.params;
-    
-    let auth;
-    try {
-      auth = await authenticateShipmozo();
-    } catch (authError) {
-      return res.status(401).json({ success: false, message: authError.message });
-    }
+    const token = await authenticateShiprocket();
 
-    const tracking = await trackShipmozoOrder(awb, auth.public_key, auth.private_key);
-    
-    if (tracking.result === "1") {
-      res.json({
+    const fetchRes = await fetch(`https://apiv2.shiprocket.in/v1/external/tracking?awb=${awb}`, {
+      method: "GET",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${token}`
+      }
+    });
+
+    const result = await fetchRes.json();
+
+    if (result.status === 200) {
+      return res.json({
         success: true,
-        tracking: tracking.data
+        tracking: result.data
       });
     } else {
-      res.json({
+      return res.json({
         success: false,
-        message: tracking.message || "Tracking not found"
+        message: result.message || "Tracking not found"
       });
     }
   } catch (error) {
@@ -6043,12 +5986,13 @@ app.get("/api/shipmozo/track/:awb", async (req, res) => {
   }
 });
 
-app.get("/api/shipmozo/orders", verifyToken, verifyAdminOrSuperAdmin, async (req, res) => {
+// Get all orders from Shiprocket (for admin)
+app.get("/api/shiprocket/orders", verifyToken, verifyAdminOrSuperAdmin, async (req, res) => {
   try {
-    const token = await authenticateShipmozo();
-    const { page = 1, limit = 20 } = req.query;
+    const token = await authenticateShiprocket();
+    const { page = 1, per_page = 20 } = req.query;
 
-    const fetchRes = await fetch(`https://api.shipmozo.com/v1/orders?page=${page}&limit=${limit}`, {
+    const fetchRes = await fetch(`https://apiv2.shiprocket.in/v1/external/orders?page=${page}&per_page=${per_page}`, {
       method: "GET",
       headers: {
         "Content-Type": "application/json",
@@ -6063,30 +6007,32 @@ app.get("/api/shipmozo/orders", verifyToken, verifyAdminOrSuperAdmin, async (req
       orders: result.data || []
     });
   } catch (error) {
-    console.error("Fetch Shipmozo orders error:", error);
+    console.error("Fetch Shiprocket orders error:", error);
     res.status(500).json({ success: false, message: error.message });
   }
 });
 
-app.post("/api/shipmozo/cancel-order/:orderId", verifyToken, verifyAdminOrSuperAdmin, async (req, res) => {
+// Cancel order in Shiprocket
+app.post("/api/shiprocket/cancel-order/:orderId", verifyToken, verifyAdminOrSuperAdmin, async (req, res) => {
   try {
     const { orderId } = req.params;
-    const token = await authenticateShipmozo();
+    const token = await authenticateShiprocket();
 
-    const fetchRes = await fetch(`https://api.shipmozo.com/v1/orders/cancel`, {
+    const fetchRes = await fetch(`https://apiv2.shiprocket.in/v1/external/orders/cancel`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
         "Authorization": `Bearer ${token}`
       },
-      body: JSON.stringify({ order_id: orderId })
+      body: JSON.stringify({ ids: [orderId] })
     });
 
     const result = await fetchRes.json();
 
-    if (result.success) {
+    if (result.status === 200) {
+      // Update local database
       await pool.query(
-        `UPDATE orders SET order_status = 'Cancelled', updated_at = NOW() WHERE shipmozo_order_id = $1`,
+        `UPDATE orders SET order_status = 'Cancelled', updated_at = NOW() WHERE shiprocket_order_id = $1`,
         [orderId]
       );
 
@@ -6100,12 +6046,13 @@ app.post("/api/shipmozo/cancel-order/:orderId", verifyToken, verifyAdminOrSuperA
   }
 });
 
-app.post("/api/shipmozo/generate-manifest", verifyToken, verifyAdminOrSuperAdmin, async (req, res) => {
+// Generate manifest for multiple shipments
+app.post("/api/shiprocket/generate-manifest", verifyToken, verifyAdminOrSuperAdmin, async (req, res) => {
   try {
     const { shipment_ids } = req.body;
-    const token = await authenticateShipmozo();
+    const token = await authenticateShiprocket();
 
-    const fetchRes = await fetch(`https://api.shipmozo.com/v1/manifests/generate`, {
+    const fetchRes = await fetch(`https://apiv2.shiprocket.in/v1/external/manifests/generate`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -6117,7 +6064,7 @@ app.post("/api/shipmozo/generate-manifest", verifyToken, verifyAdminOrSuperAdmin
     const result = await fetchRes.json();
 
     res.json({
-      success: result.success,
+      success: result.status === 200,
       data: result
     });
   } catch (error) {
@@ -6125,6 +6072,7 @@ app.post("/api/shipmozo/generate-manifest", verifyToken, verifyAdminOrSuperAdmin
     res.status(500).json({ success: false, message: error.message });
   }
 });
+
 
 app.get("/api/admin/admins", verifyToken, verifySuperAdmin, async (req, res) => {
   try {
@@ -6223,6 +6171,7 @@ app.put("/api/settings", verifyToken, verifySuperAdmin, async (req, res) => {
       );
     }
 
+    // Re-initialize Razorpay if keys were updated
     await initRazorpay();
 
     res.json({ success: true, message: "Settings updated successfully" });
@@ -6257,6 +6206,8 @@ app.put("/api/admin/settings/platform-fee", verifyToken, verifySuperAdmin, async
   }
 });
 
+
+// Get earning stats - FIXED to only count Paid payouts
 app.get("/api/admin/payouts/earning-stats", verifyToken, verifyAdminVendorIndividualAccess, async (req, res) => {
   try {
     const userRole = req.user.role?.toLowerCase();
@@ -6285,6 +6236,7 @@ app.get("/api/admin/payouts/earning-stats", verifyToken, verifyAdminVendorIndivi
     res.status(500).json({ success: false, message: err.message });
   }
 });
+// Add this to your existing routes in the backend file
 
 // ================= INVOICES ROUTES WITH PROPER PDF =================
 
@@ -6345,6 +6297,8 @@ app.get("/api/admin/invoices", verifyToken, verifyAdminVendorIndividualAccess, a
   }
 });
 
+
+// ================= SETTLEMENT REPORT DOWNLOAD (CSV/Excel) =================
 app.get("/api/admin/payouts/report/download", verifyToken, verifyAdminVendorIndividualAccess, async (req, res) => {
   try {
     const userRole = req.user.role?.toLowerCase();
@@ -6383,10 +6337,12 @@ app.get("/api/admin/payouts/report/download", verifyToken, verifyAdminVendorIndi
 
     const result = await pool.query(query, params);
 
+    // Calculate summary
     const totalAmount = result.rows.reduce((sum, p) => sum + parseFloat(p.amount), 0);
     const totalPending = result.rows.filter(p => p.status === 'Pending').reduce((sum, p) => sum + parseFloat(p.amount), 0);
     const totalPaid = result.rows.filter(p => p.status === 'Paid').reduce((sum, p) => sum + parseFloat(p.amount), 0);
 
+    // Generate CSV
     const headers = [
       'Settlement ID',
       'Vendor Name',
@@ -6413,6 +6369,7 @@ app.get("/api/admin/payouts/report/download", verifyToken, verifyAdminVendorIndi
       p.processed_at ? new Date(p.processed_at).toLocaleString('en-IN') : '-'
     ]);
 
+    // Add summary rows
     const summaryRows = [
       [],
       ['REPORT SUMMARY', '', '', '', '', '', '', '', '', ''],
@@ -6432,7 +6389,7 @@ app.get("/api/admin/payouts/report/download", verifyToken, verifyAdminVendorIndi
     res.setHeader('Content-Type', 'text/csv; charset=utf-8');
     res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
     res.setHeader('Cache-Control', 'no-cache');
-    res.send('\uFEFF' + csvContent);
+    res.send('\uFEFF' + csvContent); // Add BOM for UTF-8 encoding
 
   } catch (err) {
     console.error("Report download error:", err);
@@ -6440,6 +6397,7 @@ app.get("/api/admin/payouts/report/download", verifyToken, verifyAdminVendorIndi
   }
 });
 
+// ================= MONTHLY STATEMENT DOWNLOAD =================
 app.get("/api/admin/payouts/monthly-statement/download", verifyToken, verifyAdminVendorIndividualAccess, async (req, res) => {
   try {
     const { month, year } = req.query;
@@ -6466,10 +6424,12 @@ app.get("/api/admin/payouts/monthly-statement/download", verifyToken, verifyAdmi
     const result = await pool.query(query, params);
     const payouts = result.rows;
 
+    // Parse amounts to numbers
     const totalAmount = payouts.reduce((sum, p) => sum + parseFloat(p.amount), 0);
     const completedAmount = payouts.filter(p => p.status === 'Paid').reduce((sum, p) => sum + parseFloat(p.amount), 0);
     const pendingAmount = payouts.filter(p => p.status === 'Pending').reduce((sum, p) => sum + parseFloat(p.amount), 0);
 
+    // Create PDF
     const doc = new PDFDocument({ margin: 50, size: 'A4' });
 
     res.setHeader('Content-Type', 'application/pdf');
@@ -6477,6 +6437,7 @@ app.get("/api/admin/payouts/monthly-statement/download", verifyToken, verifyAdmi
 
     doc.pipe(res);
 
+    // Header
     doc.fontSize(24)
       .font('Helvetica-Bold')
       .fillColor('#8E2139')
@@ -6500,6 +6461,7 @@ app.get("/api/admin/payouts/monthly-statement/download", verifyToken, verifyAdmi
 
     doc.moveDown(1);
 
+    // Vendor Info
     const vendor = payouts[0] || {};
     doc.fontSize(10)
       .font('Helvetica-Bold')
@@ -6517,6 +6479,7 @@ app.get("/api/admin/payouts/monthly-statement/download", verifyToken, verifyAdmi
 
     doc.moveDown(4);
 
+    // Summary Cards
     const summaryY = doc.y;
     doc.rect(50, summaryY, 150, 70).fillAndStroke('#F0FDF4', '#86EFAC');
     doc.rect(210, summaryY, 150, 70).fillAndStroke('#FEF3C7', '#FDE68A');
@@ -6536,6 +6499,7 @@ app.get("/api/admin/payouts/monthly-statement/download", verifyToken, verifyAdmi
 
     doc.moveDown(7);
 
+    // Transactions Table
     const tableTop = doc.y;
     doc.rect(50, tableTop, 500, 25).fillAndStroke('#8E2139', '#8E2139');
 
@@ -6566,6 +6530,7 @@ app.get("/api/admin/payouts/monthly-statement/download", verifyToken, verifyAdmi
       currentY += 20;
     });
 
+    // Footer
     doc.moveDown(2);
     const footerY = doc.y;
     doc.fontSize(8)
@@ -6581,10 +6546,16 @@ app.get("/api/admin/payouts/monthly-statement/download", verifyToken, verifyAdmi
   }
 });
 
+
+
+// ================= SAVED BANK ACCOUNTS ROUTES =================
+
+// Get saved bank accounts for vendor
 app.get("/api/admin/payouts/saved-accounts", verifyToken, verifyAdminVendorIndividualAccess, async (req, res) => {
   try {
     const vendorId = req.user.id;
 
+    // First, check if the table exists, if not create it
     await pool.query(`
       CREATE TABLE IF NOT EXISTS vendor_bank_accounts (
         id SERIAL PRIMARY KEY,
@@ -6608,6 +6579,7 @@ app.get("/api/admin/payouts/saved-accounts", verifyToken, verifyAdminVendorIndiv
   }
 });
 
+// Save bank account for vendor
 app.post("/api/admin/payouts/save-account", verifyToken, verifyAdminVendorIndividualAccess, async (req, res) => {
   try {
     const vendorId = req.user.id;
@@ -6617,6 +6589,7 @@ app.post("/api/admin/payouts/save-account", verifyToken, verifyAdminVendorIndivi
       return res.status(400).json({ success: false, message: "Bank details are required" });
     }
 
+    // Create table if not exists
     await pool.query(`
       CREATE TABLE IF NOT EXISTS vendor_bank_accounts (
         id SERIAL PRIMARY KEY,
@@ -6628,12 +6601,14 @@ app.post("/api/admin/payouts/save-account", verifyToken, verifyAdminVendorIndivi
       )
     `);
 
+    // Check if this exact bank detail already exists for this vendor
     const existing = await pool.query(
       `SELECT id FROM vendor_bank_accounts WHERE vendor_id = $1 AND bank_details = $2`,
       [vendorId, bank_details]
     );
 
     if (existing.rows.length === 0) {
+      // Check if this is the first account - make it default
       const countResult = await pool.query(
         `SELECT COUNT(*) FROM vendor_bank_accounts WHERE vendor_id = $1`,
         [vendorId]
@@ -6653,6 +6628,7 @@ app.post("/api/admin/payouts/save-account", verifyToken, verifyAdminVendorIndivi
   }
 });
 
+// Delete saved bank account
 app.delete("/api/admin/payouts/saved-account/:id", verifyToken, verifyAdminVendorIndividualAccess, async (req, res) => {
   try {
     const vendorId = req.user.id;
@@ -6674,6 +6650,7 @@ app.delete("/api/admin/payouts/saved-account/:id", verifyToken, verifyAdminVendo
   }
 });
 
+// Set default bank account
 app.put("/api/admin/payouts/saved-account/:id/default", verifyToken, verifyAdminVendorIndividualAccess, async (req, res) => {
   const client = await pool.connect();
   try {
@@ -6682,11 +6659,13 @@ app.put("/api/admin/payouts/saved-account/:id/default", verifyToken, verifyAdmin
 
     await client.query("BEGIN");
 
+    // Remove default from all accounts
     await client.query(
       `UPDATE vendor_bank_accounts SET is_default = false WHERE vendor_id = $1`,
       [vendorId]
     );
 
+    // Set new default
     await client.query(
       `UPDATE vendor_bank_accounts SET is_default = true WHERE id = $1 AND vendor_id = $2`,
       [accountId, vendorId]
@@ -6703,6 +6682,9 @@ app.put("/api/admin/payouts/saved-account/:id/default", verifyToken, verifyAdmin
   }
 });
 
+// ================= CANCEL & REJECT PAYOUT ROUTES =================
+
+// Cancel payout request (Vendor/Admin) - FIXED - Refund to balance
 app.put("/api/admin/payouts/:id/cancel", verifyToken, verifyAdminVendorIndividualAccess, async (req, res) => {
   const client = await pool.connect();
   try {
@@ -6733,6 +6715,7 @@ app.put("/api/admin/payouts/:id/cancel", verifyToken, verifyAdminVendorIndividua
       [reason || "Cancelled by vendor", payoutId]
     );
 
+    // Update wallet transaction status
     await client.query(
       `UPDATE wallet_transactions SET status = 'cancelled', description = description || ' - Cancelled' WHERE payout_id = $1`,
       [payoutId]
@@ -6750,6 +6733,8 @@ app.put("/api/admin/payouts/:id/cancel", verifyToken, verifyAdminVendorIndividua
   }
 });
 
+
+// Reject payout request (Super Admin only) - FIXED - Refund to balance
 app.put("/api/admin/payouts/:id/reject", verifyToken, verifySuperAdmin, async (req, res) => {
   const client = await pool.connect();
   try {
@@ -6758,6 +6743,7 @@ app.put("/api/admin/payouts/:id/reject", verifyToken, verifySuperAdmin, async (r
 
     await client.query("BEGIN");
 
+    // Check if payout exists and is pending
     const payoutCheck = await client.query(
       "SELECT * FROM payouts WHERE id = $1 AND status = 'Pending'",
       [payoutId]
@@ -6769,11 +6755,13 @@ app.put("/api/admin/payouts/:id/reject", verifyToken, verifySuperAdmin, async (r
 
     const payout = payoutCheck.rows[0];
 
+    // REFUND the amount back to vendor's balance
     await client.query(
       "UPDATE users SET balance = balance + $1 WHERE id = $2",
       [parseFloat(payout.amount), payout.vendor_id]
     );
 
+    // Update payout status
     await client.query(
       "UPDATE payouts SET status = 'Rejected', rejection_reason = $1, updated_at = NOW(), processed_at = NOW() WHERE id = $2",
       [reason || "Rejected by admin", payoutId]
@@ -6819,6 +6807,9 @@ app.get("/api/admin/wallet-transactions", verifyToken, verifyAdminVendorIndividu
   }
 });
 
+// ================= NAVBAR CATEGORY MANAGEMENT =================
+
+// Get categories for navbar (with ordering)
 app.get("/api/navbar/categories", async (req, res) => {
   try {
     const result = await pool.query(
@@ -6833,6 +6824,8 @@ app.get("/api/navbar/categories", async (req, res) => {
   }
 });
 
+// Admin: Get all categories for navbar management
+// Admin: Get all categories for navbar management
 app.get("/api/admin/navbar/categories", verifyToken, verifyAdminOrSuperAdmin, async (req, res) => {
   try {
     const result = await pool.query(
@@ -6847,6 +6840,7 @@ app.get("/api/admin/navbar/categories", verifyToken, verifyAdminOrSuperAdmin, as
   }
 });
 
+// Update navbar visibility for a category
 app.put("/api/admin/navbar/categories/:id/visibility", verifyToken, verifyAdminOrSuperAdmin, async (req, res) => {
   try {
     const { id } = req.params;
@@ -6864,10 +6858,11 @@ app.put("/api/admin/navbar/categories/:id/visibility", verifyToken, verifyAdminO
   }
 });
 
+// Update navbar order for all categories (bulk update)
 app.put("/api/admin/navbar/categories/reorder", verifyToken, verifyAdminOrSuperAdmin, async (req, res) => {
   const client = await pool.connect();
   try {
-    const { categories } = req.body;
+    const { categories } = req.body; // [{ id: 1, nav_order: 0 }, { id: 2, nav_order: 1 }]
 
     await client.query("BEGIN");
 
@@ -6888,6 +6883,7 @@ app.put("/api/admin/navbar/categories/reorder", verifyToken, verifyAdminOrSuperA
   }
 });
 
+// Toggle multiple categories navbar visibility
 app.post("/api/admin/navbar/categories/bulk-visibility", verifyToken, verifyAdminOrSuperAdmin, async (req, res) => {
   const client = await pool.connect();
   try {
@@ -6914,11 +6910,13 @@ app.post("/api/admin/navbar/categories/bulk-visibility", verifyToken, verifyAdmi
 
 // ================= PIN AUTHENTICATION ROUTES =================
 
+// Create or update user PIN (after login)
 app.post("/api/auth/create-pin", verifyToken, async (req, res) => {
   try {
     const { pin } = req.body;
     const userId = req.user.id;
 
+    // Validate PIN: exactly 4 digits
     if (!pin || !/^\d{4}$/.test(pin)) {
       return res.status(400).json({
         success: false,
@@ -6926,14 +6924,17 @@ app.post("/api/auth/create-pin", verifyToken, async (req, res) => {
       });
     }
 
+    // Hash the PIN
     const hashedPin = await bcrypt.hash(pin, 10);
 
+    // Check if user already has a PIN
     const existingPin = await pool.query(
       "SELECT id FROM user_pins WHERE user_id = $1",
       [userId]
     );
 
     if (existingPin.rows.length > 0) {
+      // Update existing PIN
       await pool.query(
         `UPDATE user_pins 
          SET pin_hash = $1, is_active = true, updated_at = CURRENT_TIMESTAMP 
@@ -6941,6 +6942,7 @@ app.post("/api/auth/create-pin", verifyToken, async (req, res) => {
         [hashedPin, userId]
       );
     } else {
+      // Insert new PIN
       await pool.query(
         `INSERT INTO user_pins (user_id, pin_hash) VALUES ($1, $2)`,
         [userId, hashedPin]
@@ -6961,6 +6963,7 @@ app.post("/api/auth/create-pin", verifyToken, async (req, res) => {
   }
 });
 
+// Check if user has PIN set
 app.get("/api/auth/has-pin", verifyToken, async (req, res) => {
   try {
     const userId = req.user.id;
@@ -6984,6 +6987,7 @@ app.get("/api/auth/has-pin", verifyToken, async (req, res) => {
   }
 });
 
+// Verify PIN and get user
 app.post("/api/auth/verify-pin", async (req, res) => {
   try {
     const { identifier, pin } = req.body;
@@ -7002,6 +7006,7 @@ app.post("/api/auth/verify-pin", async (req, res) => {
       });
     }
 
+    // Find user by email or phone
     let userResult;
     if (validator.isEmail(identifier)) {
       userResult = await pool.query(
@@ -7025,6 +7030,7 @@ app.post("/api/auth/verify-pin", async (req, res) => {
 
     const user = userResult.rows[0];
 
+    // Check PIN login attempts
     const attemptsResult = await pool.query(
       "SELECT * FROM pin_login_attempts WHERE user_id = $1",
       [user.id]
@@ -7042,6 +7048,7 @@ app.post("/api/auth/verify-pin", async (req, res) => {
       });
     }
 
+    // Get user's PIN
     const pinResult = await pool.query(
       "SELECT pin_hash FROM user_pins WHERE user_id = $1 AND is_active = true",
       [user.id]
@@ -7054,17 +7061,20 @@ app.post("/api/auth/verify-pin", async (req, res) => {
       });
     }
 
+    // Verify PIN
     const isValid = await bcrypt.compare(pin, pinResult.rows[0].pin_hash);
 
     if (!isValid) {
+      // Update failed attempts
       let newAttemptCount = 1;
       let lockedUntil = null;
 
       if (attempts) {
         newAttemptCount = attempts.attempt_count + 1;
 
+        // Lock after 5 failed attempts for 15 minutes
         if (newAttemptCount >= 5) {
-          lockedUntil = new Date(Date.now() + 15 * 60 * 1000);
+          lockedUntil = new Date(Date.now() + 15 * 60 * 1000); // 15 minutes lock
 
           await pool.query(
             `UPDATE pin_login_attempts 
@@ -7101,11 +7111,13 @@ app.post("/api/auth/verify-pin", async (req, res) => {
       });
     }
 
+    // Reset attempts on successful login
     await pool.query(
       `DELETE FROM pin_login_attempts WHERE user_id = $1`,
       [user.id]
     );
 
+    // Generate JWT token
     const token = jwt.sign(
       { id: user.id, role: user.role || "user" },
       JWT_SECRET,
@@ -7134,6 +7146,7 @@ app.post("/api/auth/verify-pin", async (req, res) => {
   }
 });
 
+// Disable PIN (remove PIN login option)
 app.delete("/api/auth/disable-pin", verifyToken, async (req, res) => {
   try {
     const userId = req.user.id;
@@ -7157,6 +7170,7 @@ app.delete("/api/auth/disable-pin", verifyToken, async (req, res) => {
   }
 });
 
+// Reset PIN (require password verification first)
 app.post("/api/auth/reset-pin", verifyToken, async (req, res) => {
   try {
     const { password, newPin } = req.body;
@@ -7169,6 +7183,7 @@ app.post("/api/auth/reset-pin", verifyToken, async (req, res) => {
       });
     }
 
+    // Verify user's password
     const userResult = await pool.query(
       "SELECT password FROM users WHERE id = $1",
       [userId]
@@ -7190,6 +7205,7 @@ app.post("/api/auth/reset-pin", verifyToken, async (req, res) => {
       });
     }
 
+    // Update PIN
     const hashedPin = await bcrypt.hash(newPin, 10);
 
     await pool.query(
@@ -7214,6 +7230,9 @@ app.post("/api/auth/reset-pin", verifyToken, async (req, res) => {
   }
 });
 
+
+
+// Check if user has PIN set
 app.get("/api/auth/check-user-pin/:userId", async (req, res) => {
   try {
     const { userId } = req.params;
@@ -7233,6 +7252,7 @@ app.get("/api/auth/check-user-pin/:userId", async (req, res) => {
   }
 });
 
+// Get user's PIN status (for authenticated users)
 app.get("/api/auth/pin-status", verifyToken, async (req, res) => {
   try {
     const userId = req.user.id;
@@ -7262,7 +7282,8 @@ app.get("/api/auth/pin-status", verifyToken, async (req, res) => {
     });
   }
 });
-
+// ================= PIN ONLY LOGIN (No email/phone required) =================
+// Check user by identifier (for PIN login flow)
 app.post("/api/auth/check-user", async (req, res) => {
   try {
     const { identifier } = req.body;
@@ -7296,6 +7317,7 @@ app.post("/api/auth/check-user", async (req, res) => {
 
     const user = userResult.rows[0];
 
+    // Check if user has PIN set
     const pinResult = await pool.query(
       "SELECT id, pin_hash FROM user_pins WHERE user_id = $1 AND is_active = true AND pin_hash IS NOT NULL",
       [user.id]
@@ -7314,6 +7336,7 @@ app.post("/api/auth/check-user", async (req, res) => {
   }
 });
 
+// ================= PIN ONLY LOGIN (No email/phone required) =================
 app.post("/api/auth/login-with-pin-only", async (req, res) => {
   try {
     const { pin, userId } = req.body;
@@ -7327,6 +7350,7 @@ app.post("/api/auth/login-with-pin-only", async (req, res) => {
 
     let user = null;
 
+    // If userId is provided, use it directly
     if (userId) {
       const userResult = await pool.query(
         "SELECT * FROM users WHERE id = $1 AND status = 'Active'",
@@ -7337,13 +7361,17 @@ app.post("/api/auth/login-with-pin-only", async (req, res) => {
       }
     }
 
+    // If no user found by ID, find by PIN (only for the specific user)
     if (!user) {
+      // IMPORTANT: We need to find the user FIRST before checking attempts
+      // Get all users with active PINs
       const pinResult = await pool.query(`
         SELECT up.user_id, up.pin_hash 
         FROM user_pins up
         WHERE up.is_active = true AND up.pin_hash IS NOT NULL AND up.pin_hash != ''
       `);
 
+      // Find the user that matches this PIN
       for (const row of pinResult.rows) {
         try {
           const isValid = await bcrypt.compare(pin, row.pin_hash);
@@ -7364,6 +7392,7 @@ app.post("/api/auth/login-with-pin-only", async (req, res) => {
       }
     }
 
+    // If no user found with this PIN, return error (don't track attempts for non-existent user)
     if (!user) {
       return res.status(400).json({
         success: false,
@@ -7371,6 +7400,7 @@ app.post("/api/auth/login-with-pin-only", async (req, res) => {
       });
     }
 
+    // Now we have a specific user - check attempts ONLY for this user
     const attemptsResult = await pool.query(
       "SELECT * FROM pin_login_attempts WHERE user_id = $1",
       [user.id]
@@ -7378,6 +7408,7 @@ app.post("/api/auth/login-with-pin-only", async (req, res) => {
 
     let attempts = attemptsResult.rows[0];
 
+    // Check if this specific user is locked
     if (attempts && attempts.locked_until && new Date(attempts.locked_until) > new Date()) {
       const minutesLeft = Math.ceil((new Date(attempts.locked_until) - new Date()) / (1000 * 60));
       return res.status(400).json({
@@ -7388,6 +7419,7 @@ app.post("/api/auth/login-with-pin-only", async (req, res) => {
       });
     }
 
+    // Verify PIN for this specific user
     const pinResult = await pool.query(
       "SELECT pin_hash FROM user_pins WHERE user_id = $1 AND is_active = true",
       [user.id]
@@ -7409,6 +7441,7 @@ app.post("/api/auth/login-with-pin-only", async (req, res) => {
       if (attempts) {
         newAttemptCount = attempts.attempt_count + 1;
 
+        // Lock after 5 failed attempts for 15 minutes - ONLY for this user
         if (newAttemptCount >= 5) {
           lockedUntil = new Date(Date.now() + 15 * 60 * 1000);
 
@@ -7451,6 +7484,7 @@ app.post("/api/auth/login-with-pin-only", async (req, res) => {
       });
     }
 
+    // Reset attempts on successful login for this user only
     await pool.query(
       `DELETE FROM pin_login_attempts WHERE user_id = $1`,
       [user.id]
@@ -7485,6 +7519,8 @@ app.post("/api/auth/login-with-pin-only", async (req, res) => {
   }
 });
 
+
+// ================= RESET PIN ATTEMPTS FOR A SPECIFIC USER (Admin only) =================
 app.post("/api/admin/reset-pin-attempts/:userId", verifyToken, verifySuperAdmin, async (req, res) => {
   try {
     const { userId } = req.params;
@@ -7507,6 +7543,7 @@ app.post("/api/admin/reset-pin-attempts/:userId", verifyToken, verifySuperAdmin,
   }
 });
 
+// ================= GET PIN ATTEMPTS STATUS FOR A USER =================
 app.get("/api/auth/pin-attempts-status", verifyToken, async (req, res) => {
   try {
     const userId = req.user.id;
@@ -7546,24 +7583,24 @@ app.get("/api/auth/pin-attempts-status", verifyToken, async (req, res) => {
   }
 });
 
-// ================= SHIPMOZO CONFIGURATION ENDPOINTS =================
-// ================= SHIPMOZO SETTINGS ENDPOINTS =================
-
-app.get("/api/admin/shipmozo-settings", verifyToken, verifyAdminOrSuperAdmin, async (req, res) => {
+// ================= SHIPROCKET CONFIGURATION ENDPOINTS =================
+// Get Shiprocket settings - Allow both super_admin and admin
+app.get("/api/admin/shiprocket-settings", verifyToken, verifyAdminOrSuperAdmin, async (req, res) => {
   try {
     const result = await pool.query(
-      "SELECT key, value FROM settings WHERE key IN ('shipmozo_username', 'shipmozo_password', 'shipmozo_pickup_pincode', 'shipmozo_webhook_secret')"
+      "SELECT key, value FROM settings WHERE key IN ('shiprocket_email', 'shiprocket_password', 'shiprocket_pickup_pincode', 'shiprocket_webhook_secret')"
     );
 
     const settings = {
-      shipmozo_username: '',
-      shipmozo_password: '',
-      shipmozo_pickup_pincode: '518508',
-      shipmozo_webhook_secret: ''
+      shiprocket_email: '',
+      shiprocket_password: '',
+      shiprocket_pickup_pincode: '518508',
+      shiprocket_webhook_secret: ''
     };
 
     result.rows.forEach(row => {
-      if (row.key === 'shipmozo_password') {
+      if (row.key === 'shiprocket_password') {
+        // Return masked password for security
         settings[row.key] = row.value && row.value !== '' ? '********' : '';
       } else {
         settings[row.key] = row.value || '';
@@ -7572,130 +7609,216 @@ app.get("/api/admin/shipmozo-settings", verifyToken, verifyAdminOrSuperAdmin, as
 
     res.json({ success: true, settings });
   } catch (error) {
+    console.error("Failed to fetch Shiprocket settings:", error);
     res.status(500).json({ success: false, message: error.message });
   }
 });
 
-app.put("/api/admin/shipmozo-settings", verifyToken, verifyAdminOrSuperAdmin, async (req, res) => {
+// Update Shiprocket settings - Allow both super_admin and admin
+app.put("/api/admin/shiprocket-settings", verifyToken, verifyAdminOrSuperAdmin, async (req, res) => {
   try {
-    const { shipmozo_username, shipmozo_password, shipmozo_pickup_pincode, shipmozo_webhook_secret } = req.body;
+    const { shiprocket_email, shiprocket_password, shiprocket_pickup_pincode, shiprocket_webhook_secret } = req.body;
 
+    console.log("Updating Shiprocket settings:", {
+      hasEmail: !!shiprocket_email,
+      hasPassword: !!shiprocket_password && shiprocket_password !== '********',
+      hasPickupPincode: !!shiprocket_pickup_pincode,
+      hasWebhookSecret: !!shiprocket_webhook_secret
+    });
+
+    // Update each setting
     const updates = [];
 
-    if (shipmozo_username !== undefined) {
+    if (shiprocket_email !== undefined) {
       updates.push(pool.query(
-        "INSERT INTO settings (key, value) VALUES ('shipmozo_username', $1) ON CONFLICT (key) DO UPDATE SET value = $1, updated_at = CURRENT_TIMESTAMP",
-        [shipmozo_username.trim()]
+        "INSERT INTO settings (key, value) VALUES ('shiprocket_email', $1) ON CONFLICT (key) DO UPDATE SET value = $1, updated_at = CURRENT_TIMESTAMP",
+        [shiprocket_email.trim()]
       ));
     }
 
-    if (shipmozo_password !== undefined && shipmozo_password !== '********' && shipmozo_password !== '') {
+    // Only update password if it's not masked (not '********') and not empty
+    if (shiprocket_password !== undefined && shiprocket_password !== '********' && shiprocket_password !== '') {
       updates.push(pool.query(
-        "INSERT INTO settings (key, value) VALUES ('shipmozo_password', $1) ON CONFLICT (key) DO UPDATE SET value = $1, updated_at = CURRENT_TIMESTAMP",
-        [shipmozo_password]
+        "INSERT INTO settings (key, value) VALUES ('shiprocket_password', $1) ON CONFLICT (key) DO UPDATE SET value = $1, updated_at = CURRENT_TIMESTAMP",
+        [shiprocket_password]
+      ));
+      console.log("Password updated in database");
+    } else if (shiprocket_password === '********') {
+      console.log("Password unchanged (masked value received)");
+    }
+
+    if (shiprocket_pickup_pincode !== undefined) {
+      updates.push(pool.query(
+        "INSERT INTO settings (key, value) VALUES ('shiprocket_pickup_pincode', $1) ON CONFLICT (key) DO UPDATE SET value = $1, updated_at = CURRENT_TIMESTAMP",
+        [shiprocket_pickup_pincode]
       ));
     }
 
-    if (shipmozo_pickup_pincode !== undefined) {
+    if (shiprocket_webhook_secret !== undefined && shiprocket_webhook_secret !== '********') {
       updates.push(pool.query(
-        "INSERT INTO settings (key, value) VALUES ('shipmozo_pickup_pincode', $1) ON CONFLICT (key) DO UPDATE SET value = $1, updated_at = CURRENT_TIMESTAMP",
-        [shipmozo_pickup_pincode]
-      ));
-    }
-
-    if (shipmozo_webhook_secret !== undefined && shipmozo_webhook_secret !== '********') {
-      updates.push(pool.query(
-        "INSERT INTO settings (key, value) VALUES ('shipmozo_webhook_secret', $1) ON CONFLICT (key) DO UPDATE SET value = $1, updated_at = CURRENT_TIMESTAMP",
-        [shipmozo_webhook_secret]
+        "INSERT INTO settings (key, value) VALUES ('shiprocket_webhook_secret', $1) ON CONFLICT (key) DO UPDATE SET value = $1, updated_at = CURRENT_TIMESTAMP",
+        [shiprocket_webhook_secret]
       ));
     }
 
     await Promise.all(updates);
-    clearShipmozoCache();
 
-    res.json({ success: true, message: "Shipmozo settings updated successfully" });
+    // Clear cache
+    clearShiprocketCache();
+
+    console.log("Shiprocket settings updated successfully");
+
+    res.json({ success: true, message: "Shiprocket settings updated successfully" });
   } catch (error) {
-    console.error("Failed to update Shipmozo settings:", error);
+    console.error("Failed to update Shiprocket settings:", error);
     res.status(500).json({ success: false, message: error.message });
   }
 });
 
-app.post("/api/admin/shipmozo-test", verifyToken, verifyAdminOrSuperAdmin, async (req, res) => {
+// Test Shiprocket credentials - Allow both super_admin and admin
+app.post("/api/admin/shiprocket-test", verifyToken, verifyAdminOrSuperAdmin, async (req, res) => {
   try {
-    let { username, password } = req.body;
+    let { email, password, saveCredentials } = req.body;
 
-    if (!username || !password || password === '********') {
-      const config = await getShipmozoConfig();
-      username = config.shipmozo_username;
-      password = config.shipmozo_password;
+    console.log("Shiprocket test request:", {
+      hasEmail: !!email,
+      hasPassword: !!password && password !== '********',
+      saveCredentials
+    });
+
+    // If no credentials provided in request, try to get from database settings
+    if (!email || !password || password === '********' || email === '' || password === '') {
+      console.log("No valid credentials in request, fetching from database...");
+      const config = await getShiprocketConfig(true);
+      email = config.shiprocket_email;
+      password = config.shiprocket_password;
+
+      console.log("Database credentials:", {
+        hasEmail: !!email,
+        hasPassword: !!password && password !== '********',
+        emailPreview: email ? email.substring(0, 3) + '***' : 'none'
+      });
+
+      if (!email || email === '' || !password || password === '' || password === '********') {
+        return res.status(400).json({
+          success: false,
+          message: "No credentials found. Please enter email and password in Settings first."
+        });
+      }
     }
 
-    if (!username || username === '' || !password || password === '' || password === '********') {
+    // Validate email format
+    if (!email || !email.includes('@')) {
       return res.status(400).json({
         success: false,
-        message: "Please enter both Username and Password in Settings first."
+        message: "Invalid email format. Please enter a valid email address."
       });
     }
 
-    const response = await fetch("https://shipping-api.com/app/api/v1/login", {
+    // Validate password is not empty
+    if (!password || password.trim() === '' || password === '********') {
+      return res.status(400).json({
+        success: false,
+        message: "Password is required. Please enter your Shiprocket password."
+      });
+    }
+
+    console.log("Testing Shiprocket credentials for email:", email.substring(0, 3) + '***');
+
+    const response = await fetch("https://apiv2.shiprocket.in/v1/external/auth/login", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ username: username.trim(), password: password })
+      body: JSON.stringify({
+        email: email.trim(),
+        password: password
+      })
     });
 
     const data = await response.json();
 
-    if (data.result === "1" && data.data && data.data.length > 0) {
+    console.log("Shiprocket test response status:", response.status);
+
+    if (response.ok && data.token) {
+      // If test was successful, save the credentials to database
       await pool.query(
-        "INSERT INTO settings (key, value) VALUES ('shipmozo_username', $1) ON CONFLICT (key) DO UPDATE SET value = $1",
-        [username.trim()]
+        "INSERT INTO settings (key, value) VALUES ('shiprocket_email', $1) ON CONFLICT (key) DO UPDATE SET value = $1, updated_at = CURRENT_TIMESTAMP",
+        [email.trim()]
       );
       await pool.query(
-        "INSERT INTO settings (key, value) VALUES ('shipmozo_password', $1) ON CONFLICT (key) DO UPDATE SET value = $1",
+        "INSERT INTO settings (key, value) VALUES ('shiprocket_password', $1) ON CONFLICT (key) DO UPDATE SET value = $1, updated_at = CURRENT_TIMESTAMP",
         [password]
       );
 
-      clearShipmozoCache();
+      console.log("✅ Credentials saved to database");
+
+      // Clear cache
+      clearShiprocketCache();
 
       res.json({
         success: true,
-        message: "✅ Credentials are valid! Shipmozo API is working correctly."
+        message: "✅ Credentials are valid! Shiprocket API is working correctly."
       });
     } else {
-      res.status(401).json({
-        success: false,
-        message: data.message || "Invalid credentials. Please check your Shipmozo username and password."
-      });
+      // Provide detailed error message
+      let errorMessage = "Invalid credentials. Please check your Shiprocket login details.";
+
+      if (data.message) {
+        const msg = data.message.toLowerCase();
+        if (msg.includes("invalid") || msg.includes("unauthorized")) {
+          errorMessage = "❌ Invalid email or password. Please verify your Shiprocket credentials.";
+        } else if (msg.includes("network") || msg.includes("connection")) {
+          errorMessage = "❌ Network error. Please check your internet connection.";
+        } else if (msg.includes("rate limit") || msg.includes("too many")) {
+          errorMessage = "❌ Too many attempts. Please try again after some time.";
+        } else {
+          errorMessage = `❌ Shiprocket error: ${data.message}`;
+        }
+      }
+
+      if (response.status === 401) {
+        errorMessage = "❌ Authentication failed (401). Please check your Shiprocket credentials.";
+      } else if (response.status === 403) {
+        errorMessage = "❌ Access denied (403). Please ensure your Shiprocket account has API access enabled.";
+      } else if (response.status === 500) {
+        errorMessage = "❌ Shiprocket server error (500). Please try again later.";
+      }
+
+      console.error("Shiprocket test failed:", errorMessage);
+      res.status(401).json({ success: false, message: errorMessage });
     }
   } catch (error) {
-    console.error("Shipmozo test error:", error);
-    res.status(500).json({ success: false, message: error.message });
+    console.error("Shiprocket test error:", error);
+    res.status(500).json({
+      success: false,
+      message: error.message || "Network error. Please check your connection and try again."
+    });
   }
 });
 
-
-app.get("/api/admin/debug/shipmozo-connection", verifyToken, verifyAdminOrSuperAdmin, async (req, res) => {
+app.get("/api/admin/debug/shiprocket-connection", verifyToken, verifyAdminOrSuperAdmin, async (req, res) => {
   try {
-    const config = await getShipmozoConfig(true);
+    const config = await getShiprocketConfig(true);
     
-    const hasApiKey = !!config.shipmozo_api_key && config.shipmozo_api_key !== '';
-    const hasApiSecret = !!config.shipmozo_api_secret && config.shipmozo_api_secret !== '' && config.shipmozo_api_secret !== '********';
+    // Test 1: Check if credentials exist in DB
+    const hasEmail = !!config.shiprocket_email && config.shiprocket_email !== '';
+    const hasPassword = !!config.shiprocket_password && config.shiprocket_password !== '' && config.shiprocket_password !== '********';
     
-    if (!hasApiKey || !hasApiSecret) {
+    if (!hasEmail || !hasPassword) {
       return res.json({
         success: false,
         message: "Credentials not found in database",
-        hasApiKey,
-        hasApiSecret,
-        apiKeyValue: config.shipmozo_api_key ? config.shipmozo_api_key.substring(0, 8) + '***' : null
+        hasEmail,
+        hasPassword,
+        emailValue: config.shiprocket_email ? config.shiprocket_email.substring(0, 3) + '***' : null
       });
     }
     
+    // Test 2: Try to authenticate
     try {
-      const token = await authenticateShipmozo();
+      const token = await authenticateShiprocket();
       return res.json({
         success: true,
-        message: "Shipmozo connection successful!",
+        message: "Shiprocket connection successful!",
         hasToken: !!token,
         tokenPreview: token ? token.substring(0, 20) + '...' : null
       });
@@ -7704,8 +7827,8 @@ app.get("/api/admin/debug/shipmozo-connection", verifyToken, verifyAdminOrSuperA
         success: false,
         message: authError.message,
         credentials: {
-          apiKey: config.shipmozo_api_key ? config.shipmozo_api_key.substring(0, 8) + '***' : null,
-          hasApiSecret: hasApiSecret
+          email: config.shiprocket_email ? config.shiprocket_email.substring(0, 3) + '***' : null,
+          hasPassword: hasPassword
         }
       });
     }
