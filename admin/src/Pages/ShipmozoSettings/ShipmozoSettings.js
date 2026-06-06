@@ -47,7 +47,7 @@ const ShipmozoSettings = () => {
           shipmozo_default_warehouse_id: response.data.settings.shipmozo_default_warehouse_id || "",
           shipmozo_default_warehouse_name: response.data.settings.shipmozo_default_warehouse_name || ""
         });
-        
+
         if (response.data.settings.shipmozo_default_warehouse_id) {
           setSelectedWarehouse(response.data.settings.shipmozo_default_warehouse_id);
         }
@@ -67,7 +67,7 @@ const ShipmozoSettings = () => {
       const response = await axios.get(`${API_URL}/admin/shipmozo/warehouses`, {
         headers: { Authorization: `Bearer ${token}` }
       });
-      
+
       if (response.data.success && response.data.warehouses) {
         setWarehouses(response.data.warehouses);
         if (response.data.warehouses.length === 0) {
@@ -94,7 +94,7 @@ const ShipmozoSettings = () => {
   const handleWarehouseChange = (e) => {
     const warehouseId = e.target.value;
     setSelectedWarehouse(warehouseId);
-    
+
     const selectedWarehouseObj = warehouses.find(w => w.id.toString() === warehouseId);
     if (selectedWarehouseObj) {
       setSettings(prev => ({
@@ -124,12 +124,17 @@ const ShipmozoSettings = () => {
       setSaving(false);
     }
   };
-
+  // Update handleTestCredentials function - remove the '********' check
   const handleTestCredentials = async () => {
-    if (!settings.shipmozo_username || !settings.shipmozo_password || settings.shipmozo_password === '********') {
-      toast.error("Please enter valid username and password before testing");
+    if (!settings.shipmozo_username || !settings.shipmozo_password) {
+      toast.error("Please enter both username and password before testing");
       return;
     }
+
+    // Remove this check - it's preventing testing with saved password
+    // if (settings.shipmozo_password === '********') {
+    //   toast.info("Password is already saved. Testing with existing credentials.");
+    // }
 
     setTesting(true);
 
@@ -143,13 +148,31 @@ const ShipmozoSettings = () => {
       });
 
       if (response.data.success) {
-        toast.success(response.data.message || "Credentials are valid!");
-        // After successful test, fetch warehouses
+        toast.success(response.data.message || "✅ Credentials are valid!");
         await fetchWarehouses();
+      } else {
+        toast.error(response.data.message || "Invalid credentials. Please check your Shipmozo login details.");
       }
     } catch (err) {
       console.error("Test error:", err);
-      toast.error(err.response?.data?.message || "Invalid credentials. Please check your Shipmozo login details.");
+
+      // Show the actual error message from the API
+      if (err.response) {
+        const errorMessage = err.response.data?.message || err.response.data?.error;
+
+        if (err.response.status === 401) {
+          // This is Shipmozo invalid credentials, not session expiration
+          toast.error(errorMessage || "Invalid Shipmozo credentials. Please check your username and password.");
+        } else if (err.response.status === 400) {
+          toast.error(errorMessage || "Invalid request. Please check your credentials.");
+        } else {
+          toast.error(errorMessage || "Failed to test credentials. Please try again.");
+        }
+      } else if (err.request) {
+        toast.error("Network error. Cannot reach Shipmozo servers.");
+      } else {
+        toast.error(err.message || "An error occurred while testing credentials");
+      }
     } finally {
       setTesting(false);
     }
@@ -191,9 +214,9 @@ const ShipmozoSettings = () => {
       <div className="notion-header">
         <div className="notion-header-icon">
           <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <path d="M3 9L12 3L21 9L12 15L3 9Z" stroke="#ffffff" strokeWidth="1.5" strokeLinejoin="round"/>
-            <path d="M5 14L12 19L19 14" stroke="#ffffff" strokeWidth="1.5" strokeLinejoin="round"/>
-            <path d="M5 10L12 15L19 10" stroke="#ffffff" strokeWidth="1.5" strokeLinejoin="round"/>
+            <path d="M3 9L12 3L21 9L12 15L3 9Z" stroke="#ffffff" strokeWidth="1.5" strokeLinejoin="round" />
+            <path d="M5 14L12 19L19 14" stroke="#ffffff" strokeWidth="1.5" strokeLinejoin="round" />
+            <path d="M5 10L12 15L19 10" stroke="#ffffff" strokeWidth="1.5" strokeLinejoin="round" />
           </svg>
         </div>
         <div>
@@ -208,8 +231,8 @@ const ShipmozoSettings = () => {
           <div className="notion-card-header">
             <div className="notion-card-icon">
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path d="M20 21V19C20 16.8 18.2 15 16 15H8C5.8 15 4 16.8 4 19V21" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
-                <circle cx="12" cy="7" r="4" stroke="currentColor" strokeWidth="1.5"/>
+                <path d="M20 21V19C20 16.8 18.2 15 16 15H8C5.8 15 4 16.8 4 19V21" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+                <circle cx="12" cy="7" r="4" stroke="currentColor" strokeWidth="1.5" />
               </svg>
             </div>
             <div>
@@ -281,8 +304,8 @@ const ShipmozoSettings = () => {
           <div className="notion-card-header">
             <div className="notion-card-icon">
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path d="M12 21C15.5 17.4 19 14.2 19 10C19 6.1 15.9 3 12 3C8.1 3 5 6.1 5 10C5 14.2 8.5 17.4 12 21Z" stroke="currentColor" strokeWidth="1.5"/>
-                <circle cx="12" cy="10" r="3" stroke="currentColor" strokeWidth="1.5"/>
+                <path d="M12 21C15.5 17.4 19 14.2 19 10C19 6.1 15.9 3 12 3C8.1 3 5 6.1 5 10C5 14.2 8.5 17.4 12 21Z" stroke="currentColor" strokeWidth="1.5" />
+                <circle cx="12" cy="10" r="3" stroke="currentColor" strokeWidth="1.5" />
               </svg>
             </div>
             <div>
@@ -316,15 +339,15 @@ const ShipmozoSettings = () => {
                   title="Refresh warehouses"
                 >
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                    <path d="M1 12C1 12 4 4 12 4C17 4 19 7 20 9M23 12C23 12 20 20 12 20C7 20 5 17 4 15" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
-                    <path d="M20 3V9H14M4 21V15H10" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+                    <path d="M1 12C1 12 4 4 12 4C17 4 19 7 20 9M23 12C23 12 20 20 12 20C7 20 5 17 4 15" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+                    <path d="M20 3V9H14M4 21V15H10" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
                   </svg>
                 </button>
               </div>
               {warehouses.length === 0 && (
                 <div className="notion-warning">
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                    <path d="M12 8V12M12 16H12.01M21 12C21 16.9706 16.9706 21 12 21C7.02944 21 3 16.9706 3 12C3 7.02944 7.02944 3 12 3C16.9706 3 21 7.02944 21 12Z" stroke="currentColor" strokeWidth="1.5"/>
+                    <path d="M12 8V12M12 16H12.01M21 12C21 16.9706 16.9706 21 12 21C7.02944 21 3 16.9706 3 12C3 7.02944 7.02944 3 12 3C16.9706 3 21 7.02944 21 12Z" stroke="currentColor" strokeWidth="1.5" />
                   </svg>
                   <span>No warehouses found. Click "Test Connection" first, then refresh.</span>
                 </div>
@@ -356,9 +379,9 @@ const ShipmozoSettings = () => {
           <div className="notion-card-header">
             <div className="notion-card-icon">
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path d="M18 13V19C18 20.1 17.1 21 16 21H5C3.9 21 3 20.1 3 19V8C3 6.9 3.9 6 5 6H11" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
-                <path d="M15 3H21V9" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
-                <path d="M10 14L21 3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+                <path d="M18 13V19C18 20.1 17.1 21 16 21H5C3.9 21 3 20.1 3 19V8C3 6.9 3.9 6 5 6H11" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+                <path d="M15 3H21V9" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+                <path d="M10 14L21 3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
               </svg>
             </div>
             <div>
