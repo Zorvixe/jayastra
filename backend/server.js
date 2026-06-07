@@ -808,6 +808,17 @@ const initDatabase = async () => {
       )
       `);
 
+    // Add this to your initDatabase() function, inside the settings initialization section:
+
+    // Add Shiprocket default pickup location settings
+    await pool.query(`
+      INSERT INTO settings(key, value)
+      VALUES
+        ('shiprocket_default_pickup_id', ''),
+        ('shiprocket_default_pickup_name', '')
+      ON CONFLICT(key) DO NOTHING
+    `);
+
 
     // Add this table to initDatabase() function:
 
@@ -5503,11 +5514,20 @@ app.post("/api/admin/orders/:id/shiprocket", verifyToken, verifyAdminVendorIndiv
 });
 
 // ================= SHIPROCKET PICKUP ADDRESSES FETCH =================
+// ================= SHIPROCKET PICKUP ADDRESSES FETCH =================
 app.get("/api/shiprocket/pickup-locations", verifyToken, verifyAdminVendorIndividualAccess, async (req, res) => {
   try {
+    console.log("📡 Fetching pickup locations from Shiprocket...");
+
     const token = await authenticateShiprocket();
 
-    const response = await fetch("https://apiv2.shiprocket.in/v1/external/settings/company/pickup", {
+    // Try multiple endpoints to ensure we get pickup locations
+    let pickupLocations = [];
+    let response = null;
+    let data = null;
+
+    // Primary endpoint
+    const response1 = await fetch("https://apiv2.shiprocket.in/v1/external/settings/company/pickup", {
       method: "GET",
       headers: {
         "Content-Type": "application/json",
@@ -5515,39 +5535,196 @@ app.get("/api/shiprocket/pickup-locations", verifyToken, verifyAdminVendorIndivi
       }
     });
 
-    const data = await response.json();
+    const responseText1 = await response1.text();
+    console.log("Shiprocket pickup response status:", response1.status);
+    console.log("Shiprocket pickup response preview:", responseText1.substring(0, 300));
 
-    if (response.ok && data.data && data.data.pickup_locations) {
+    try {
+      data = JSON.parse(responseText1);
+    } catch (parseError) {
+      console.error("Failed to parse response:", parseError.message);
+      return res.status(502).json({
+        success: false,
+        message: "Invalid response from Shiprocket API",
+        raw_response: responseText1.substring(0, 200)
+      });
+    }
+
+    if (response1.ok && data) {
+      // Handle different response formats
+      if (data.data && data.data.pickup_locations) {
+        pickupLocations = data.data.pickup_locations;
+      } else if (data.pickup_locations) {
+        pickupLocations = data.pickup_locations;
+      } else if (data.data && Array.isArray(data.data)) {
+        pickupLocations = data.data;
+      } else if (Array.isArray(data)) {
+        pickupLocations = data;
+      }
+
+      console.log(`✅ Found ${pickupLocations.length} pickup locations`);
+
       // Format the response for frontend
-      const pickupLocations = data.data.pickup_locations.map(location => ({
-        id: location.pickup_location_id,
-        name: location.pickup_location,
-        address: location.address,
-        address_2: location.address_2,
-        city: location.city,
-        state: location.state,
-        pincode: location.pincode,
-        country: location.country,
-        phone: location.phone,
-        email: location.email
+      const formattedLocations = pickupLocations.map(location => ({
+        id: location.pickup_location_id || location.id,
+        name: location.pickup_location || location.name || "Unnamed Location",
+        address: location.address || "",
+        address_2: location.address_2 || "",
+        city: location.city || "",
+        state: location.state || "",
+        pincode: location.pincode || "",
+        country: location.country || "India",
+        phone: location.phone || "",
+        email: location.email || "",
+        is_default: location.is_default || false
       }));
 
       res.json({
         success: true,
-        pickup_locations: pickupLocations
+        pickup_locations: formattedLocations,
+        count: formattedLocations.length,
+        raw_response: data // For debugging - remove in production
       });
     } else {
+      console.error("Shiprocket API returned error:", data);
       res.json({
         success: true,
         pickup_locations: [],
-        message: data.message || "No pickup locations found"
+        message: data?.message || "No pickup locations found in Shiprocket",
+        error_details: data?.errors
       });
     }
   } catch (error) {
-    console.error("Fetch pickup locations error:", error);
+    console.error("❌ Fetch pickup locations error:", error);
     res.status(500).json({
       success: false,
-      message: error.message || "Failed to fetch pickup locations from Shiprocket"
+      message: error.message || "Failed to fetch pickup locations from Shiprocket",
+      pickup_locations: []
+    });
+  }
+});
+
+// ================= SHIPROCKET DEBUG ENDPOINT =================
+app.get("/api/admin/debug/shiprocket-full", verifyToken, verifyAdminOrSuperAdmin, async (req, res) => {
+  try {
+    const results = {
+      timestamp: new Date().toISOString(),
+      credentials_check: {},
+      authentication: {},
+      pickup_locations: {},
+      api_status: {}
+    };
+
+    // Step 1: Check credentials in database
+    const config = await getShiprocketConfig(true);
+    results.credentials_check = {
+      has_email: !!config.shiprocket_email && config.shiprocket_email !== '',
+      email_value: config.shiprocket_email ? config.shiprocket_email.substring(0, 3) + '***' : null,
+      has_password: !!config.shiprocket_password && config.shiprocket_password !== '' && config.shiprocket_password !== '********',
+      password_length: config.shiprocket_password ? config.shiprocket_password.length : 0,
+      pickup_pincode: config.shiprocket_pickup_pincode || '518508'
+    };
+
+    if (!results.credentials_check.has_email || !results.credentials_check.has_password) {
+      return res.json({
+        success: false,
+        message: "Shiprocket credentials not configured in database",
+        debug_info: results
+      });
+    }
+
+    // Step 2: Try to authenticate
+    try {
+      const token = await authenticateShiprocket();
+      results.authentication = {
+        success: true,
+        message: "Authentication successful",
+        token_preview: token ? token.substring(0, 30) + '...' : null
+      };
+
+      // Step 3: Test pickup locations API
+      const pickupResponse = await fetch("https://apiv2.shiprocket.in/v1/external/settings/company/pickup", {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`
+        }
+      });
+
+      const responseText = await pickupResponse.text();
+      let pickupData = null;
+
+      try {
+        pickupData = JSON.parse(responseText);
+      } catch (e) {
+        pickupData = { parse_error: e.message };
+      }
+
+      results.pickup_locations = {
+        status: pickupResponse.status,
+        ok: pickupResponse.ok,
+        content_type: pickupResponse.headers.get('content-type'),
+        response_preview: responseText.substring(0, 500),
+        data: pickupData,
+        locations_count: pickupData?.data?.pickup_locations?.length ||
+          pickupData?.pickup_locations?.length ||
+          (pickupData?.data && Array.isArray(pickupData.data) ? pickupData.data.length : 0)
+      };
+
+      // Step 4: Test alternative endpoint
+      const altResponse = await fetch("https://apiv2.shiprocket.in/v1/external/settings/company/pickup/list", {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`
+        }
+      }).catch(() => null);
+
+      if (altResponse) {
+        const altText = await altResponse.text();
+        let altData = null;
+        try {
+          altData = JSON.parse(altText);
+        } catch (e) {
+          altData = { parse_error: e.message };
+        }
+
+        results.api_status.alternative_endpoint = {
+          status: altResponse.status,
+          response_preview: altText.substring(0, 300),
+          data: altData
+        };
+      } else {
+        results.api_status.alternative_endpoint = { error: "Endpoint not accessible" };
+      }
+
+      res.json({
+        success: true,
+        debug_info: results,
+        recommendation: results.pickup_locations.locations_count === 0 ?
+          "No pickup locations found. Please add pickup locations in your Shiprocket dashboard under Settings → Company Details → Pickup Locations." :
+          "Pickup locations found successfully!"
+      });
+
+    } catch (authError) {
+      results.authentication = {
+        success: false,
+        message: authError.message,
+        error: authError.toString()
+      };
+
+      res.json({
+        success: false,
+        message: "Authentication failed. Please check your Shiprocket credentials.",
+        debug_info: results
+      });
+    }
+  } catch (error) {
+    console.error("Debug endpoint error:", error);
+    res.status(500).json({
+      success: false,
+      message: error.message,
+      stack: error.stack
     });
   }
 });
@@ -7752,23 +7929,24 @@ app.get("/api/auth/pin-attempts-status", verifyToken, async (req, res) => {
 });
 
 // ================= SHIPROCKET CONFIGURATION ENDPOINTS =================
-// Get Shiprocket settings - Allow both super_admin and admin
+// Get Shiprocket settings - Include default pickup location
 app.get("/api/admin/shiprocket-settings", verifyToken, verifyAdminOrSuperAdmin, async (req, res) => {
   try {
     const result = await pool.query(
-      "SELECT key, value FROM settings WHERE key IN ('shiprocket_email', 'shiprocket_password', 'shiprocket_pickup_pincode', 'shiprocket_webhook_secret')"
+      "SELECT key, value FROM settings WHERE key IN ('shiprocket_email', 'shiprocket_password', 'shiprocket_pickup_pincode', 'shiprocket_webhook_secret', 'shiprocket_default_pickup_id', 'shiprocket_default_pickup_name')"
     );
 
     const settings = {
       shiprocket_email: '',
       shiprocket_password: '',
       shiprocket_pickup_pincode: '518508',
-      shiprocket_webhook_secret: ''
+      shiprocket_webhook_secret: '',
+      shiprocket_default_pickup_id: '',
+      shiprocket_default_pickup_name: ''
     };
 
     result.rows.forEach(row => {
       if (row.key === 'shiprocket_password') {
-        // Return masked password for security
         settings[row.key] = row.value && row.value !== '' ? '********' : '';
       } else {
         settings[row.key] = row.value || '';
@@ -7783,18 +7961,25 @@ app.get("/api/admin/shiprocket-settings", verifyToken, verifyAdminOrSuperAdmin, 
 });
 
 // Update Shiprocket settings - Allow both super_admin and admin
+// Update Shiprocket settings - Add these fields
 app.put("/api/admin/shiprocket-settings", verifyToken, verifyAdminOrSuperAdmin, async (req, res) => {
   try {
-    const { shiprocket_email, shiprocket_password, shiprocket_pickup_pincode, shiprocket_webhook_secret } = req.body;
+    const {
+      shiprocket_email,
+      shiprocket_password,
+      shiprocket_pickup_pincode,
+      shiprocket_webhook_secret,
+      shiprocket_default_pickup_id,
+      shiprocket_default_pickup_name
+    } = req.body;
 
     console.log("Updating Shiprocket settings:", {
       hasEmail: !!shiprocket_email,
       hasPassword: !!shiprocket_password && shiprocket_password !== '********',
       hasPickupPincode: !!shiprocket_pickup_pincode,
-      hasWebhookSecret: !!shiprocket_webhook_secret
+      hasDefaultPickupId: !!shiprocket_default_pickup_id
     });
 
-    // Update each setting
     const updates = [];
 
     if (shiprocket_email !== undefined) {
@@ -7804,15 +7989,11 @@ app.put("/api/admin/shiprocket-settings", verifyToken, verifyAdminOrSuperAdmin, 
       ));
     }
 
-    // Only update password if it's not masked (not '********') and not empty
     if (shiprocket_password !== undefined && shiprocket_password !== '********' && shiprocket_password !== '') {
       updates.push(pool.query(
         "INSERT INTO settings (key, value) VALUES ('shiprocket_password', $1) ON CONFLICT (key) DO UPDATE SET value = $1, updated_at = CURRENT_TIMESTAMP",
         [shiprocket_password]
       ));
-      console.log("Password updated in database");
-    } else if (shiprocket_password === '********') {
-      console.log("Password unchanged (masked value received)");
     }
 
     if (shiprocket_pickup_pincode !== undefined) {
@@ -7829,19 +8010,42 @@ app.put("/api/admin/shiprocket-settings", verifyToken, verifyAdminOrSuperAdmin, 
       ));
     }
 
+    // Add default pickup location settings
+    if (shiprocket_default_pickup_id !== undefined) {
+      updates.push(pool.query(
+        "INSERT INTO settings (key, value) VALUES ('shiprocket_default_pickup_id', $1) ON CONFLICT (key) DO UPDATE SET value = $1, updated_at = CURRENT_TIMESTAMP",
+        [shiprocket_default_pickup_id]
+      ));
+    }
+
+    if (shiprocket_default_pickup_name !== undefined) {
+      updates.push(pool.query(
+        "INSERT INTO settings (key, value) VALUES ('shiprocket_default_pickup_name', $1) ON CONFLICT (key) DO UPDATE SET value = $1, updated_at = CURRENT_TIMESTAMP",
+        [shiprocket_default_pickup_name]
+      ));
+    }
+
     await Promise.all(updates);
 
     // Clear cache
     clearShiprocketCache();
 
-    console.log("Shiprocket settings updated successfully");
+    console.log("✅ Shiprocket settings updated successfully");
 
-    res.json({ success: true, message: "Shiprocket settings updated successfully" });
+    res.json({
+      success: true,
+      message: "Shiprocket settings updated successfully"
+    });
   } catch (error) {
     console.error("Failed to update Shiprocket settings:", error);
-    res.status(500).json({ success: false, message: error.message });
+    res.status(500).json({
+      success: false,
+      message: error.message
+    });
   }
 });
+
+
 
 // Test Shiprocket credentials - Allow both super_admin and admin
 app.post("/api/admin/shiprocket-test", verifyToken, verifyAdminOrSuperAdmin, async (req, res) => {
