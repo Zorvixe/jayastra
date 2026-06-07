@@ -778,7 +778,7 @@ const Orders = () => {
               </div>
               <div class="title">
                 <h2>TAX INVOICE</h2>
-                <p>GSTIN: 29ABCDE1234F1Z5</p>
+                <p>GSTIN: xxxxxxxxxxxxx</p>
               </div>
             </div>
             <div class="meta">
