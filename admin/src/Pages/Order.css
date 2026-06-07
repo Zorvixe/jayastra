@@ -152,7 +152,6 @@
 
 .more-count {
   width: 42px;
-  /* updated for consistency */
   height: 42px;
   border-radius: 50%;
   background: #f3f4f6;
@@ -422,9 +421,7 @@
 .custom-confirm-box {
   background: white;
   width: 100%;
-  max-width: 400px;
   border-radius: 16px;
-  padding: 30px;
   text-align: center;
   box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
   animation: popIn 0.3s cubic-bezier(0.16, 1, 0.3, 1);
@@ -592,7 +589,6 @@
   align-items: flex-start;
 }
 
-
 /* ================= SEARCH & PAGINATION ================= */
 .search-filter-group {
   flex: 1;
@@ -681,8 +677,6 @@
   background: #f8fafc;
 }
 
-
-
 @media (max-width: 640px) {
   .pagination-wrapper {
     flex-direction: column;
@@ -723,7 +717,6 @@
 .admin-status-select:focus {
   border-color: #5d26a5;
 }
-
 
 /* Modal Footer Buttons Styling */
 .modal-footer-admin {
@@ -1351,7 +1344,7 @@
 /* Pickup Location Selector Styles */
 .pickup-selector-box {
   max-width: 650px !important;
-  width: 90% !important;
+  width: 100% !important;
 }
 
 .pickup-locations-list {
@@ -1474,4 +1467,544 @@
 .pickup-location-option.selected {
   border-color: #8E2139;
   background: #fef2f2;
+}
+
+/* Location Search and Filter Styles */
+.location-search-filter {
+  margin: 15px 0 20px 0;
+}
+
+.search-input-wrapper {
+  display: flex;
+  align-items: center;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 8px 12px;
+  transition: all 0.2s;
+}
+
+.search-input-wrapper:focus-within {
+  border-color: #8E2139;
+  box-shadow: 0 0 0 2px rgba(142, 33, 57, 0.1);
+}
+
+.search-input-wrapper i {
+  color: #94a3b8;
+  font-size: 16px;
+  margin-right: 10px;
+}
+
+.location-search-input {
+  flex: 1;
+  border: none;
+  background: transparent;
+  outline: none;
+  font-size: 13px;
+  color: #1e293b;
+}
+
+.location-search-input::placeholder {
+  color: #94a3b8;
+}
+
+.clear-search {
+  background: none;
+  border: none;
+  color: #94a3b8;
+  cursor: pointer;
+  font-size: 14px;
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+
+.clear-search:hover {
+  color: #ef4444;
+  background: #fef2f2;
+}
+
+.filter-stats {
+  font-size: 11px;
+  color: #64748b;
+  margin-top: 8px;
+  text-align: right;
+}
+
+/* Pickup Location Card */
+.pickup-location-card {
+  display: flex;
+  align-items: center;
+  margin-bottom: 10px;
+  background: white;
+  border-radius: 8px;
+  transition: all 0.2s;
+}
+
+.pickup-location-option {
+  flex: 1;
+  display: flex;
+  gap: 15px;
+  padding: 15px;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  background: #fff;
+  margin-right: 10px;
+}
+
+.pickup-location-option:hover {
+  background: #f8fafc;
+  border-color: #8E2139;
+}
+
+.pickup-location-option input[type="radio"] {
+  margin-top: 4px;
+  accent-color: #8E2139;
+}
+
+.pickup-location-details {
+  flex: 1;
+}
+
+.pickup-location-details strong {
+  display: block;
+  margin-bottom: 5px;
+  color: #1e293b;
+  font-size: 14px;
+}
+
+.location-summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 5px;
+}
+
+.vendor-badge {
+  background: #f1f5f9;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 11px;
+  color: #475569;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.location-address-preview {
+  font-size: 11px;
+  color: #64748b;
+}
+
+.view-details-btn {
+  background: #f1f5f9;
+  border: 1px solid #e2e8f0;
+  color: #475569;
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+}
+
+.view-details-btn:hover {
+  background: #8E2139;
+  border-color: #8E2139;
+  color: white;
+  transform: scale(1.05);
+}
+
+/* Location Details Modal */
+.location-details-modal {
+  background: white;
+  border-radius: 16px;
+  width: 90%;
+  max-width: 500px;
+  max-height: 90vh;
+  overflow: hidden;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+  animation: popIn 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.location-details-modal .modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 20px 24px;
+  border-bottom: 1px solid #e2e8f0;
+  background: #f8fafc;
+}
+
+.location-details-modal .modal-header h4 {
+  margin: 0;
+  font-size: 18px;
+  color: #1e293b;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.location-details-modal .close-btn {
+  background: none;
+  border: none;
+  font-size: 20px;
+  cursor: pointer;
+  color: #94a3b8;
+  transition: color 0.2s;
+}
+
+.location-details-modal .close-btn:hover {
+  color: #ef4444;
+}
+
+.location-details-modal .modal-body {
+  padding: 24px;
+  max-height: 60vh;
+  overflow-y: auto;
+}
+
+.details-section {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.detail-row {
+  display: flex;
+  flex-wrap: wrap;
+  padding: 8px 0;
+  border-bottom: 1px solid #f1f5f9;
+}
+
+.detail-label {
+  width: 120px;
+  font-weight: 600;
+  color: #475569;
+  font-size: 13px;
+}
+
+.detail-value {
+  flex: 1;
+  color: #1e293b;
+  font-size: 13px;
+  word-break: break-word;
+}
+
+.location-details-modal .modal-footer {
+  padding: 16px 24px;
+  border-top: 1px solid #e2e8f0;
+  background: #f8fafc;
+  display: flex;
+  justify-content: flex-end;
+}
+
+.location-details-modal .btn-cancel {
+  padding: 10px 24px;
+  background: #f1f5f9;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  color: #475569;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.location-details-modal .btn-cancel:hover {
+  background: #e2e8f0;
+}
+
+/* Responsive */
+@media (max-width: 640px) {
+  .detail-row {
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .detail-label {
+    width: auto;
+  }
+
+  .pickup-location-card {
+    flex-direction: column;
+  }
+
+  .view-details-btn {
+    width: 100%;
+    margin-top: 8px;
+  }
+
+  .pickup-location-option {
+    margin-right: 0;
+  }
+}
+
+/* Selected Location Card */
+.selected-location-card {
+  background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%);
+  border: 2px solid #22c55e;
+  border-radius: 12px;
+  padding: 15px;
+  margin-bottom: 20px;
+  animation: slideDown 0.3s ease;
+  text-align: left;
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.selected-location-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+  color: #15803d;
+  font-weight: 600;
+  font-size: 13px;
+}
+
+.selected-location-header i {
+  font-size: 18px;
+}
+
+.selected-location-content {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.selected-location-name {
+  font-size: 15px;
+  color: #1e293b;
+}
+
+.selected-location-name strong {
+  font-size: 16px;
+  color: #166534;
+}
+
+.selected-location-address,
+.selected-location-contact {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  color: #475569;
+}
+
+.selected-location-address i,
+.selected-location-contact i {
+  color: #22c55e;
+  font-size: 14px;
+}
+
+/* Dropdown Section */
+.location-dropdown-section {
+  margin-bottom: 20px;
+  padding: 12px;
+  background: #f8fafc;
+  border-radius: 10px;
+  border: 1px solid #e2e8f0;
+  text-align: left;
+}
+
+.dropdown-label {
+  display: block;
+  font-size: 12px;
+  font-weight: 600;
+  color: #475569;
+  margin-bottom: 8px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.location-dropdown {
+  width: 100%;
+  padding: 12px;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  font-size: 14px;
+  background: white;
+  cursor: pointer;
+}
+
+.location-dropdown:focus {
+  outline: none;
+  border-color: #8E2139;
+  box-shadow: 0 0 0 2px rgba(142, 33, 57, 0.1);
+}
+
+.location-dropdown:disabled {
+  background: #f1f5f9;
+  cursor: not-allowed;
+}
+
+/* Enhanced Location Card */
+.pickup-location-card {
+  display: flex;
+  align-items: flex-start;
+  margin-bottom: 10px;
+  background: white;
+  border-radius: 10px;
+  border: 1px solid #e2e8f0;
+}
+
+.pickup-location-card.selected {
+  border-color: #8E2139;
+  background: #fef2f2;
+  box-shadow: 0 2px 8px rgba(142, 33, 57, 0.1);
+}
+
+.pickup-location-option {
+  flex: 1;
+  display: flex;
+  gap: 15px;
+  padding: 15px;
+  cursor: pointer;
+}
+
+.pickup-location-details strong {
+  display: block;
+  margin-bottom: 6px;
+  color: #1e293b;
+  font-size: 14px;
+}
+
+.location-summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 6px;
+}
+
+.vendor-badge {
+  background: #f1f5f9;
+  padding: 3px 10px;
+  border-radius: 6px;
+  font-size: 11px;
+  color: #475569;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.location-address-preview {
+  font-size: 11px;
+  color: #64748b;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.location-contact-preview {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 15px;
+  margin-top: 6px;
+  font-size: 11px;
+  color: #94a3b8;
+}
+
+.location-contact-preview span {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.view-details-btn {
+  background: #f1f5f9;
+  border: none;
+  color: #475569;
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 12px 12px 12px 0;
+  flex-shrink: 0;
+}
+
+.view-details-btn:hover {
+  background: #8E2139;
+  color: white;
+  transform: scale(1.05);
+}
+
+/* Spinner helper classes */
+.notion-spinner-small {
+  width: 14px;
+  height: 14px;
+  border: 2px solid #e2e8f0;
+  border-top-color: #8E2139;
+  border-radius: 50%;
+  animation: spin 0.6s linear infinite;
+  display: inline-block;
+}
+
+.notion-select-wrapper {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  margin-top: 10px;
+}
+
+.notion-refresh-btn-pickup {
+  background: none;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #6b6b6b;
+}
+
+.notion-refresh-btn-pickup:hover:not(:disabled) {
+  background: #eeeeee;
+  border-color: #8E2139;
+  color: #8E2139;
+}
+
+.notion-refresh-btn-pickup:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+@media (max-width: 480px) {
+  .confirm-actions {
+    flex-direction: row;
+  }
+
+  .modal-body-admin {
+    height: calc(80vh - 200px);
+  }
+
+
+  .custom-confirm-box {
+    padding: 10px;
+    padding-top: 30px !important;
+    padding-bottom: 30px !important;
+  }
+
+}
+
+.pickup-location-header {
+  display: flex;
+  flex-direction: row;
+  justify-content: space-between;
 }

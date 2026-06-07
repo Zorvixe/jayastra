@@ -1,4 +1,3 @@
-// src/admin/pages/Orders.js
 import React, { useEffect, useState } from "react";
 import axios from '../utils/axiosConfig';
 import { toast } from "react-toastify";
@@ -62,7 +61,6 @@ const AddressEditModal = ({ order, isOpen, onClose, onUpdate }) => {
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    // Validate required fields
     if (!addressForm.city.trim()) {
       toast.error("City is required");
       return;
@@ -185,10 +183,80 @@ const AddressEditModal = ({ order, isOpen, onClose, onUpdate }) => {
   );
 };
 
+// Location Details Modal Component
+const LocationDetailsModal = ({ location, isOpen, onClose }) => {
+  if (!isOpen || !location) return null;
+
+  return (
+    <div className="custom-confirm-overlay" onClick={onClose}>
+      <div className="location-details-modal" onClick={(e) => e.stopPropagation()}>
+        <div className="modal-header">
+          <h4>📍 Location Details</h4>
+          <button className="close-btn" onClick={onClose}>✕</button>
+        </div>
+        <div className="modal-body">
+          <div className="details-section">
+            <div className="detail-row">
+              <span className="detail-label">Location Name:</span>
+              <span className="detail-value">{location.name || 'N/A'}</span>
+            </div>
+            <div className="detail-row">
+              <span className="detail-label">Vendor Name:</span>
+              <span className="detail-value">{location.vendor_name || location.name || 'N/A'}</span>
+            </div>
+            <div className="detail-row">
+              <span className="detail-label">Address:</span>
+              <span className="detail-value">{location.address || 'N/A'}</span>
+            </div>
+            <div className="detail-row">
+              <span className="detail-label">Address Line 2:</span>
+              <span className="detail-value">{location.address_2 || 'N/A'}</span>
+            </div>
+            <div className="detail-row">
+              <span className="detail-label">City:</span>
+              <span className="detail-value">{location.city || 'N/A'}</span>
+            </div>
+            <div className="detail-row">
+              <span className="detail-label">State:</span>
+              <span className="detail-value">{location.state || 'N/A'}</span>
+            </div>
+            <div className="detail-row">
+              <span className="detail-label">Pincode:</span>
+              <span className="detail-value">{location.pincode || 'N/A'}</span>
+            </div>
+            <div className="detail-row">
+              <span className="detail-label">Country:</span>
+              <span className="detail-value">{location.country || 'India'}</span>
+            </div>
+            <div className="detail-row">
+              <span className="detail-label">Phone:</span>
+              <span className="detail-value">{location.phone || 'N/A'}</span>
+            </div>
+            <div className="detail-row">
+              <span className="detail-label">Email:</span>
+              <span className="detail-value">{location.email || 'N/A'}</span>
+            </div>
+            {location.id && (
+              <div className="detail-row">
+                <span className="detail-label">Location ID:</span>
+                <span className="detail-value">{location.id}</span>
+              </div>
+            )}
+          </div>
+        </div>
+        <div className="modal-footer">
+          <button className="btn-cancel" onClick={onClose}>Close</button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// Pickup Location Selector Modal Component with Dropdown Selection (Aligned with ShiprocketSettings)
 // Pickup Location Selector Modal Component
 const PickupLocationSelector = ({ isOpen, onClose, onConfirm, orderId, isLoading }) => {
   const [pickupLocations, setPickupLocations] = useState([]);
-  const [selectedPickupLocation, setSelectedPickupLocation] = useState(null);
+  const [selectedPickupLocation, setSelectedPickupLocation] = useState("");
   const [fetching, setFetching] = useState(false);
   const token = localStorage.getItem("token");
 
@@ -204,10 +272,24 @@ const PickupLocationSelector = ({ isOpen, onClose, onConfirm, orderId, isLoading
       const res = await axios.get(`${API_URL}/shiprocket/pickup-locations`, {
         headers: { Authorization: `Bearer ${token}` }
       });
-      if (res.data.success && res.data.pickup_locations) {
-        setPickupLocations(res.data.pickup_locations);
-        if (res.data.pickup_locations.length > 0) {
-          setSelectedPickupLocation(res.data.pickup_locations[0].id);
+      console.log("Pickup locations response:", res.data);
+
+      if (res.data.success) {
+        let locations = [];
+        if (res.data.pickup_locations && Array.isArray(res.data.pickup_locations)) {
+          locations = res.data.pickup_locations;
+        } else if (res.data.locations && Array.isArray(res.data.locations)) {
+          locations = res.data.locations;
+        } else if (res.data.data && Array.isArray(res.data.data)) {
+          locations = res.data.data;
+        }
+
+        setPickupLocations(locations);
+        if (locations.length > 0) {
+          // Default to the first location if available
+          const firstLocId = locations[0].id || locations[0].pickup_location_id || "";
+          setSelectedPickupLocation(String(firstLocId));
+          console.log("Default selected location ID:", firstLocId);
         }
       } else {
         setPickupLocations([]);
@@ -226,50 +308,104 @@ const PickupLocationSelector = ({ isOpen, onClose, onConfirm, orderId, isLoading
       toast.error("Please select a pickup location");
       return;
     }
-    onConfirm(orderId, selectedPickupLocation);
+
+    console.log("Confirming with location ID:", selectedPickupLocation);
+    onConfirm(orderId, String(selectedPickupLocation));
   };
+
+  // Find the selected location details for display
+  const selectedLocationDetails = pickupLocations.find(loc => {
+    const locId = loc.id || loc.pickup_location_id;
+    return String(locId) === String(selectedPickupLocation);
+  });
 
   if (!isOpen) return null;
 
   return (
     <div className="custom-confirm-overlay" onClick={onClose}>
       <div className="custom-confirm-box pickup-selector-box" onClick={(e) => e.stopPropagation()}>
-        <div className="confirm-icon">📍</div>
         <h5>Select Pickup Location</h5>
         <p>Choose a pickup location from Shiprocket for Order #{orderId}</p>
 
-        <div className="pickup-locations-list">
-          {fetching ? (
-            <div className="loading-pickup">
-              <div className="cate-spinner"></div>
-              <p>Loading pickup locations...</p>
+        {/* Selected Location Address Card */}
+        {selectedLocationDetails && !fetching && (
+          <div className="selected-location-card">
+            <div className="selected-location-header">
+              <i className="bi bi-check-circle-fill"></i>
+              <span>Selected Pickup Address</span>
             </div>
-          ) : pickupLocations.length === 0 ? (
-            <div className="no-pickup-locations">
-              <i className="bi bi-geo-alt-slash"></i>
-              <p>No pickup locations found in Shiprocket.</p>
-              <p className="small-text">Please add pickup locations in your Shiprocket dashboard first.</p>
+            <div className="selected-location-content">
+              <div className="selected-location-name">
+                <strong>{selectedLocationDetails.pickup_location || selectedLocationDetails.name || "Unnamed"}</strong>
+              </div>
+              <div className="selected-location-address">
+                <i className="bi bi-geo-alt"></i>
+                <span>
+                  {selectedLocationDetails.address ? `${selectedLocationDetails.address}, ` : ''}
+                  {selectedLocationDetails.address_2 ? `${selectedLocationDetails.address_2}, ` : ''}
+                  {selectedLocationDetails.city}, {selectedLocationDetails.state} - {selectedLocationDetails.pincode}
+                </span>
+              </div>
+              <div className="selected-location-contact">
+                <i className="bi bi-telephone"></i>
+                <span>Phone: {selectedLocationDetails.phone || 'N/A'} | Email: {selectedLocationDetails.email || 'N/A'}</span>
+              </div>
             </div>
-          ) : (
-            pickupLocations.map(location => (
-              <label key={location.id} className="pickup-location-option">
-                <input
-                  type="radio"
-                  name="pickup_location"
-                  value={location.id}
-                  checked={selectedPickupLocation === location.id}
-                  onChange={() => setSelectedPickupLocation(location.id)}
-                />
-                <div className="pickup-location-details">
-                  <strong>{location.name}</strong>
-                  <p>{location.address}{location.address_2 ? `, ${location.address_2}` : ''}</p>
-                  <p>{location.city}, {location.state} - {location.pincode}</p>
-                  <p className="pickup-contact">📞 {location.phone || 'N/A'} | ✉️ {location.email || 'N/A'}</p>
-                </div>
-              </label>
-            ))
-          )}
+          </div>
+        )}
+
+        {/* Dropdown Section */}
+        <div className="location-dropdown-section">
+          <div className="pickup-location-header">
+            <label className="dropdown-label">Pickup Location</label>
+            <button
+              type="button"
+              className="notion-refresh-btn-pickup"
+              onClick={fetchPickupLocations}
+              disabled={fetching}
+              title="Refresh pickup locations"
+            >
+              {fetching ? (
+                <div className="notion-spinner-small"></div>
+              ) : (
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M1 12C1 12 4 4 12 4C17 4 19 7 20 9M23 12C23 12 20 20 12 20C7 20 5 17 4 15" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+                  <path d="M20 3V9H14M4 21V15H10" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+                </svg>
+              )}
+            </button>
+          </div>
+          <div className="notion-select-wrapper">
+            <select
+              value={selectedPickupLocation}
+              onChange={(e) => {
+                console.log("Dropdown selection changed to:", e.target.value);
+                setSelectedPickupLocation(e.target.value);
+              }}
+              className="location-dropdown"
+              disabled={fetching || pickupLocations.length === 0}
+            >
+              <option value="">-- Select a pickup location --</option>
+              {pickupLocations.map(loc => {
+                const id = loc.id || loc.pickup_location_id;
+                const displayName = loc.pickup_location || loc.name || "Unnamed";
+                return (
+                  <option key={id} value={id}>
+                    {displayName} - {loc.city}, {loc.state} ({loc.pincode})
+                  </option>
+                );
+              })}
+            </select>
+          </div>
         </div>
+
+        {pickupLocations.length === 0 && !fetching && (
+          <div className="no-pickup-locations">
+            <i className="bi bi-geo-alt-slash"></i>
+            <p>No pickup locations found</p>
+            <p className="small-text">Check your Shiprocket account settings to ensure warehouse addresses are configured.</p>
+          </div>
+        )}
 
         <div className="confirm-actions">
           <button
@@ -290,7 +426,7 @@ const PickupLocationSelector = ({ isOpen, onClose, onConfirm, orderId, isLoading
                 Pushing...
               </>
             ) : (
-              "Push to Shiprocket"
+              "Continue"
             )}
           </button>
         </div>
@@ -303,7 +439,6 @@ const Orders = () => {
   const [selectedOrder, setSelectedOrder] = useState(null);
   const [orders, setOrders] = useState([]);
   const [previewImage, setPreviewImage] = useState(null);
-  const [confirmPushOrderId, setConfirmPushOrderId] = useState(null);
   const [loading, setLoading] = useState(false);
   const [initialLoading, setInitialLoading] = useState(true);
   const [statusUpdatingId, setStatusUpdatingId] = useState(null);
@@ -408,7 +543,7 @@ const Orders = () => {
     }
   };
 
-  // ================= PUSH TO SHIPROCKET WITH PICKUP SELECTION =================
+  // ================= Packed WITH PICKUP SELECTION =================
   const executePushToShiprocket = async (orderId, pickupLocationId) => {
     if (!pickupLocationId) {
       toast.error("Please select a pickup location");
@@ -426,18 +561,17 @@ const Orders = () => {
         await fetchOrders(true);
         setShowPickupSelector(false);
         setPendingPushOrder(null);
-        setConfirmPushOrderId(null);
       }
     } catch (err) {
       console.error(err);
-      const errorMsg = err.response?.data?.message || "Failed to push to Shiprocket";
+      const errorMsg = err.response?.data?.message || "Failed to Packed";
       toast.error(errorMsg);
     } finally {
       setPushLoading(false);
     }
   };
 
-  // Initiate push to Shiprocket (opens pickup selector first)
+  // Initiate Packed (opens pickup selector first)
   const initiatePushToShiprocket = (order) => {
     const pushCheck = canPushToShiprocket(order);
     if (!pushCheck.canPush) {
@@ -572,163 +706,33 @@ const Orders = () => {
         <title>Invoice - ORD${order.id}</title>
         <meta charset="utf-8">
         <style>
-          * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-          }
-          body { 
-            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; 
-            padding: 40px; 
-            color: #1e293b; 
-            line-height: 1.5; 
-            background: #f8fafc;
-          }
-          .invoice-box { 
-            max-width: 900px; 
-            margin: 0 auto; 
-            background: white;
-            border-radius: 16px;
-            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.05), 0 10px 10px -5px rgba(0, 0, 0, 0.01);
-            overflow: hidden;
-          }
-          .invoice-inner {
-            padding: 40px;
-          }
-          .header { 
-            display: flex; 
-            justify-content: space-between; 
-            align-items: flex-start;
-            border-bottom: 2px solid #e2e8f0; 
-            padding-bottom: 24px; 
-            margin-bottom: 32px; 
-          }
-          .logo { 
-            display: flex;
-            flex-direction: column;
-          }
-          .logo-img { 
-            max-height: 60px; 
-            width: auto;
-            object-fit: contain;
-            margin-bottom: 8px;
-          }
-          .logo-text {
-            font-size: 28px;
-            font-weight: 800;
-            color: #8E2139;
-            letter-spacing: -0.5px;
-          }
-          .logo p {
-            color: #64748b;
-            font-size: 12px;
-            margin-top: 4px;
-          }
-          .title h2 { 
-            font-size: 20px; 
-            color: #475569; 
-            font-weight: 500;
-            margin: 0;
-          }
-          .title p {
-            font-size: 12px;
-            color: #94a3b8;
-            margin-top: 4px;
-            text-align: right;
-          }
-          .meta { 
-            display: grid; 
-            grid-template-columns: 1fr 1fr; 
-            gap: 40px; 
-            margin-bottom: 40px; 
-            padding: 20px;
-            border-radius: 12px;
-          }
-          .meta h5 { 
-            margin: 0 0 12px 0; 
-            color: #64748b; 
-            text-transform: uppercase; 
-            font-size: 11px; 
-            letter-spacing: 0.5px;
-            font-weight: 600;
-          }
-          .meta p { 
-            margin: 6px 0; 
-            font-size: 14px; 
-          }
-          .meta strong {
-            color: #1e293b;
-          }
-          table { 
-            width: 100%; 
-            border-collapse: collapse; 
-            margin-bottom: 40px; 
-          }
-          th { 
-            background: #f1f5f9; 
-            text-align: left; 
-            padding: 14px 12px; 
-            border-bottom: 2px solid #e2e8f0; 
-            font-size: 12px; 
-            text-transform: uppercase; 
-            letter-spacing: 0.5px;
-            font-weight: 600;
-            color: #475569;
-          }
-          td { 
-            padding: 14px 12px; 
-            border-bottom: 1px solid #e2e8f0; 
-            font-size: 14px; 
-          }
-          .totals { 
-            margin-left: auto; 
-            width: 300px; 
-            margin-top: 20px;
-          }
-          .total-row { 
-            display: flex; 
-            justify-content: space-between; 
-            padding: 8px 0; 
-            font-size: 14px;
-          }
-          .total-row.grand { 
-            border-top: 2px solid #e2e8f0; 
-            margin-top: 8px; 
-            padding-top: 12px; 
-            font-weight: 700; 
-            font-size: 18px; 
-            color: #8E2139;
-          }
-          .footer { 
-            text-align: center; 
-            margin-top: 40px; 
-            padding-top: 24px;
-            font-size: 11px; 
-            color: #94a3b8; 
-            border-top: 1px solid #e2e8f0; 
-          }
-          .thank-you {
-            text-align: center;
-            margin-top: 24px;
-            padding: 16px;
-            background: #fef2f2;
-            border-radius: 8px;
-            color: #8E2139;
-            font-weight: 500;
-          }
+          * { margin: 0; padding: 0; box-sizing: border-box; }
+          body { font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; padding: 40px; color: #1e293b; line-height: 1.5; background: #f8fafc; }
+          .invoice-box { max-width: 900px; margin: 0 auto; background: white; border-radius: 16px; box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.05), 0 10px 10px -5px rgba(0, 0, 0, 0.01); overflow: hidden; }
+          .invoice-inner { padding: 40px; }
+          .header { display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 2px solid #e2e8f0; padding-bottom: 24px; margin-bottom: 32px; }
+          .logo { display: flex; flex-direction: column; }
+          .logo-img { max-height: 60px; width: auto; object-fit: contain; margin-bottom: 8px; }
+          .logo-text { font-size: 28px; font-weight: 800; color: #8E2139; letter-spacing: -0.5px; }
+          .logo p { color: #64748b; font-size: 12px; margin-top: 4px; }
+          .title h2 { font-size: 20px; color: #475569; font-weight: 500; margin: 0; }
+          .title p { font-size: 12px; color: #94a3b8; margin-top: 4px; text-align: right; }
+          .meta { display: grid; grid-template-columns: 1fr 1fr; gap: 40px; margin-bottom: 40px; padding: 20px; border-radius: 12px; }
+          .meta h5 { margin: 0 0 12px 0; color: #64748b; text-transform: uppercase; font-size: 11px; letter-spacing: 0.5px; font-weight: 600; }
+          .meta p { margin: 6px 0; font-size: 14px; }
+          .meta strong { color: #1e293b; }
+          table { width: 100%; border-collapse: collapse; margin-bottom: 40px; }
+          th { background: #f1f5f9; text-align: left; padding: 14px 12px; border-bottom: 2px solid #e2e8f0; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; font-weight: 600; color: #475569; }
+          td { padding: 14px 12px; border-bottom: 1px solid #e2e8f0; font-size: 14px; }
+          .totals { margin-left: auto; width: 300px; margin-top: 20px; }
+          .total-row { display: flex; justify-content: space-between; padding: 8px 0; font-size: 14px; }
+          .total-row.grand { border-top: 2px solid #e2e8f0; margin-top: 8px; padding-top: 12px; font-weight: 700; font-size: 18px; color: #8E2139; }
+          .footer { text-align: center; margin-top: 40px; padding-top: 24px; font-size: 11px; color: #94a3b8; border-top: 1px solid #e2e8f0; }
+          .thank-you { text-align: center; margin-top: 24px; padding: 16px; background: #fef2f2; border-radius: 8px; color: #8E2139; font-weight: 500; }
           @media print {
-            body {
-              background: white;
-              padding: 0;
-            }
-            .invoice-box {
-              box-shadow: none;
-              border-radius: 0;
-            }
-            .meta {
-              background: none;
-              border: 1px solid #e2e8f0;
-            }
+            body { background: white; padding: 0; }
+            .invoice-box { box-shadow: none; border-radius: 0; }
+            .meta { background: none; border: 1px solid #e2e8f0; }
           }
         </style>
       </head>
@@ -737,12 +741,7 @@ const Orders = () => {
           <div class="invoice-inner">
             <div class="header">
               <div class="logo">
-                <img 
-                  src="${bannerUrl}" 
-                  alt="JAYASTRA" 
-                  class="logo-img"
-                  onerror="this.style.display='none'; this.nextElementSibling.style.display='block';"
-                />
+                <img src="${bannerUrl}" alt="JAYASTRA" class="logo-img" onerror="this.style.display='none'; this.nextElementSibling.style.display='block';" />
                 <div class="logo-text" style="display: none;">JAYASTRA</div>
                 <p>Premium Products | Since 2026</p>
               </div>
@@ -751,7 +750,6 @@ const Orders = () => {
                 <p>GSTIN: 29ABCDE1234F1Z5</p>
               </div>
             </div>
-
             <div class="meta">
               <div>
                 <h5>BILLED TO:</h5>
@@ -768,64 +766,25 @@ const Orders = () => {
                 <p><strong>Order Status:</strong> ${order.order_status || 'Placed'}</p>
               </div>
             </div>
-
             <table>
               <thead>
-                <tr>
-                  <th>SL No.</th>
-                  <th>Product ID</th>
-                  <th>Item Description</th>
-                  <th>Price (₹)</th>
-                  <th>Qty</th>
-                  <th>Total (₹)</th>
-                </tr>
+                <tr><th>SL No.</th><th>Product ID</th><th>Item Description</th><th>Price (₹)</th><th>Qty</th><th>Total (₹)</th></tr>
               </thead>
               <tbody>
                 ${order.items && order.items.map((item, index) => {
       const price = parseFloat(item.price) || 0;
       const quantity = parseInt(item.quantity) || 0;
       const itemTotal = price * quantity;
-      return `
-                    <tr>
-                      <td>${index + 1}</td>
-                      <td>${escapeHtml(item.product_code || 'N/A')}</td>
-                      <td>${escapeHtml(item.name)}</td>
-                      <td>₹${price.toFixed(2)}</td>
-                      <td>${quantity}</td>
-                      <td>₹${itemTotal.toFixed(2)}</td>
-                    </tr>
-                  `;
+      return `<tr><td>${index + 1}</td><td>${escapeHtml(item.product_code || 'N/A')}</td><td>${escapeHtml(item.name)}</td><td>₹${price.toFixed(2)}</td><td>${quantity}</td><td>₹${itemTotal.toFixed(2)}</td></tr>`;
     }).join('')}
               </tbody>
             </table>
-
             <div class="totals">
-              <div class="total-row">
-                <span>Subtotal:</span>
-                <span>₹${subtotal.toFixed(2)}</span>
-              </div>
-              ${discount > 0 ? `
-                <div class="total-row">
-                  <span>Discount:</span>
-                  <span>- ₹${discount.toFixed(2)}</span>
-                </div>
-              ` : ''}
-              <div class="total-row grand">
-                <span>Grand Total:</span>
-                <span>₹${totalAmount.toFixed(2)}</span>
-              </div>
+              <div class="total-row"><span>Subtotal:</span><span>₹${subtotal.toFixed(2)}</span></div>
+              ${discount > 0 ? `<div class="total-row"><span>Discount:</span><span>- ₹${discount.toFixed(2)}</span></div>` : ''}
+              <div class="total-row grand"><span>Grand Total:</span><span>₹${totalAmount.toFixed(2)}</span></div>
             </div>
-
-            ${order.payment_method === 'COD' ? `
-              <div class="thank-you">
-                💰 Cash on Delivery - Pay ₹${totalAmount.toFixed(2)} at the time of delivery
-              </div>
-            ` : `
-              <div class="thank-you">
-                ✅ Payment Successful via ${order.payment_method}
-              </div>
-            `}
-
+            ${order.payment_method === 'COD' ? `<div class="thank-you">💰 Cash on Delivery - Pay ₹${totalAmount.toFixed(2)} at the time of delivery</div>` : `<div class="thank-you">✅ Payment Successful via ${order.payment_method}</div>`}
             <div class="footer">
               <p>Thank you for shopping with JAYASTRA!</p>
               <p>This is a computer generated invoice and does not require a physical signature.</p>
@@ -834,12 +793,7 @@ const Orders = () => {
           </div>
         </div>
         <script>
-          window.onload = function() { 
-            window.print(); 
-            window.onafterprint = function() { 
-              window.close(); 
-            }; 
-          };
+          window.onload = function() { window.print(); window.onafterprint = function() { window.close(); }; };
         </script>
       </body>
     </html>
@@ -1090,39 +1044,19 @@ const Orders = () => {
             </button>
           ) : (
             <div className="bulk-delete-controls">
-              <button
-                className="select-all-btn"
-                onClick={selectAllOrders}
-              >
+              <button className="select-all-btn" onClick={selectAllOrders}>
                 <i className={`bi ${selectedOrders.length === filteredOrders.filter(o => o.order_status !== 'Delivered').length ? 'bi-check-square-fill' : 'bi-square'}`}></i>
                 {selectedOrders.length === filteredOrders.filter(o => o.order_status !== 'Delivered').length ? 'Deselect All' : 'Select All'}
               </button>
               <span className="selected-count">{selectedOrders.length} selected</span>
-              <button
-                className="execute-bulk-delete-btn"
-                onClick={bulkDeleteOrders}
-                disabled={selectedOrders.length === 0 || bulkDeleting}
-              >
+              <button className="execute-bulk-delete-btn" onClick={bulkDeleteOrders} disabled={selectedOrders.length === 0 || bulkDeleting}>
                 {bulkDeleting ? (
-                  <>
-                    <div className="btn-spinner-small"></div>
-                    Deleting...
-                  </>
+                  <><div className="btn-spinner-small"></div>Deleting...</>
                 ) : (
-                  <>
-                    <i className="bi bi-trash3"></i> Delete Selected
-                  </>
+                  <><i className="bi bi-trash3"></i> Delete Selected</>
                 )}
               </button>
-              <button
-                className="cancel-bulk-mode-btn"
-                onClick={() => {
-                  setBulkDeleteMode(false);
-                  setSelectedOrders([]);
-                }}
-              >
-                Cancel
-              </button>
+              <button className="cancel-bulk-mode-btn" onClick={() => { setBulkDeleteMode(false); setSelectedOrders([]); }}>Cancel</button>
             </div>
           )}
         </div>
@@ -1137,9 +1071,7 @@ const Orders = () => {
             <p>Are you sure you want to delete this order? This action cannot be undone.</p>
             <p className="warning-text">⚠️ This will restore product stock and remove all order records.</p>
             <div className="confirm-actions">
-              <button className="confirm-cancel-btn" onClick={() => setDeleteConfirmOrder(null)} disabled={loading}>
-                Cancel
-              </button>
+              <button className="confirm-cancel-btn" onClick={() => setDeleteConfirmOrder(null)} disabled={loading}>Cancel</button>
               <button className="confirm-delete-btn" onClick={() => deleteOrder(deleteConfirmOrder.id)} disabled={loading}>
                 {loading ? "Deleting..." : "Yes, Delete Order"}
               </button>
@@ -1187,12 +1119,8 @@ const Orders = () => {
                   <p><strong>Status:</strong> {selectedOrder.order_status}</p>
                   <p><strong>Total:</strong> ₹{parseFloat(selectedOrder.total_amount).toFixed(2)}</p>
                   <p><strong>Discount:</strong> ₹{parseFloat(selectedOrder.discount || 0).toFixed(2)}</p>
-                  {selectedOrder.awb_code && (
-                    <p><strong>AWB:</strong> {selectedOrder.awb_code}</p>
-                  )}
-                  {selectedOrder.shiprocket_order_id && (
-                    <p><strong>SR Order ID:</strong> {selectedOrder.shiprocket_order_id}</p>
-                  )}
+                  {selectedOrder.awb_code && <p><strong>AWB:</strong> {selectedOrder.awb_code}</p>}
+                  {selectedOrder.shiprocket_order_id && <p><strong>SR Order ID:</strong> {selectedOrder.shiprocket_order_id}</p>}
                 </div>
               </div>
 
@@ -1214,9 +1142,7 @@ const Orders = () => {
                         <h6>{item.name} <span className="item-pid-small">({item.product_code || "No ID"})</span></h6>
                         <p>Price: ₹{price.toFixed(2)} | Qty: {quantity}</p>
                       </div>
-                      <div className="admin-item-total">
-                        ₹{(price * quantity).toFixed(2)}
-                      </div>
+                      <div className="admin-item-total">₹{(price * quantity).toFixed(2)}</div>
                     </div>
                   );
                 })}
@@ -1224,107 +1150,39 @@ const Orders = () => {
             </div>
 
             <div className="modal-footer-admin">
-              <button
-                className="invoice-btn-admin check-courier-btn"
-                onClick={() => checkCourierAvailability(selectedOrder)}
-                disabled={loading}
-                style={{ background: '#10b981', color: 'white' }}
-              >
-                <i className="bi bi-search"></i> Check Courier
-              </button>
 
-              <button
-                className="invoice-btn-admin edit-address-btn"
-                onClick={() => setShowAddressEditModal(true)}
-                disabled={loading}
-              >
-                <i className="bi bi-geo-alt"></i> Edit Address
-              </button>
 
               {(() => {
                 const pushCheck = canPushToShiprocket(selectedOrder);
                 return (
-                  <button
-                    className="invoice-btn-admin push-btn"
-                    onClick={() => initiatePushToShiprocket(selectedOrder)}
-                    disabled={selectedOrder.shiprocket_order_id || pushLoading || !pushCheck.canPush}
-                    title={!pushCheck.canPush ? pushCheck.reason : "Push to Shiprocket"}
-                  >
-                    {pushLoading && pendingPushOrder?.id === selectedOrder.id ? (
-                      <>
-                        <div className="btn-spinner"></div>
-                        Pushing...
-                      </>
-                    ) : (
-                      <>
-                        <i className="bi bi-box-seam"></i>
-                        {selectedOrder.shiprocket_order_id ? "Pushed to Shiprocket" : "Push to Shiprocket"}
-                      </>
-                    )}
+                  <button className="invoice-btn-admin push-btn" onClick={() => initiatePushToShiprocket(selectedOrder)} disabled={selectedOrder.shiprocket_order_id || pushLoading || !pushCheck.canPush} title={!pushCheck.canPush ? pushCheck.reason : "Packed"}>
+                    {pushLoading && pendingPushOrder?.id === selectedOrder.id ? (<><div className="btn-spinner"></div>Pushing...</>) : (<><i className="bi bi-box-seam"></i>{selectedOrder.shiprocket_order_id ? "Pushed to Shiprocket" : "Packed"}</>)}
                   </button>
                 );
               })()}
-
               {selectedOrder.shiprocket_order_id && !selectedOrder.awb_code && (
-                <button
-                  className="invoice-btn-admin generate-awb-btn"
-                  onClick={() => generateAWB(selectedOrder.id)}
-                  disabled={loading}
-                >
-                  <i className="bi bi-upc-scan"></i> Generate AWB
-                </button>
+                <button className="invoice-btn-admin generate-awb-btn" onClick={() => generateAWB(selectedOrder.id)} disabled={loading}><i className="bi bi-upc-scan"></i> Generate AWB</button>
               )}
-
               {selectedOrder.awb_code && (
-                <button
-                  className="invoice-btn-admin label-btn"
-                  onClick={() => downloadLabel(selectedOrder.id)}
-                  disabled={loading}
-                >
-                  <i className="bi bi-tag-fill"></i> Label (AWB: {selectedOrder.awb_code})
-                </button>
+                <button className="invoice-btn-admin label-btn" onClick={() => downloadLabel(selectedOrder.id)} disabled={loading}><i className="bi bi-tag-fill"></i> Label (AWB: {selectedOrder.awb_code})</button>
               )}
-
               {selectedOrder.awb_code && (
-                <button
-                  className="invoice-btn-admin shiprocket-invoice-btn"
-                  onClick={() => downloadShiprocketInvoice(selectedOrder.id)}
-                  disabled={loading}
-                >
-                  <i className="bi bi-receipt"></i> SR Invoice
-                </button>
+                <button className="invoice-btn-admin shiprocket-invoice-btn" onClick={() => downloadShiprocketInvoice(selectedOrder.id)} disabled={loading}><i className="bi bi-receipt"></i> SR Invoice</button>
               )}
-
-              <button
-                className="invoice-btn-admin local-invoice-btn"
-                onClick={() => handlePrint(selectedOrder)}
-                disabled={loading}
-              >
-                <i className="bi bi-printer"></i> Local Invoice
-              </button>
+              <button className="invoice-btn-admin local-invoice-btn" onClick={() => handlePrint(selectedOrder)} disabled={loading}><i className="bi bi-printer"></i> Local Invoice</button>
             </div>
           </div>
         </div>
       )}
 
       {/* Address Edit Modal */}
-      <AddressEditModal
-        order={selectedOrder}
-        isOpen={showAddressEditModal}
-        onClose={() => setShowAddressEditModal(false)}
-        onUpdate={updateOrderAddress}
-      />
+      <AddressEditModal order={selectedOrder} isOpen={showAddressEditModal} onClose={() => setShowAddressEditModal(false)} onUpdate={updateOrderAddress} />
 
       {/* Image Preview Lightbox */}
       {previewImage && (
         <div className="admin-lightbox-overlay" onClick={() => setPreviewImage(null)}>
           <div className="lightbox-content">
-            <img
-              src={previewImage}
-              alt="Product Preview"
-              onClick={(e) => e.stopPropagation()}
-              onError={(e) => e.target.src = "/assets/placeholder-product.jpg"}
-            />
+            <img src={previewImage} alt="Product Preview" onClick={(e) => e.stopPropagation()} onError={(e) => e.target.src = "/assets/placeholder-product.jpg"} />
             <button className="close-lightbox" onClick={() => setPreviewImage(null)}>✕</button>
           </div>
         </div>

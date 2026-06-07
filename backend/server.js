@@ -5243,7 +5243,11 @@ const extractAddressComponents = async (order) => {
 app.post("/api/admin/orders/:id/shiprocket", verifyToken, verifyAdminVendorIndividualAccess, async (req, res) => {
   try {
     const orderId = req.params.id;
-    const { pickup_location_id } = req.body; // Receive selected pickup location ID from frontend
+    const { pickup_location_id } = req.body;
+
+    console.log("Received push request for order:", orderId);
+    console.log("Received pickup_location_id:", pickup_location_id);
+    console.log("Full request body:", req.body);
 
     // Check authorization for non-super admins
     if (req.user.role !== 'super_admin') {
@@ -5286,41 +5290,79 @@ app.post("/api/admin/orders/:id/shiprocket", verifyToken, verifyAdminVendorIndiv
       });
     }
 
-    // If pickup_location_id is not provided, try to get default from vendor
-    let selectedPickupLocation = null;
-
-    if (pickup_location_id) {
-      // Fetch the specific pickup location from Shiprocket
-      const token = await authenticateShiprocket();
-      const pickupRes = await fetch(`https://apiv2.shiprocket.in/v1/external/settings/company/pickup/${pickup_location_id}`, {
-        method: "GET",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${token}`
-        }
-      });
-
-      const pickupData = await pickupRes.json();
-      if (pickupRes.ok && pickupData.data) {
-        selectedPickupLocation = {
-          id: pickupData.data.pickup_location_id,
-          name: pickupData.data.pickup_location,
-          address: pickupData.data.address,
-          address_2: pickupData.data.address_2,
-          city: pickupData.data.city,
-          state: pickupData.data.state,
-          pincode: pickupData.data.pincode
-        };
-      }
-    }
-
-    if (!selectedPickupLocation) {
+    // Validate pickup_location_id is provided
+    if (!pickup_location_id) {
       return res.status(400).json({
         success: false,
         message: "Please select a pickup location for this order",
         action: "select_pickup"
       });
     }
+
+    // Fetch the specific pickup location from Shiprocket
+    let selectedPickupLocation = null;
+    let token;
+
+    try {
+      token = await authenticateShiprocket();
+    } catch (authError) {
+      console.error("Shiprocket auth error:", authError.message);
+      return res.status(401).json({
+        success: false,
+        message: "Shiprocket authentication failed. Please check your credentials in Settings.",
+        error: authError.message
+      });
+    }
+
+    // First, get all pickup locations to find the selected one
+    const pickupListResponse = await fetch("https://apiv2.shiprocket.in/v1/external/settings/company/pickup", {
+      method: "GET",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${token}`
+      }
+    });
+
+    const pickupListData = await pickupListResponse.json();
+    let pickupLocations = [];
+
+    // Extract pickup locations from response
+    if (pickupListData.data && pickupListData.data.shipping_address) {
+      pickupLocations = pickupListData.data.shipping_address;
+    } else if (pickupListData.data && pickupListData.data.pickup_locations) {
+      pickupLocations = pickupListData.data.pickup_locations;
+    } else if (pickupListData.pickup_locations) {
+      pickupLocations = pickupListData.pickup_locations;
+    }
+
+    // Find the selected location
+    const foundLocation = pickupLocations.find(loc =>
+      String(loc.pickup_location_id) === String(pickup_location_id) ||
+      String(loc.id) === String(pickup_location_id)
+    );
+
+    if (!foundLocation) {
+      console.error("Pickup location not found with ID:", pickup_location_id);
+      console.log("Available locations:", pickupLocations.map(l => ({ id: l.pickup_location_id || l.id, name: l.pickup_location || l.name })));
+
+      return res.status(400).json({
+        success: false,
+        message: `Selected pickup location (ID: ${pickup_location_id}) not found in Shiprocket. Please refresh and try again.`,
+        available_locations: pickupLocations.map(l => ({ id: l.pickup_location_id || l.id, name: l.pickup_location || l.name }))
+      });
+    }
+
+    selectedPickupLocation = {
+      id: foundLocation.pickup_location_id || foundLocation.id,
+      name: foundLocation.pickup_location || foundLocation.name,
+      address: foundLocation.address,
+      address_2: foundLocation.address_2,
+      city: foundLocation.city,
+      state: foundLocation.state,
+      pincode: foundLocation.pin_code || foundLocation.pincode
+    };
+
+    console.log("Selected pickup location:", selectedPickupLocation);
 
     // Get order items with product details
     const itemsRes = await pool.query(
@@ -5350,19 +5392,6 @@ app.post("/api/admin/orders/:id/shiprocket", verifyToken, verifyAdminVendorIndiv
     const maxLen = Math.max(...itemsRes.rows.map(i => parseFloat(i.length || 10)), 10);
     const maxWid = Math.max(...itemsRes.rows.map(i => parseFloat(i.width || 10)), 10);
     const maxHei = itemsRes.rows.reduce((sum, item) => sum + (parseFloat(item.height || 5) * parseInt(item.quantity)), 5);
-
-    // Authenticate for order creation
-    let token;
-    try {
-      token = await authenticateShiprocket();
-    } catch (authError) {
-      console.error("Shiprocket auth error for order creation:", authError.message);
-      return res.status(401).json({
-        success: false,
-        message: "Shiprocket authentication failed. Please check your credentials in Settings.",
-        error: authError.message
-      });
-    }
 
     // Build billing address
     let billingAddress = addressComponents.fullAddress;
