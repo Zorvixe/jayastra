@@ -5514,20 +5514,15 @@ app.post("/api/admin/orders/:id/shiprocket", verifyToken, verifyAdminVendorIndiv
 });
 
 // ================= SHIPROCKET PICKUP ADDRESSES FETCH =================
-// ================= SHIPROCKET PICKUP ADDRESSES FETCH =================
+// ================= SHIPROCKET PICKUP ADDRESSES FETCH (FIXED) =================
 app.get("/api/shiprocket/pickup-locations", verifyToken, verifyAdminVendorIndividualAccess, async (req, res) => {
   try {
     console.log("📡 Fetching pickup locations from Shiprocket...");
 
     const token = await authenticateShiprocket();
 
-    // Try multiple endpoints to ensure we get pickup locations
-    let pickupLocations = [];
-    let response = null;
-    let data = null;
-
     // Primary endpoint
-    const response1 = await fetch("https://apiv2.shiprocket.in/v1/external/settings/company/pickup", {
+    const response = await fetch("https://apiv2.shiprocket.in/v1/external/settings/company/pickup", {
       method: "GET",
       headers: {
         "Content-Type": "application/json",
@@ -5535,55 +5530,88 @@ app.get("/api/shiprocket/pickup-locations", verifyToken, verifyAdminVendorIndivi
       }
     });
 
-    const responseText1 = await response1.text();
-    console.log("Shiprocket pickup response status:", response1.status);
-    console.log("Shiprocket pickup response preview:", responseText1.substring(0, 300));
+    const responseText = await response.text();
+    console.log("Shiprocket pickup response status:", response.status);
+    console.log("Shiprocket pickup response preview:", responseText.substring(0, 500));
 
+    let data;
     try {
-      data = JSON.parse(responseText1);
+      data = JSON.parse(responseText);
     } catch (parseError) {
       console.error("Failed to parse response:", parseError.message);
       return res.status(502).json({
         success: false,
         message: "Invalid response from Shiprocket API",
-        raw_response: responseText1.substring(0, 200)
+        raw_response: responseText.substring(0, 200)
       });
     }
 
-    if (response1.ok && data) {
-      // Handle different response formats
-      if (data.data && data.data.pickup_locations) {
+    let pickupLocations = [];
+
+    if (response.ok && data) {
+      // Check for different possible response structures
+      // Structure 1: data.data.shipping_address (from your debug output)
+      if (data.data && data.data.shipping_address && Array.isArray(data.data.shipping_address)) {
+        pickupLocations = data.data.shipping_address;
+        console.log(`✅ Found ${pickupLocations.length} pickup locations in shipping_address`);
+      }
+      // Structure 2: data.data.pickup_locations
+      else if (data.data && data.data.pickup_locations && Array.isArray(data.data.pickup_locations)) {
         pickupLocations = data.data.pickup_locations;
-      } else if (data.pickup_locations) {
+        console.log(`✅ Found ${pickupLocations.length} pickup locations in pickup_locations`);
+      }
+      // Structure 3: data.pickup_locations
+      else if (data.pickup_locations && Array.isArray(data.pickup_locations)) {
         pickupLocations = data.pickup_locations;
-      } else if (data.data && Array.isArray(data.data)) {
+        console.log(`✅ Found ${pickupLocations.length} pickup locations in pickup_locations (root)`);
+      }
+      // Structure 4: data.data is an array
+      else if (data.data && Array.isArray(data.data)) {
         pickupLocations = data.data;
-      } else if (Array.isArray(data)) {
+        console.log(`✅ Found ${pickupLocations.length} pickup locations in data array`);
+      }
+      // Structure 5: data is an array
+      else if (Array.isArray(data)) {
         pickupLocations = data;
+        console.log(`✅ Found ${pickupLocations.length} pickup locations in root array`);
+      }
+      // Structure 6: Check for shipping_address at root level
+      else if (data.shipping_address && Array.isArray(data.shipping_address)) {
+        pickupLocations = data.shipping_address;
+        console.log(`✅ Found ${pickupLocations.length} pickup locations in shipping_address (root)`);
       }
 
-      console.log(`✅ Found ${pickupLocations.length} pickup locations`);
+      if (pickupLocations.length === 0) {
+        console.log("No pickup locations found in any known structure");
+        console.log("Available keys in response:", Object.keys(data));
+        if (data.data) console.log("Data keys:", Object.keys(data.data));
+      }
 
       // Format the response for frontend
       const formattedLocations = pickupLocations.map(location => ({
         id: location.pickup_location_id || location.id,
-        name: location.pickup_location || location.name || "Unnamed Location",
+        name: location.pickup_location || location.name || location.pickup_location_name || "Unnamed Location",
         address: location.address || "",
         address_2: location.address_2 || "",
         city: location.city || "",
         state: location.state || "",
-        pincode: location.pincode || "",
+        pincode: location.pin_code || location.pincode || "",
         country: location.country || "India",
         phone: location.phone || "",
         email: location.email || "",
-        is_default: location.is_default || false
+        is_default: location.is_default || false,
+        // Keep original data for debugging if needed
+        original: location
       }));
 
       res.json({
         success: true,
         pickup_locations: formattedLocations,
         count: formattedLocations.length,
-        raw_response: data // For debugging - remove in production
+        raw_structure: {
+          has_shipping_address: !!(data.data?.shipping_address || data.shipping_address),
+          has_pickup_locations: !!(data.data?.pickup_locations || data.pickup_locations)
+        }
       });
     } else {
       console.error("Shiprocket API returned error:", data);
@@ -5605,6 +5633,7 @@ app.get("/api/shiprocket/pickup-locations", verifyToken, verifyAdminVendorIndivi
 });
 
 // ================= SHIPROCKET DEBUG ENDPOINT =================
+// Update the debug endpoint to properly detect shipping_address
 app.get("/api/admin/debug/shiprocket-full", verifyToken, verifyAdminOrSuperAdmin, async (req, res) => {
   try {
     const results = {
@@ -5660,50 +5689,49 @@ app.get("/api/admin/debug/shiprocket-full", verifyToken, verifyAdminOrSuperAdmin
         pickupData = { parse_error: e.message };
       }
 
+      // Check for pickup locations in various possible structures
+      let locationsCount = 0;
+      let locationsSource = null;
+
+      if (pickupData?.data?.shipping_address && Array.isArray(pickupData.data.shipping_address)) {
+        locationsCount = pickupData.data.shipping_address.length;
+        locationsSource = "data.shipping_address";
+      } else if (pickupData?.data?.pickup_locations && Array.isArray(pickupData.data.pickup_locations)) {
+        locationsCount = pickupData.data.pickup_locations.length;
+        locationsSource = "data.pickup_locations";
+      } else if (pickupData?.pickup_locations && Array.isArray(pickupData.pickup_locations)) {
+        locationsCount = pickupData.pickup_locations.length;
+        locationsSource = "pickup_locations";
+      } else if (pickupData?.shipping_address && Array.isArray(pickupData.shipping_address)) {
+        locationsCount = pickupData.shipping_address.length;
+        locationsSource = "shipping_address";
+      } else if (pickupData?.data && Array.isArray(pickupData.data)) {
+        locationsCount = pickupData.data.length;
+        locationsSource = "data array";
+      }
+
       results.pickup_locations = {
         status: pickupResponse.status,
         ok: pickupResponse.ok,
         content_type: pickupResponse.headers.get('content-type'),
         response_preview: responseText.substring(0, 500),
-        data: pickupData,
-        locations_count: pickupData?.data?.pickup_locations?.length ||
-          pickupData?.pickup_locations?.length ||
-          (pickupData?.data && Array.isArray(pickupData.data) ? pickupData.data.length : 0)
+        locations_source: locationsSource,
+        locations_count: locationsCount,
+        data_keys: Object.keys(pickupData || {}),
+        data_data_keys: pickupData?.data ? Object.keys(pickupData.data) : []
       };
 
-      // Step 4: Test alternative endpoint
-      const altResponse = await fetch("https://apiv2.shiprocket.in/v1/external/settings/company/pickup/list", {
-        method: "GET",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${token}`
-        }
-      }).catch(() => null);
-
-      if (altResponse) {
-        const altText = await altResponse.text();
-        let altData = null;
-        try {
-          altData = JSON.parse(altText);
-        } catch (e) {
-          altData = { parse_error: e.message };
-        }
-
-        results.api_status.alternative_endpoint = {
-          status: altResponse.status,
-          response_preview: altText.substring(0, 300),
-          data: altData
-        };
-      } else {
-        results.api_status.alternative_endpoint = { error: "Endpoint not accessible" };
+      // If we found shipping_address, include sample data
+      if (pickupData?.data?.shipping_address && pickupData.data.shipping_address.length > 0) {
+        results.pickup_locations.sample_location = pickupData.data.shipping_address[0];
       }
 
       res.json({
         success: true,
         debug_info: results,
-        recommendation: results.pickup_locations.locations_count === 0 ?
+        recommendation: locationsCount === 0 ?
           "No pickup locations found. Please add pickup locations in your Shiprocket dashboard under Settings → Company Details → Pickup Locations." :
-          "Pickup locations found successfully!"
+          `Pickup locations found successfully! Found ${locationsCount} location(s) in ${locationsSource}.`
       });
 
     } catch (authError) {
