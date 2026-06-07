@@ -185,6 +185,120 @@ const AddressEditModal = ({ order, isOpen, onClose, onUpdate }) => {
   );
 };
 
+// Pickup Location Selector Modal Component
+const PickupLocationSelector = ({ isOpen, onClose, onConfirm, orderId, isLoading }) => {
+  const [pickupLocations, setPickupLocations] = useState([]);
+  const [selectedPickupLocation, setSelectedPickupLocation] = useState(null);
+  const [fetching, setFetching] = useState(false);
+  const token = localStorage.getItem("token");
+
+  useEffect(() => {
+    if (isOpen) {
+      fetchPickupLocations();
+    }
+  }, [isOpen]);
+
+  const fetchPickupLocations = async () => {
+    setFetching(true);
+    try {
+      const res = await axios.get(`${API_URL}/shiprocket/pickup-locations`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      if (res.data.success && res.data.pickup_locations) {
+        setPickupLocations(res.data.pickup_locations);
+        if (res.data.pickup_locations.length > 0) {
+          setSelectedPickupLocation(res.data.pickup_locations[0].id);
+        }
+      } else {
+        setPickupLocations([]);
+      }
+    } catch (error) {
+      console.error("Failed to fetch pickup locations:", error);
+      toast.error("Could not fetch pickup locations from Shiprocket");
+      setPickupLocations([]);
+    } finally {
+      setFetching(false);
+    }
+  };
+
+  const handleConfirm = () => {
+    if (!selectedPickupLocation) {
+      toast.error("Please select a pickup location");
+      return;
+    }
+    onConfirm(orderId, selectedPickupLocation);
+  };
+
+  if (!isOpen) return null;
+
+  return (
+    <div className="custom-confirm-overlay" onClick={onClose}>
+      <div className="custom-confirm-box pickup-selector-box" onClick={(e) => e.stopPropagation()}>
+        <div className="confirm-icon">📍</div>
+        <h5>Select Pickup Location</h5>
+        <p>Choose a pickup location from Shiprocket for Order #{orderId}</p>
+
+        <div className="pickup-locations-list">
+          {fetching ? (
+            <div className="loading-pickup">
+              <div className="cate-spinner"></div>
+              <p>Loading pickup locations...</p>
+            </div>
+          ) : pickupLocations.length === 0 ? (
+            <div className="no-pickup-locations">
+              <i className="bi bi-geo-alt-slash"></i>
+              <p>No pickup locations found in Shiprocket.</p>
+              <p className="small-text">Please add pickup locations in your Shiprocket dashboard first.</p>
+            </div>
+          ) : (
+            pickupLocations.map(location => (
+              <label key={location.id} className="pickup-location-option">
+                <input
+                  type="radio"
+                  name="pickup_location"
+                  value={location.id}
+                  checked={selectedPickupLocation === location.id}
+                  onChange={() => setSelectedPickupLocation(location.id)}
+                />
+                <div className="pickup-location-details">
+                  <strong>{location.name}</strong>
+                  <p>{location.address}{location.address_2 ? `, ${location.address_2}` : ''}</p>
+                  <p>{location.city}, {location.state} - {location.pincode}</p>
+                  <p className="pickup-contact">📞 {location.phone || 'N/A'} | ✉️ {location.email || 'N/A'}</p>
+                </div>
+              </label>
+            ))
+          )}
+        </div>
+
+        <div className="confirm-actions">
+          <button
+            className="confirm-cancel-btn"
+            onClick={onClose}
+            disabled={isLoading}
+          >
+            Cancel
+          </button>
+          <button
+            className="confirm-execute-btn"
+            onClick={handleConfirm}
+            disabled={isLoading || fetching || pickupLocations.length === 0 || !selectedPickupLocation}
+          >
+            {isLoading ? (
+              <>
+                <div className="btn-spinner"></div>
+                Pushing...
+              </>
+            ) : (
+              "Push to Shiprocket"
+            )}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 const Orders = () => {
   const [selectedOrder, setSelectedOrder] = useState(null);
   const [orders, setOrders] = useState([]);
@@ -195,12 +309,13 @@ const Orders = () => {
   const [statusUpdatingId, setStatusUpdatingId] = useState(null);
   const [pushLoading, setPushLoading] = useState(false);
   const [showAddressEditModal, setShowAddressEditModal] = useState(false);
+  const [showPickupSelector, setShowPickupSelector] = useState(false);
+  const [pendingPushOrder, setPendingPushOrder] = useState(null);
 
   const [deleteConfirmOrder, setDeleteConfirmOrder] = useState(null);
   const [bulkDeleteMode, setBulkDeleteMode] = useState(false);
   const [selectedOrders, setSelectedOrders] = useState([]);
   const [bulkDeleting, setBulkDeleting] = useState(false);
-
 
   // Date filter state - default to today
   const [filterDate, setFilterDate] = useState(new Date().toISOString().split('T')[0]);
@@ -278,7 +393,6 @@ const Orders = () => {
       if (response.data.success) {
         toast.success("Address updated successfully!");
         await fetchOrders(true);
-        // Update selected order if open
         if (selectedOrder && selectedOrder.id === orderId) {
           setSelectedOrder(response.data.order);
         }
@@ -294,29 +408,45 @@ const Orders = () => {
     }
   };
 
-  // ================= PUSH TO SHIPROCKET =================
-  const executePushToShiprocket = async () => {
-    if (!confirmPushOrderId) return;
+  // ================= PUSH TO SHIPROCKET WITH PICKUP SELECTION =================
+  const executePushToShiprocket = async (orderId, pickupLocationId) => {
+    if (!pickupLocationId) {
+      toast.error("Please select a pickup location");
+      return;
+    }
+
     try {
       setPushLoading(true);
-      setLoading(true);
-      const res = await axios.post(`${API_URL}/admin/orders/${confirmPushOrderId}/shiprocket`, {}, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      const res = await axios.post(`${API_URL}/admin/orders/${orderId}/shiprocket`,
+        { pickup_location_id: pickupLocationId },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
       if (res.data.success) {
         toast.success("Order successfully pushed to Shiprocket! 🚀");
         await fetchOrders(true);
+        setShowPickupSelector(false);
+        setPendingPushOrder(null);
         setConfirmPushOrderId(null);
       }
     } catch (err) {
       console.error(err);
       const errorMsg = err.response?.data?.message || "Failed to push to Shiprocket";
       toast.error(errorMsg);
-      setConfirmPushOrderId(null);
     } finally {
       setPushLoading(false);
-      setLoading(false);
     }
+  };
+
+  // Initiate push to Shiprocket (opens pickup selector first)
+  const initiatePushToShiprocket = (order) => {
+    const pushCheck = canPushToShiprocket(order);
+    if (!pushCheck.canPush) {
+      toast.error(pushCheck.reason);
+      return;
+    }
+
+    setPendingPushOrder(order);
+    setShowPickupSelector(true);
   };
 
   // ================= SHIPROCKET GENERATORS =================
@@ -375,7 +505,6 @@ const Orders = () => {
 
   // Check if order has complete address for Shiprocket
   const canPushToShiprocket = (order) => {
-    // Check if order has the required address components
     const hasCity = order.city && order.city !== '' && order.city !== 'City' && order.city !== 'city';
     const hasState = order.state && order.state !== '' && order.state !== 'State' && order.state !== 'state';
     const hasPincode = order.pincode && order.pincode.toString().length === 6;
@@ -434,7 +563,6 @@ const Orders = () => {
     const discount = parseFloat(order.discount) || 0;
     const subtotal = totalAmount + discount;
 
-    // Use the correct URL for logo from public folder
     const bannerUrl = `${window.location.origin}/jayastra_banner.png`;
 
     const html = `
@@ -721,20 +849,72 @@ const Orders = () => {
     printWindow.document.close();
   };
 
-  // Add delete order function
+  // ================= DELETE ORDER FUNCTIONS =================
   const deleteOrder = async (orderId) => {
+    try {
+      setLoading(true);
+      const res = await axios.delete(`${API_URL}/admin/orders/${orderId}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      if (res.data.success) {
+        toast.success(res.data.message);
+        await fetchOrders();
+        setDeleteConfirmOrder(null);
+        if (selectedOrder && selectedOrder.id === orderId) {
+          setSelectedOrder(null);
+        }
+      }
+    } catch (err) {
+      console.error("Delete order error:", err);
+      toast.error(err.response?.data?.message || "Failed to delete order");
+    } finally {
+      setLoading(false);
+    }
   };
 
-  // Add bulk delete function
   const bulkDeleteOrders = async () => {
+    if (selectedOrders.length === 0) {
+      toast.warning("No orders selected");
+      return;
+    }
+
+    try {
+      setBulkDeleting(true);
+      const res = await axios.post(`${API_URL}/admin/orders/bulk-delete`,
+        { orderIds: selectedOrders },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      if (res.data.success) {
+        toast.success(res.data.message);
+        await fetchOrders();
+        setSelectedOrders([]);
+        setBulkDeleteMode(false);
+      }
+    } catch (err) {
+      console.error("Bulk delete error:", err);
+      toast.error(err.response?.data?.message || "Failed to delete orders");
+    } finally {
+      setBulkDeleting(false);
+    }
   };
 
-  // Handle single order selection for bulk delete
   const toggleOrderSelection = (orderId) => {
+    if (selectedOrders.includes(orderId)) {
+      setSelectedOrders(selectedOrders.filter(id => id !== orderId));
+    } else {
+      setSelectedOrders([...selectedOrders, orderId]);
+    }
   };
 
-  // Select/Deselect all orders
   const selectAllOrders = () => {
+    if (selectedOrders.length === filteredOrders.length) {
+      setSelectedOrders([]);
+    } else {
+      const deletableOrders = filteredOrders
+        .filter(order => order.order_status !== 'Delivered')
+        .map(order => order.id);
+      setSelectedOrders(deletableOrders);
+    }
   };
 
   return (
@@ -770,12 +950,11 @@ const Orders = () => {
       </div>
 
       <div className="orders-table">
-
         <div className="table-responsive">
           <table className="orders-table-new">
             <thead>
               <tr>
-                {bulkDeleteMode && <th style={{ width: '40px' }}><input type="checkbox" checked={selectedOrders.length === filteredOrders.length && filteredOrders.length > 0} onChange={selectAllOrders} /></th>}
+                {bulkDeleteMode && <th style={{ width: '40px' }}><input type="checkbox" checked={selectedOrders.length === filteredOrders.filter(o => o.order_status !== 'Delivered').length && filteredOrders.length > 0} onChange={selectAllOrders} /></th>}
                 <th>Order ID</th>
                 <th>Date</th>
                 <th>Customer</th>
@@ -915,8 +1094,8 @@ const Orders = () => {
                 className="select-all-btn"
                 onClick={selectAllOrders}
               >
-                <i className={`bi ${selectedOrders.length === filteredOrders.length ? 'bi-check-square-fill' : 'bi-square'}`}></i>
-                {selectedOrders.length === filteredOrders.length ? 'Deselect All' : 'Select All'}
+                <i className={`bi ${selectedOrders.length === filteredOrders.filter(o => o.order_status !== 'Delivered').length ? 'bi-check-square-fill' : 'bi-square'}`}></i>
+                {selectedOrders.length === filteredOrders.filter(o => o.order_status !== 'Delivered').length ? 'Deselect All' : 'Select All'}
               </button>
               <span className="selected-count">{selectedOrders.length} selected</span>
               <button
@@ -947,14 +1126,13 @@ const Orders = () => {
             </div>
           )}
         </div>
-
       </div>
 
       {/* Delete Confirmation Modal */}
       {deleteConfirmOrder && (
         <div className="custom-confirm-overlay" onClick={() => setDeleteConfirmOrder(null)}>
           <div className="custom-confirm-box" onClick={(e) => e.stopPropagation()}>
-            <div className="confirm-icon delete-icon"><i class="bi bi-trash-fill"></i></div>
+            <div className="confirm-icon delete-icon"><i className="bi bi-trash-fill"></i></div>
             <h5>Delete Order #{deleteConfirmOrder.id}</h5>
             <p>Are you sure you want to delete this order? This action cannot be undone.</p>
             <p className="warning-text">⚠️ This will restore product stock and remove all order records.</p>
@@ -970,11 +1148,22 @@ const Orders = () => {
         </div>
       )}
 
+      {/* Pickup Location Selector Modal */}
+      <PickupLocationSelector
+        isOpen={showPickupSelector}
+        onClose={() => {
+          setShowPickupSelector(false);
+          setPendingPushOrder(null);
+        }}
+        onConfirm={executePushToShiprocket}
+        orderId={pendingPushOrder?.id}
+        isLoading={pushLoading}
+      />
+
       {/* ================= ORDER DETAILS MODAL ================= */}
       {selectedOrder && (
         <div className="order-modal-overlay">
           <div className="order-modal-card">
-
             <div className="modal-header-admin">
               <h4>Order Details #ORD{selectedOrder.id}</h4>
               <button className="close-modal-btn" onClick={() => setSelectedOrder(null)}>✕</button>
@@ -1057,17 +1246,11 @@ const Orders = () => {
                 return (
                   <button
                     className="invoice-btn-admin push-btn"
-                    onClick={() => {
-                      if (pushCheck.canPush) {
-                        setConfirmPushOrderId(selectedOrder.id);
-                      } else {
-                        toast.error(pushCheck.reason);
-                      }
-                    }}
+                    onClick={() => initiatePushToShiprocket(selectedOrder)}
                     disabled={selectedOrder.shiprocket_order_id || pushLoading || !pushCheck.canPush}
                     title={!pushCheck.canPush ? pushCheck.reason : "Push to Shiprocket"}
                   >
-                    {pushLoading && confirmPushOrderId === selectedOrder.id ? (
+                    {pushLoading && pendingPushOrder?.id === selectedOrder.id ? (
                       <>
                         <div className="btn-spinner"></div>
                         Pushing...
@@ -1143,23 +1326,6 @@ const Orders = () => {
               onError={(e) => e.target.src = "/assets/placeholder-product.jpg"}
             />
             <button className="close-lightbox" onClick={() => setPreviewImage(null)}>✕</button>
-          </div>
-        </div>
-      )}
-
-      {/* Push to Shiprocket Confirmation Modal */}
-      {confirmPushOrderId && (
-        <div className="custom-confirm-overlay" onClick={() => setConfirmPushOrderId(null)}>
-          <div className="custom-confirm-box" onClick={(e) => e.stopPropagation()}>
-            <div className="confirm-icon">🚀</div>
-            <h5>Push to Logistics</h5>
-            <p>Are you sure you want to push Order #ORD{confirmPushOrderId} to Shiprocket? A shipment will be initiated.</p>
-            <div className="confirm-actions">
-              <button className="confirm-cancel-btn" onClick={() => setConfirmPushOrderId(null)} disabled={pushLoading}>Cancel</button>
-              <button className="confirm-execute-btn" onClick={executePushToShiprocket} disabled={pushLoading}>
-                {pushLoading ? "Pushing..." : "Yes, Push Now"}
-              </button>
-            </div>
           </div>
         </div>
       )}

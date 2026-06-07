@@ -5232,6 +5232,7 @@ const extractAddressComponents = async (order) => {
 app.post("/api/admin/orders/:id/shiprocket", verifyToken, verifyAdminVendorIndividualAccess, async (req, res) => {
   try {
     const orderId = req.params.id;
+    const { pickup_location_id } = req.body; // Receive selected pickup location ID from frontend
 
     // Check authorization for non-super admins
     if (req.user.role !== 'super_admin') {
@@ -5274,217 +5275,40 @@ app.post("/api/admin/orders/:id/shiprocket", verifyToken, verifyAdminVendorIndiv
       });
     }
 
-    // Get vendor ID from order items
-    const vendorIdResult = await pool.query(
-      `SELECT DISTINCT vendor_id FROM order_items WHERE order_id = $1 LIMIT 1`,
-      [orderId]
-    );
-    if (vendorIdResult.rows.length === 0) {
-      return res.status(400).json({ success: false, message: "No vendor found for this order" });
-    }
-    const vendorId = vendorIdResult.rows[0].vendor_id;
+    // If pickup_location_id is not provided, try to get default from vendor
+    let selectedPickupLocation = null;
 
-    // Get vendor's default pickup address with Shiprocket ID
-    let pickupAddress = null;
-    let shiprocketPickupId = null;
-    let pickupLocationName = null;
+    if (pickup_location_id) {
+      // Fetch the specific pickup location from Shiprocket
+      const token = await authenticateShiprocket();
+      const pickupRes = await fetch(`https://apiv2.shiprocket.in/v1/external/settings/company/pickup/${pickup_location_id}`, {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`
+        }
+      });
 
-    // First try to get from vendor_pickup_addresses table
-    const pickupRes = await pool.query(
-      `SELECT id, location_name, address_line1, address_line2, city, state, pincode, shiprocket_pickup_id, shiprocket_synced
-       FROM vendor_pickup_addresses 
-       WHERE vendor_id = $1 AND is_default = true 
-       LIMIT 1`,
-      [vendorId]
-    );
-
-    if (pickupRes.rows.length > 0) {
-      pickupAddress = pickupRes.rows[0];
-      shiprocketPickupId = pickupAddress.shiprocket_pickup_id;
-      pickupLocationName = pickupAddress.location_name;
-      console.log("✅ Using pickup from vendor_pickup_addresses:", pickupAddress.location_name);
-    } else {
-      // Fallback to user's pickup details from users table
-      const userPickupRes = await pool.query(
-        `SELECT pickup_location_name, pickup_address_line1, pickup_address_line2, pickup_city, pickup_state, pickup_pincode 
-         FROM users 
-         WHERE id = $1`,
-        [vendorId]
-      );
-
-      const userPickup = userPickupRes.rows[0];
-      if (userPickup && userPickup.pickup_pincode) {
-        pickupAddress = {
-          id: null,
-          location_name: userPickup.pickup_location_name || "Default Warehouse",
-          address_line1: userPickup.pickup_address_line1 || "",
-          address_line2: userPickup.pickup_address_line2 || "",
-          city: userPickup.pickup_city || "",
-          state: userPickup.pickup_state || "",
-          pincode: userPickup.pickup_pincode,
-          shiprocket_pickup_id: null,
-          shiprocket_synced: false
+      const pickupData = await pickupRes.json();
+      if (pickupRes.ok && pickupData.data) {
+        selectedPickupLocation = {
+          id: pickupData.data.pickup_location_id,
+          name: pickupData.data.pickup_location,
+          address: pickupData.data.address,
+          address_2: pickupData.data.address_2,
+          city: pickupData.data.city,
+          state: pickupData.data.state,
+          pincode: pickupData.data.pincode
         };
-        pickupLocationName = pickupAddress.location_name;
-        console.log("⚠️ Using pickup from users table:", pickupAddress.location_name);
       }
     }
 
-    // Validate pickup address exists
-    if (!pickupAddress || !pickupAddress.pincode) {
+    if (!selectedPickupLocation) {
       return res.status(400).json({
         success: false,
-        message: "Vendor has not set a default pickup address. Please go to Profile -> Pickup Addresses and add/set a default address.",
-        suggestion: "Add a pickup address and set it as default in your profile settings."
+        message: "Please select a pickup location for this order",
+        action: "select_pickup"
       });
-    }
-
-    // Ensure pickup location exists in Shiprocket
-    if (!shiprocketPickupId) {
-      console.log("📡 No Shiprocket pickup ID found, creating new pickup location...");
-
-      let token;
-      try {
-        token = await authenticateShiprocket();
-      } catch (authError) {
-        console.error("❌ Shiprocket auth error:", authError.message);
-        return res.status(401).json({
-          success: false,
-          message: "Shiprocket authentication failed. Please check your Shiprocket credentials in Settings.",
-          error: authError.message
-        });
-      }
-
-      // Get vendor contact info
-      const vendorRes = await pool.query(
-        `SELECT email, phone, name FROM users WHERE id = $1`,
-        [vendorId]
-      );
-      const vendor = vendorRes.rows[0] || {};
-
-      // Format address properly for Shiprocket
-      let formattedAddress = pickupAddress.address_line1 || "";
-      if (!formattedAddress || formattedAddress.length < 10) {
-        formattedAddress = `${pickupAddress.location_name || "Warehouse"}, ${pickupAddress.address_line1 || "Main Road"}, ${pickupAddress.city || ""}`;
-      }
-
-      const createPayload = {
-        pickup_location: pickupAddress.location_name,
-        name: pickupAddress.location_name,
-        email: vendor.email || "jayastrastore@gmail.com",
-        phone: vendor.phone || "9652896180",
-        address: formattedAddress,
-        address_2: pickupAddress.address_line2 || "",
-        city: pickupAddress.city,
-        state: pickupAddress.state,
-        pincode: pickupAddress.pincode,
-        country: "India"
-      };
-
-      console.log("📦 Creating pickup location with payload:", JSON.stringify(createPayload, null, 2));
-
-      // Initialize variables
-      let createResponse = null;
-      let createResult = null;
-
-      try {
-        createResponse = await fetch("https://apiv2.shiprocket.in/v1/external/settings/company/addpickup", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "Authorization": `Bearer ${token}`
-          },
-          body: JSON.stringify(createPayload)
-        });
-
-        const responseText = await createResponse.text();
-        console.log("📡 Shiprocket create pickup raw response:", responseText);
-
-        try {
-          createResult = JSON.parse(responseText);
-        } catch (parseError) {
-          console.error("❌ Failed to parse Shiprocket response:", parseError.message);
-          return res.status(502).json({
-            success: false,
-            message: "Shiprocket API returned an invalid response during pickup creation. Please try again.",
-            raw_response: responseText.substring(0, 200)
-          });
-        }
-      } catch (fetchError) {
-        console.error("❌ Network error calling Shiprocket:", fetchError.message);
-        return res.status(502).json({
-          success: false,
-          message: "Network error connecting to Shiprocket. Please check your internet connection and try again.",
-          error: fetchError.message
-        });
-      }
-
-      console.log("📡 Shiprocket create pickup response:", JSON.stringify(createResult, null, 2));
-
-      const pickupId = createResult.pickup_id ||
-        createResult.data?.pickup_id ||
-        createResult.data?.pickup_location_id ||
-        createResult.data?.id;
-
-      if (createResponse && createResponse.ok && (pickupId || createResult.success || createResult.data)) {
-        shiprocketPickupId = pickupId || createResult.data?.id || createResult.data?.pickup_location_id;
-
-        if (shiprocketPickupId) {
-          // Save the ID to database
-          if (pickupAddress.id) {
-            await pool.query(
-              `UPDATE vendor_pickup_addresses 
-               SET shiprocket_pickup_id = $1, shiprocket_synced = true, updated_at = NOW() 
-               WHERE id = $2`,
-              [shiprocketPickupId.toString(), pickupAddress.id]
-            );
-          } else {
-            // Create a record in vendor_pickup_addresses for future use
-            await pool.query(
-              `INSERT INTO vendor_pickup_addresses 
-               (vendor_id, location_name, address_line1, address_line2, city, state, pincode, is_default, shiprocket_pickup_id, shiprocket_synced)
-               VALUES ($1, $2, $3, $4, $5, $6, $7, true, $8, true)`,
-              [vendorId, pickupAddress.location_name, pickupAddress.address_line1, pickupAddress.address_line2,
-                pickupAddress.city, pickupAddress.state, pickupAddress.pincode, shiprocketPickupId]
-            );
-          }
-          console.log(`✅ Pickup location created in Shiprocket with ID: ${shiprocketPickupId}`);
-        } else {
-          console.error("❌ Shiprocket created pickup but no ID returned:", createResult);
-          return res.status(400).json({
-            success: false,
-            message: "Pickup location created but no ID returned from Shiprocket. Please try again.",
-            response: createResult
-          });
-        }
-      } else {
-        const errorMsg = createResult?.message || "Failed to create pickup location";
-        console.error("❌ Shiprocket create pickup failed:", errorMsg);
-
-        // Check for specific validation errors
-        if (createResult && createResult.address) {
-          return res.status(400).json({
-            success: false,
-            message: `Address validation failed: ${createResult.address.join(', ')}. Please ensure address has house/flat/road number.`,
-            details: createResult
-          });
-        }
-
-        if (errorMsg.toLowerCase().includes("already exists") || errorMsg.toLowerCase().includes("duplicate")) {
-          return res.status(400).json({
-            success: false,
-            message: "Pickup location with this name already exists in Shiprocket. Please use a different location name or sync manually.",
-            suggestion: "Go to Profile -> Pickup Addresses and click the sync button for this address."
-          });
-        }
-
-        return res.status(400).json({
-          success: false,
-          message: `Cannot push order: ${errorMsg}`,
-          details: createResult?.errors || createResult,
-          suggestion: "Please verify your pickup address details are correct and try again."
-        });
-      }
     }
 
     // Get order items with product details
@@ -5521,7 +5345,7 @@ app.post("/api/admin/orders/:id/shiprocket", verifyToken, verifyAdminVendorIndiv
     try {
       token = await authenticateShiprocket();
     } catch (authError) {
-      console.error("❌ Shiprocket auth error for order creation:", authError.message);
+      console.error("Shiprocket auth error for order creation:", authError.message);
       return res.status(401).json({
         success: false,
         message: "Shiprocket authentication failed. Please check your credentials in Settings.",
@@ -5548,7 +5372,7 @@ app.post("/api/admin/orders/:id/shiprocket", verifyToken, verifyAdminVendorIndiv
     const payload = {
       order_id: `JAYASTRA-${order.id}`,
       order_date: new Date(order.created_at).toISOString().split('T')[0] + " 10:00",
-      pickup_location: pickupLocationName,
+      pickup_location: selectedPickupLocation.name,
       billing_customer_name: (order.customer_name || "Customer").substring(0, 100),
       billing_last_name: "",
       billing_address: billingAddress,
@@ -5569,7 +5393,7 @@ app.post("/api/admin/orders/:id/shiprocket", verifyToken, verifyAdminVendorIndiv
       weight: Math.max(pkgWeight, 0.5)
     };
 
-    console.log("📦 Shiprocket order payload:", JSON.stringify(payload, null, 2));
+    console.log("Shiprocket order payload:", JSON.stringify(payload, null, 2));
 
     // Create order in Shiprocket
     let fetchRes;
@@ -5586,20 +5410,20 @@ app.post("/api/admin/orders/:id/shiprocket", verifyToken, verifyAdminVendorIndiv
       });
 
       const responseText = await fetchRes.text();
-      console.log("📡 Shiprocket order creation raw response:", responseText);
+      console.log("Shiprocket order creation raw response:", responseText);
 
       try {
         result = JSON.parse(responseText);
       } catch (parseError) {
-        console.error("❌ Failed to parse Shiprocket order response:", parseError.message);
+        console.error("Failed to parse Shiprocket order response:", parseError.message);
         return res.status(502).json({
           success: false,
-          message: `Shiprocket API returned status ${fetchRes.status} with an invalid JSON response. Please try again.`,
+          message: `Shiprocket API returned an invalid JSON response. Please try again.`,
           raw_response: responseText.substring(0, 200)
         });
       }
     } catch (fetchError) {
-      console.error("❌ Network error creating Shiprocket order:", fetchError.message);
+      console.error("Network error creating Shiprocket order:", fetchError.message);
       return res.status(502).json({
         success: false,
         message: "Network error connecting to Shiprocket. Please check your internet connection and try again.",
@@ -5607,7 +5431,7 @@ app.post("/api/admin/orders/:id/shiprocket", verifyToken, verifyAdminVendorIndiv
       });
     }
 
-    console.log("📡 Shiprocket order creation response:", JSON.stringify(result, null, 2));
+    console.log("Shiprocket order creation response:", JSON.stringify(result, null, 2));
 
     if (fetchRes.ok && (result.order_id || result.shipment_id)) {
       const srOrderId = result.order_id ? result.order_id.toString() : null;
@@ -5637,20 +5461,20 @@ app.post("/api/admin/orders/:id/shiprocket", verifyToken, verifyAdminVendorIndiv
             await pool.query(`UPDATE orders SET awb_code = $1 WHERE id = $2`, [awbData.awb_code, orderId]);
           }
         } catch (awbErr) {
-          console.warn("⚠️ Auto AWB assignment failed:", awbErr.message);
+          console.warn("Auto AWB assignment failed:", awbErr.message);
         }
       }
 
       return res.json({
         success: true,
         message: "Order successfully pushed to Shiprocket! 🚀",
-        pickup_location_used: pickupLocationName,
+        pickup_location_used: selectedPickupLocation.name,
         shiprocket_order_id: srOrderId,
         shiprocket_shipment_id: srShipmentId,
         data: result
       });
     } else {
-      console.error("❌ Shiprocket order creation failed:", result);
+      console.error("Shiprocket order creation failed:", result);
 
       let errorMessage = result?.message || "Failed to push to Shiprocket";
       if (result?.errors) {
@@ -5661,29 +5485,69 @@ app.post("/api/admin/orders/:id/shiprocket", verifyToken, verifyAdminVendorIndiv
         }
       }
 
-      // Handle specific error cases
-      if (errorMessage.toLowerCase().includes("pickup") && errorMessage.toLowerCase().includes("not found")) {
-        errorMessage = "Pickup location not found in Shiprocket. Please sync your pickup address again.";
-      } else if (errorMessage.toLowerCase().includes("pincode")) {
-        errorMessage = "Invalid pincode. Please verify the delivery address pincode.";
-      } else if (errorMessage.toLowerCase().includes("weight")) {
-        errorMessage = "Invalid package weight. Please check product weights.";
-      }
-
       return res.status(400).json({
         success: false,
         message: errorMessage,
         errors: result?.errors,
-        pickup_location_used: pickupLocationName,
-        pickup_location_id: shiprocketPickupId
+        pickup_location_used: selectedPickupLocation.name
       });
     }
   } catch (error) {
-    console.error("❌ Shiprocket push error:", error);
+    console.error("Shiprocket push error:", error);
     res.status(500).json({
       success: false,
       message: error.message || "Server error pushing order",
       suggestion: "Please try again or contact support if issue persists."
+    });
+  }
+});
+
+// ================= SHIPROCKET PICKUP ADDRESSES FETCH =================
+app.get("/api/shiprocket/pickup-locations", verifyToken, verifyAdminVendorIndividualAccess, async (req, res) => {
+  try {
+    const token = await authenticateShiprocket();
+
+    const response = await fetch("https://apiv2.shiprocket.in/v1/external/settings/company/pickup", {
+      method: "GET",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${token}`
+      }
+    });
+
+    const data = await response.json();
+
+    if (response.ok && data.data && data.data.pickup_locations) {
+      // Format the response for frontend
+      const pickupLocations = data.data.pickup_locations.map(location => ({
+        id: location.pickup_location_id,
+        name: location.pickup_location,
+        address: location.address,
+        address_2: location.address_2,
+        city: location.city,
+        state: location.state,
+        pincode: location.pincode,
+        country: location.country,
+        phone: location.phone,
+        email: location.email
+      }));
+
+      res.json({
+        success: true,
+        pickup_locations: pickupLocations
+      });
+    } else {
+      res.json({
+        success: true,
+        pickup_locations: [],
+        message: data.message || "No pickup locations found"
+      });
+    }
+  } catch (error) {
+    console.error("Fetch pickup locations error:", error);
+    res.status(500).json({
+      success: false,
+      message: error.message || "Failed to fetch pickup locations from Shiprocket"
     });
   }
 });

@@ -1347,3 +1347,131 @@
   opacity: 0.4;
   cursor: not-allowed;
 }
+
+/* Pickup Location Selector Styles */
+.pickup-selector-box {
+  max-width: 650px !important;
+  width: 90% !important;
+}
+
+.pickup-locations-list {
+  max-height: 400px;
+  overflow-y: auto;
+  margin: 20px 0;
+  border-radius: 8px;
+}
+
+.pickup-location-option {
+  display: flex;
+  gap: 15px;
+  padding: 15px;
+  margin-bottom: 10px;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  background: #fff;
+}
+
+.pickup-location-option:hover {
+  background: #f8fafc;
+  border-color: #8E2139;
+}
+
+.pickup-location-option input[type="radio"] {
+  margin-top: 4px;
+  accent-color: #8E2139;
+}
+
+.pickup-location-details {
+  flex: 1;
+}
+
+.pickup-location-details strong {
+  display: block;
+  margin-bottom: 5px;
+  color: #1e293b;
+  font-size: 14px;
+}
+
+.pickup-location-details p {
+  margin: 3px 0;
+  font-size: 12px;
+  color: #64748b;
+}
+
+.pickup-contact {
+  margin-top: 5px !important;
+  font-size: 11px !important;
+  color: #8E2139 !important;
+}
+
+.no-pickup-locations {
+  text-align: center;
+  padding: 40px 20px;
+  color: #64748b;
+}
+
+.no-pickup-locations i {
+  font-size: 48px;
+  color: #cbd5e1;
+  margin-bottom: 15px;
+  display: block;
+}
+
+.no-pickup-locations p {
+  margin: 5px 0;
+}
+
+.small-text {
+  font-size: 12px;
+  margin-top: 10px;
+  color: #94a3b8;
+}
+
+.loading-pickup {
+  text-align: center;
+  padding: 40px;
+}
+
+.loading-pickup .cate-spinner {
+  margin: 0 auto 15px auto;
+}
+
+.btn-spinner {
+  width: 16px;
+  height: 16px;
+  border: 2px solid #fff;
+  border-top-color: transparent;
+  border-radius: 50%;
+  animation: spin 0.6s linear infinite;
+  display: inline-block;
+  margin-right: 8px;
+}
+
+.btn-spinner-small {
+  width: 14px;
+  height: 14px;
+  border: 2px solid #fff;
+  border-top-color: transparent;
+  border-radius: 50%;
+  animation: spin 0.6s linear infinite;
+  display: inline-block;
+  margin-right: 6px;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.confirm-execute-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.pickup-location-option.selected {
+  border-color: #8E2139;
+  background: #fef2f2;
+}
