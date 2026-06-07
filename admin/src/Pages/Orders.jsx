@@ -446,6 +446,7 @@ const Orders = () => {
   const [showAddressEditModal, setShowAddressEditModal] = useState(false);
   const [showPickupSelector, setShowPickupSelector] = useState(false);
   const [pendingPushOrder, setPendingPushOrder] = useState(null);
+  const [checkingAwb, setCheckingAwb] = useState(false); // NEW: State for checking AWB status
 
   const [deleteConfirmOrder, setDeleteConfirmOrder] = useState(null);
   const [bulkDeleteMode, setBulkDeleteMode] = useState(false);
@@ -540,6 +541,36 @@ const Orders = () => {
       return false;
     } finally {
       setLoading(false);
+    }
+  };
+
+  // ================= CHECK AWB STATUS (NEW FUNCTION) =================
+  const checkAWBStatus = async (orderId) => {
+    try {
+      setCheckingAwb(true);
+      const res = await axios.get(`${API_URL}/admin/orders/${orderId}/awb-status`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+
+      if (res.data.success) {
+        if (res.data.has_awb) {
+          toast.success(`✅ AWB Found: ${res.data.awb_code}`);
+          await fetchOrders(true);
+          if (selectedOrder && selectedOrder.id === orderId) {
+            setSelectedOrder(prev => ({ ...prev, awb_code: res.data.awb_code }));
+          }
+        } else {
+          toast.info(res.data.message || "AWB not assigned yet");
+          if (res.data.shipment_status) {
+            toast.info(`Shipment Status: ${res.data.shipment_status}`);
+          }
+        }
+      }
+    } catch (err) {
+      console.error("AWB status check error:", err);
+      toast.error(err.response?.data?.message || "Failed to check AWB status");
+    } finally {
+      setCheckingAwb(false);
     }
   };
 
@@ -1151,6 +1182,18 @@ const Orders = () => {
 
             <div className="modal-footer-admin">
 
+              {/* Check AWB Status Button - NEW */}
+              {selectedOrder.shiprocket_order_id && (
+                <button
+                  className="invoice-btn-admin check-awb-status-btn"
+                  onClick={() => checkAWBStatus(selectedOrder.id)}
+                  disabled={checkingAwb}
+                  style={{ background: '#0891b2', color: 'white' }}
+                >
+                  <i className="bi bi-search"></i>
+                  {checkingAwb ? "Checking..." : "Check AWB Status"}
+                </button>
+              )}
 
               {(() => {
                 const pushCheck = canPushToShiprocket(selectedOrder);

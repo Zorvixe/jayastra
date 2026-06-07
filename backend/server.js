@@ -5789,58 +5789,163 @@ app.get("/api/admin/debug/shiprocket-full", verifyToken, verifyAdminOrSuperAdmin
 app.post("/api/admin/orders/:id/awb", verifyToken, verifyAdminVendorIndividualAccess, async (req, res) => {
   try {
     const orderId = req.params.id;
+
+    // Check authorization for non-super admins
     if (req.user.role !== 'super_admin') {
-      const orderCheck = await pool.query(`SELECT DISTINCT o.id FROM orders o JOIN order_items oi ON o.id = oi.order_id WHERE o.id = $1 AND oi.vendor_id = $2`, [req.params.id, req.user.id]);
-      if (orderCheck.rows.length === 0) return res.status(403).json({ success: false, message: "Unauthorized" });
+      const orderCheck = await pool.query(
+        `SELECT DISTINCT o.id FROM orders o
+         JOIN order_items oi ON o.id = oi.order_id
+         WHERE o.id = $1 AND oi.vendor_id = $2`,
+        [orderId, req.user.id]
+      );
+      if (orderCheck.rows.length === 0) {
+        return res.status(403).json({ success: false, message: "Unauthorized" });
+      }
     }
 
-    const orderRes = await pool.query(`SELECT shiprocket_shipment_id, awb_code FROM orders WHERE id = $1`, [orderId]);
-    if (orderRes.rows.length === 0) return res.status(404).json({ success: false, message: "Order not found" });
+    // Get order details
+    const orderRes = await pool.query(`SELECT shiprocket_shipment_id, awb_code, shiprocket_order_id FROM orders WHERE id = $1`, [orderId]);
+    if (orderRes.rows.length === 0) {
+      return res.status(404).json({ success: false, message: "Order not found" });
+    }
 
-    const shipmentId = orderRes.rows[0].shiprocket_shipment_id;
-    if (!shipmentId) return res.status(400).json({ success: false, message: "Push order to Shiprocket first" });
-    if (orderRes.rows[0].awb_code) return res.status(400).json({ success: false, message: "AWB already generated" });
+    const order = orderRes.rows[0];
+    const shipmentId = order.shiprocket_shipment_id;
+
+    if (!shipmentId) {
+      return res.status(400).json({
+        success: false,
+        message: "Order not pushed to Shiprocket yet. Please push the order to Shiprocket first."
+      });
+    }
+
+    if (order.awb_code) {
+      return res.status(400).json({
+        success: false,
+        message: "AWB already generated",
+        awb_code: order.awb_code
+      });
+    }
 
     const token = await authenticateShiprocket();
 
-    const fetchRes = await fetch("https://apiv2.shiprocket.in/v1/external/courier/assign/awb", {
-      method: "POST", headers: { "Content-Type": "application/json", "Authorization": `Bearer ${token} ` }, body: JSON.stringify({ shipment_id: shipmentId, courier_id: "", status: "" })
+    // Method 1: Try to assign AWB directly
+    console.log("Attempting to assign AWB for shipment:", shipmentId);
+
+    const assignResponse = await fetch("https://apiv2.shiprocket.in/v1/external/courier/assign/awb", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${token}`
+      },
+      body: JSON.stringify({
+        shipment_id: parseInt(shipmentId),
+        courier_id: "",
+        status: ""
+      })
     });
 
-    const result = await fetchRes.json();
+    const assignResult = await assignResponse.json();
+    console.log("Assign AWB response:", assignResult);
+
     let awbCode = null;
 
-    if (result.awb_assign_status) {
-      awbCode = result.response?.data?.awb_code;
-    } else {
-      try {
-        const shipDetailRes = await fetch(`https://apiv2.shiprocket.in/v1/external/shipments/${shipmentId}`, { method: "GET", headers: { "Content-Type": "application/json", "Authorization": `Bearer ${token}` } });
-        const shipData = await shipDetailRes.json();
-        awbCode = shipData.data?.awb_code || shipData.awb_code || shipData.data?.awb;
-      } catch (e) { }
+    // Check if AWB was assigned successfully
+    if (assignResult.awb_assign_status === 1 || assignResult.awb_assign_status === true) {
+      awbCode = assignResult.awb_code || assignResult.response?.data?.awb_code;
+    }
 
-      if (!awbCode) {
-        try {
-          const orderResSR = await pool.query(`SELECT shiprocket_order_id FROM orders WHERE id = $1`, [orderId]);
-          const srOrderId = orderResSR.rows[0]?.shiprocket_order_id;
-          if (srOrderId) {
-            const orderDetailRes = await fetch(`https://apiv2.shiprocket.in/v1/external/orders/show/${srOrderId}`, { method: "GET", headers: { "Content-Type": "application/json", "Authorization": `Bearer ${token}` } });
-            const orderData = await orderDetailRes.json();
-            awbCode = orderData.data?.shipments?.[0]?.awb || orderData.data?.awb_code;
-          }
-        } catch (e) { }
+    // If direct assignment failed, try to fetch shipment details
+    if (!awbCode) {
+      console.log("Direct AWB assignment failed, fetching shipment details...");
+
+      const shipmentResponse = await fetch(`https://apiv2.shiprocket.in/v1/external/shipments/${shipmentId}`, {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`
+        }
+      });
+
+      const shipmentData = await shipmentResponse.json();
+      console.log("Shipment details response:", shipmentData);
+
+      // Extract AWB from shipment data
+      if (shipmentData.data) {
+        awbCode = shipmentData.data.awb_code ||
+          shipmentData.data.awb ||
+          shipmentData.data.shipment?.awb_code ||
+          shipmentData.data.shipment?.awb;
+      }
+    }
+
+    // If still no AWB, try to get from order details
+    if (!awbCode && order.shiprocket_order_id) {
+      console.log("Checking order details for AWB...");
+
+      const orderResponse = await fetch(`https://apiv2.shiprocket.in/v1/external/orders/show/${order.shiprocket_order_id}`, {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`
+        }
+      });
+
+      const orderData = await orderResponse.json();
+      console.log("Order details response:", orderData);
+
+      if (orderData.data && orderData.data.shipments && orderData.data.shipments.length > 0) {
+        awbCode = orderData.data.shipments[0].awb_code ||
+          orderData.data.shipments[0].awb;
+      } else if (orderData.data && orderData.data.awb_code) {
+        awbCode = orderData.data.awb_code;
       }
     }
 
     if (awbCode) {
-      await pool.query(`UPDATE orders SET awb_code = $1 WHERE id = $2`, [awbCode, orderId]);
-      return res.json({ success: true, message: "AWB synchronized successfully!", awb_code: awbCode });
+      // Update order with AWB code
+      await pool.query(
+        `UPDATE orders SET awb_code = $1, updated_at = NOW() WHERE id = $2`,
+        [awbCode, orderId]
+      );
+
+      return res.json({
+        success: true,
+        message: "AWB generated successfully!",
+        awb_code: awbCode
+      });
     } else {
-      const errorMessage = result.message || "Could not find AWB for this order.";
-      return res.status(400).json({ success: false, message: `Shiprocket Sync: ${errorMessage}` });
+      // Provide helpful error message with next steps
+      let errorMessage = "Could not find AWB for this order.";
+      let suggestion = "";
+
+      if (assignResult.message) {
+        errorMessage = assignResult.message;
+      }
+
+      // Check common issues
+      if (assignResult.message && assignResult.message.includes("pickup")) {
+        suggestion = "Please ensure the pickup location is valid and active in Shiprocket.";
+      } else if (assignResult.message && assignResult.message.includes("weight")) {
+        suggestion = "Please check product weights in your order items.";
+      } else {
+        suggestion = "The shipment may need to be processed by Shiprocket first. Please wait a few minutes and try again, or check the Shiprocket dashboard.";
+      }
+
+      return res.status(400).json({
+        success: false,
+        message: `Shiprocket Sync: ${errorMessage}`,
+        suggestion: suggestion,
+        details: assignResult
+      });
     }
   } catch (error) {
-    res.status(500).json({ success: false, message: "Server error generating AWB" });
+    console.error("AWB generation error:", error);
+    res.status(500).json({
+      success: false,
+      message: error.message || "Server error generating AWB",
+      suggestion: "Please check Shiprocket credentials and try again."
+    });
   }
 });
 
@@ -5922,6 +6027,60 @@ app.put("/api/admin/orders/:id/address", verifyToken, verifyAdminOrSuperAdmin, a
     res.json({ success: true, order: result.rows[0] });
   } catch (error) {
     console.error("Update order address error:", error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// Check AWB status without generating new one
+app.get("/api/admin/orders/:id/awb-status", verifyToken, verifyAdminVendorIndividualAccess, async (req, res) => {
+  try {
+    const orderId = req.params.id;
+
+    const orderRes = await pool.query(`SELECT shiprocket_shipment_id, awb_code FROM orders WHERE id = $1`, [orderId]);
+    if (orderRes.rows.length === 0) {
+      return res.status(404).json({ success: false, message: "Order not found" });
+    }
+
+    const order = orderRes.rows[0];
+
+    if (order.awb_code) {
+      return res.json({ success: true, has_awb: true, awb_code: order.awb_code });
+    }
+
+    if (!order.shiprocket_shipment_id) {
+      return res.json({ success: true, has_awb: false, message: "Order not pushed to Shiprocket yet" });
+    }
+
+    const token = await authenticateShiprocket();
+
+    const shipmentResponse = await fetch(`https://apiv2.shiprocket.in/v1/external/shipments/${order.shiprocket_shipment_id}`, {
+      method: "GET",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${token}`
+      }
+    });
+
+    const shipmentData = await shipmentResponse.json();
+
+    let awbCode = null;
+    if (shipmentData.data) {
+      awbCode = shipmentData.data.awb_code || shipmentData.data.awb;
+    }
+
+    if (awbCode) {
+      await pool.query(`UPDATE orders SET awb_code = $1 WHERE id = $2`, [awbCode, orderId]);
+      return res.json({ success: true, has_awb: true, awb_code: awbCode });
+    }
+
+    res.json({
+      success: true,
+      has_awb: false,
+      message: "AWB not yet assigned. The shipment may still be processing.",
+      shipment_status: shipmentData.data?.status || "Unknown"
+    });
+  } catch (error) {
+    console.error("AWB status check error:", error);
     res.status(500).json({ success: false, message: error.message });
   }
 });
