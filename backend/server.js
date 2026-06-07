@@ -808,6 +808,23 @@ const initDatabase = async () => {
       )
       `);
 
+
+    // Add this table to initDatabase() function:
+
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS shiprocket_tokens(
+        id SERIAL PRIMARY KEY,
+        token TEXT NOT NULL,
+        expires_at TIMESTAMP NOT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+
+    // Add index for faster lookups
+    await pool.query(`
+      CREATE INDEX IF NOT EXISTS idx_shiprocket_tokens_expires_at ON shiprocket_tokens(expires_at)
+    `);
+
     await pool.query(`
         INSERT INTO settings(key, value)
     VALUES('platform_fee_percent', '10.00')
@@ -1842,11 +1859,19 @@ app.post("/api/vendor/pickup-addresses", verifyToken, async (req, res) => {
   const client = await pool.connect();
   try {
     const { location_name, address_line1, address_line2, city, state, pincode, is_default } = req.body;
-    
+
     if (!location_name || !address_line1 || !city || !state || !pincode) {
-      return res.status(400).json({ 
-        success: false, 
-        message: "Missing required fields" 
+      return res.status(400).json({
+        success: false,
+        message: "Missing required fields"
+      });
+    }
+
+    // Validate address format for Shiprocket
+    if (!address_line1.match(/[0-9]/) || address_line1.length < 10) {
+      return res.status(400).json({
+        success: false,
+        message: "Address line 1 should include house/flat/road number and be at least 10 characters long."
       });
     }
 
@@ -1866,29 +1891,37 @@ app.post("/api/vendor/pickup-addresses", verifyToken, async (req, res) => {
        RETURNING *`,
       [req.user.id, location_name, address_line1, address_line2 || null, city, state, pincode, is_default || false]
     );
-    
+
     const newAddress = result.rows[0];
-    
+
     // Sync with Shiprocket
     let shiprocketPickupId = null;
     let shiprocketError = null;
-    
+
     try {
       const token = await authenticateShiprocket();
-      
+
+      // Format address properly
+      let formattedAddress = address_line1;
+      if (!formattedAddress.match(/[0-9]/)) {
+        formattedAddress = `${location_name}, ${address_line1}`;
+      }
+
       const payload = {
         pickup_location: location_name,
         name: location_name,
         email: req.user.email || "jayastrastore@gmail.com",
         phone: req.user.phone || "9652896180",
-        address: address_line1,
+        address: formattedAddress,
         address_2: address_line2 || "",
         city: city,
         state: state,
         pincode: pincode,
         country: "India"
       };
-      
+
+      console.log("📦 Creating Shiprocket pickup with payload:", JSON.stringify(payload, null, 2));
+
       const response = await fetch("https://apiv2.shiprocket.in/v1/external/settings/company/addpickup", {
         method: "POST",
         headers: {
@@ -1897,7 +1930,7 @@ app.post("/api/vendor/pickup-addresses", verifyToken, async (req, res) => {
         },
         body: JSON.stringify(payload)
       });
-      
+
       const responseText = await response.text();
       let shiprocketResult = {};
       try {
@@ -1905,15 +1938,17 @@ app.post("/api/vendor/pickup-addresses", verifyToken, async (req, res) => {
       } catch (e) {
         console.error("Failed to parse Shiprocket response:", responseText);
       }
-      
-      const pickupId = shiprocketResult.pickup_id || 
-                       shiprocketResult.data?.pickup_id || 
-                       shiprocketResult.data?.pickup_location_id || 
-                       shiprocketResult.data?.id;
-      
+
+      console.log("📡 Shiprocket response:", shiprocketResult);
+
+      const pickupId = shiprocketResult.pickup_id ||
+        shiprocketResult.data?.pickup_id ||
+        shiprocketResult.data?.pickup_location_id ||
+        shiprocketResult.data?.id;
+
       if (response.ok && (pickupId || shiprocketResult.success || shiprocketResult.data)) {
         shiprocketPickupId = pickupId || shiprocketResult.data?.id || shiprocketResult.data?.pickup_location_id;
-        
+
         if (shiprocketPickupId) {
           await client.query(
             `UPDATE vendor_pickup_addresses 
@@ -1925,23 +1960,29 @@ app.post("/api/vendor/pickup-addresses", verifyToken, async (req, res) => {
           newAddress.shiprocket_synced = true;
         }
       } else {
-        shiprocketError = shiprocketResult.message || "Failed to create in Shiprocket. " + (responseText.substring(0, 150));
+        const errorMsg = shiprocketResult.message || "Failed to create in Shiprocket";
+        if (shiprocketResult.address) {
+          shiprocketError = `Address validation error: ${shiprocketResult.address.join(', ')}`;
+        } else {
+          shiprocketError = errorMsg + ". " + (responseText.substring(0, 150));
+        }
       }
     } catch (err) {
       shiprocketError = err.message;
+      console.error("Shiprocket sync error:", err);
     }
-    
+
     await client.query("COMMIT");
-    
-    res.json({ 
-      success: true, 
+
+    res.json({
+      success: true,
       address: newAddress,
       shiprocket_synced: !!shiprocketPickupId,
       shiprocket_pickup_id: shiprocketPickupId,
       shiprocket_error: shiprocketError || null,
-      message: shiprocketPickupId ? "Address created and synced with Shiprocket!" : "Address created but Shiprocket sync failed."
+      message: shiprocketPickupId ? "Address created and synced with Shiprocket!" : "Address created but Shiprocket sync failed. Please ensure address includes house/flat number."
     });
-    
+
   } catch (error) {
     await client.query("ROLLBACK");
     console.error("Create address error:", error);
@@ -1993,16 +2034,16 @@ app.put("/api/vendor/pickup-addresses/:id", verifyToken, async (req, res) => {
        RETURNING *`,
       [location_name, address_line1, address_line2 || null, city, state, pincode, is_default || false, id, req.user.id]
     );
-    
+
     const updatedAddress = result.rows[0];
     let shiprocketUpdated = false;
     let shiprocketError = null;
-    
+
     // Update in Shiprocket if it has an ID
     if (hasShiprocketId) {
       try {
         const token = await authenticateShiprocket();
-        
+
         const payload = {
           pickup_location: location_name,
           name: location_name,
@@ -2015,7 +2056,7 @@ app.put("/api/vendor/pickup-addresses/:id", verifyToken, async (req, res) => {
           pincode: pincode,
           country: "India"
         };
-        
+
         // Shiprocket doesn't have a direct PUT endpoint, so we need to update by creating new and deleting old
         // Or we can use their edit endpoint if available
         const response = await fetch(`https://apiv2.shiprocket.in/v1/external/settings/company/pickup/${hasShiprocketId}`, {
@@ -2026,7 +2067,7 @@ app.put("/api/vendor/pickup-addresses/:id", verifyToken, async (req, res) => {
           },
           body: JSON.stringify(payload)
         });
-        
+
         const responseText = await response.text();
         if (response.ok) {
           shiprocketUpdated = true;
@@ -2048,17 +2089,17 @@ app.put("/api/vendor/pickup-addresses/:id", verifyToken, async (req, res) => {
         shiprocketError = err.message;
       }
     }
-    
+
     await client.query("COMMIT");
-    
-    res.json({ 
-      success: true, 
+
+    res.json({
+      success: true,
       address: updatedAddress,
       shiprocket_updated: shiprocketUpdated,
       shiprocket_error: shiprocketError || null,
       message: shiprocketUpdated ? "Address updated and synced with Shiprocket!" : "Address updated but Shiprocket sync failed."
     });
-    
+
   } catch (error) {
     await client.query("ROLLBACK");
     console.error("Update address error:", error);
@@ -2087,15 +2128,15 @@ app.delete("/api/vendor/pickup-addresses/:id", verifyToken, async (req, res) => 
     const shiprocketPickupId = address.shiprocket_pickup_id;
 
     await client.query("BEGIN");
-    
+
     // Delete from Shiprocket if it exists
     let shiprocketDeleted = false;
     let shiprocketError = null;
-    
+
     if (shiprocketPickupId) {
       try {
         const token = await authenticateShiprocket();
-        
+
         const response = await fetch(`https://apiv2.shiprocket.in/v1/external/settings/company/pickup/${shiprocketPickupId}`, {
           method: "DELETE",
           headers: {
@@ -2103,7 +2144,7 @@ app.delete("/api/vendor/pickup-addresses/:id", verifyToken, async (req, res) => 
             "Authorization": `Bearer ${token}`
           }
         });
-        
+
         if (response.ok) {
           shiprocketDeleted = true;
         } else {
@@ -2116,7 +2157,7 @@ app.delete("/api/vendor/pickup-addresses/:id", verifyToken, async (req, res) => 
         console.warn("Shiprocket delete error:", shiprocketError);
       }
     }
-    
+
     // Delete from database
     await client.query(`DELETE FROM vendor_pickup_addresses WHERE id = $1`, [id]);
 
@@ -2135,14 +2176,14 @@ app.delete("/api/vendor/pickup-addresses/:id", verifyToken, async (req, res) => 
     }
 
     await client.query("COMMIT");
-    
-    res.json({ 
-      success: true, 
+
+    res.json({
+      success: true,
       message: shiprocketDeleted ? "Address deleted from both systems" : "Address deleted locally. Shiprocket deletion failed.",
       shiprocket_deleted: shiprocketDeleted,
       shiprocket_error: shiprocketError || null
     });
-    
+
   } catch (error) {
     await client.query("ROLLBACK");
     console.error("Delete address error:", error);
@@ -2191,30 +2232,30 @@ app.put("/api/vendor/pickup-addresses/:id/default", verifyToken, async (req, res
 app.post("/api/vendor/pickup-addresses/:id/sync", verifyToken, async (req, res) => {
   try {
     const { id } = req.params;
-    
+
     const addressResult = await pool.query(
       `SELECT * FROM vendor_pickup_addresses WHERE id = $1 AND vendor_id = $2`,
       [id, req.user.id]
     );
-    
+
     if (addressResult.rows.length === 0) {
       return res.status(404).json({ success: false, message: "Address not found" });
     }
-    
+
     const address = addressResult.rows[0];
-    
+
     if (address.shiprocket_synced && address.shiprocket_pickup_id) {
       return res.json({ success: true, message: "Already synced with Shiprocket" });
     }
-    
+
     const vendorResult = await pool.query(
       `SELECT email, phone FROM users WHERE id = $1`,
       [req.user.id]
     );
     const vendor = vendorResult.rows[0] || {};
-    
+
     const token = await authenticateShiprocket();
-    
+
     const payload = {
       pickup_location: address.location_name,
       name: address.location_name,
@@ -2227,7 +2268,7 @@ app.post("/api/vendor/pickup-addresses/:id/sync", verifyToken, async (req, res) 
       pincode: address.pincode,
       country: "India"
     };
-    
+
     const response = await fetch("https://apiv2.shiprocket.in/v1/external/settings/company/addpickup", {
       method: "POST",
       headers: {
@@ -2236,7 +2277,7 @@ app.post("/api/vendor/pickup-addresses/:id/sync", verifyToken, async (req, res) 
       },
       body: JSON.stringify(payload)
     });
-    
+
     const responseText = await response.text();
     let result = {};
     try {
@@ -2244,24 +2285,24 @@ app.post("/api/vendor/pickup-addresses/:id/sync", verifyToken, async (req, res) 
     } catch (e) {
       console.error("Failed to parse Shiprocket response:", responseText);
     }
-    
-    const pickupId = result.pickup_id || 
-                     result.data?.pickup_id || 
-                     result.data?.pickup_location_id || 
-                     result.data?.id;
-    
+
+    const pickupId = result.pickup_id ||
+      result.data?.pickup_id ||
+      result.data?.pickup_location_id ||
+      result.data?.id;
+
     if (response.ok && (pickupId || result.success || result.data)) {
       const finalPickupId = pickupId || result.data?.id || result.data?.pickup_location_id;
-      
+
       await pool.query(
         `UPDATE vendor_pickup_addresses 
          SET shiprocket_pickup_id = $1, shiprocket_synced = true, updated_at = NOW() 
          WHERE id = $2`,
         [finalPickupId.toString(), id]
       );
-      
-      res.json({ 
-        success: true, 
+
+      res.json({
+        success: true,
         message: "Address synced with Shiprocket successfully!",
         shiprocket_pickup_id: finalPickupId
       });
@@ -2269,7 +2310,7 @@ app.post("/api/vendor/pickup-addresses/:id/sync", verifyToken, async (req, res) 
       let errorMessage = result.message || "Failed to sync with Shiprocket. " + (responseText.substring(0, 150));
       res.status(400).json({ success: false, message: errorMessage });
     }
-    
+
   } catch (error) {
     console.error("Sync error:", error);
     res.status(500).json({ success: false, message: error.message });
@@ -4967,9 +5008,9 @@ const clearShiprocketCache = () => {
 };
 
 const authenticateShiprocket = async (retryCount = 0) => {
-  // Check if token is still valid (9 days expiry)
+  // Check if token is still valid (8 days expiry)
   if (shiprocketToken && tokenExpiry && Date.now() < tokenExpiry) {
-    console.log("Using cached Shiprocket token, expires in:", Math.round((tokenExpiry - Date.now()) / 1000 / 60 / 60), "hours");
+    console.log("✅ Using cached Shiprocket token, expires in:", Math.round((tokenExpiry - Date.now()) / 1000 / 60 / 60), "hours");
     return shiprocketToken;
   }
 
@@ -4978,20 +5019,18 @@ const authenticateShiprocket = async (retryCount = 0) => {
   const email = config.shiprocket_email;
   const password = config.shiprocket_password;
 
-  console.log("Authenticating with Shiprocket - Email:", email ? email.substring(0, 3) + '***' : 'none');
-  console.log("Has password:", !!password && password !== '********');
+  console.log("🔐 Authenticating with Shiprocket - Email:", email ? email.substring(0, 3) + '***' : 'none');
 
   if (!email || email === '' || !password || password === '' || password === '********') {
-    console.error("Shiprocket credentials not configured in settings");
+    console.error("❌ Shiprocket credentials not configured in settings");
     throw new Error("Shiprocket credentials not configured. Please add them in Settings page.");
   }
 
   try {
-    console.log("Calling Shiprocket login API...");
-    console.log("API URL: https://apiv2.shiprocket.in/v1/external/auth/login");
+    console.log("📡 Calling Shiprocket login API...");
 
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
+    const timeoutId = setTimeout(() => controller.abort(), 30000);
 
     const response = await fetch("https://apiv2.shiprocket.in/v1/external/auth/login", {
       method: "POST",
@@ -5008,30 +5047,26 @@ const authenticateShiprocket = async (retryCount = 0) => {
 
     clearTimeout(timeoutId);
 
-    console.log("Shiprocket response status:", response.status);
-    console.log("Shiprocket response headers:", JSON.stringify(Object.fromEntries(response.headers.entries()), null, 2));
+    console.log("📡 Shiprocket response status:", response.status);
 
-    // Get response text first for debugging
     const responseText = await response.text();
-    console.log("Shiprocket raw response:", responseText.substring(0, 500));
-
     let data;
     try {
       data = JSON.parse(responseText);
     } catch (parseError) {
-      console.error("Failed to parse Shiprocket response:", parseError.message);
-      console.error("Raw response:", responseText);
+      console.error("❌ Failed to parse Shiprocket response:", parseError.message);
       throw new Error(`Invalid response from Shiprocket: ${responseText.substring(0, 100)}`);
     }
 
     if (response.status === 200 && data.token) {
       shiprocketToken = data.token;
-      tokenExpiry = Date.now() + (9 * 24 * 60 * 60 * 1000);
-      console.log("✅ Shiprocket authenticated successfully, token expires in 9 days");
+      // Set expiry to 8 days (Shiprocket tokens last 10 days, using 8 for safety)
+      tokenExpiry = Date.now() + (8 * 24 * 60 * 60 * 1000);
+      console.log("✅ Shiprocket authenticated successfully, token expires in 8 days");
       return shiprocketToken;
     } else {
-      console.error("Shiprocket auth failed:", data);
-      
+      console.error("❌ Shiprocket auth failed:", data);
+
       let errorMessage = "Shiprocket authentication failed";
       if (data.message) {
         if (data.message.toLowerCase().includes("invalid") || data.message.toLowerCase().includes("wrong")) {
@@ -5042,28 +5077,26 @@ const authenticateShiprocket = async (retryCount = 0) => {
           errorMessage = data.message;
         }
       }
-      
+
       if (response.status === 401) {
         errorMessage = "Authentication failed (401). Invalid Shiprocket credentials.";
       } else if (response.status === 403) {
         errorMessage = "Access denied (403). Please ensure your Shiprocket account has API access enabled.";
-      } else if (response.status === 404) {
-        errorMessage = "Shiprocket API endpoint not found. Please check your internet connection.";
       }
-      
+
       throw new Error(errorMessage);
     }
   } catch (err) {
-    console.error("Shiprocket Auth Error:", err.message);
-    
+    console.error("❌ Shiprocket Auth Error:", err.message);
+
     if (err.name === 'AbortError') {
       throw new Error("Shiprocket connection timeout. Please check your internet connection.");
     }
-    
+
     if (err.message.includes("fetch") || err.message.includes("network")) {
       throw new Error("Network error connecting to Shiprocket. Please check your internet connection and firewall settings.");
     }
-    
+
     throw err;
   }
 };
@@ -5196,11 +5229,6 @@ const extractAddressComponents = async (order) => {
 };
 
 
-// Updated push endpoint - uses each vendor's own pickup location
-// ================= SHIPROCKET ORDER PUSH (UPDATED WITH BETTER PICKUP HANDLING) =================
-
-// ================= SHIPROCKET ORDER PUSH (FIXED WITH BETTER ERROR HANDLING) =================
-
 app.post("/api/admin/orders/:id/shiprocket", verifyToken, verifyAdminVendorIndividualAccess, async (req, res) => {
   try {
     const orderId = req.params.id;
@@ -5232,15 +5260,15 @@ app.post("/api/admin/orders/:id/shiprocket", verifyToken, verifyAdminVendorIndiv
 
     // Extract and validate address components
     const addressComponents = await extractAddressComponents(order);
-    
+
     const missingFields = [];
     if (!addressComponents.city || addressComponents.city === 'Unknown City') missingFields.push('City');
     if (!addressComponents.state || addressComponents.state === 'Unknown State') missingFields.push('State');
     if (!addressComponents.pincode || addressComponents.pincode === '500001') missingFields.push('Pincode');
-    
+
     if (missingFields.length > 0) {
-      return res.status(400).json({ 
-        success: false, 
+      return res.status(400).json({
+        success: false,
         message: `Missing delivery address: ${missingFields.join(', ')}. Please update order address first.`,
         missingFields
       });
@@ -5274,7 +5302,7 @@ app.post("/api/admin/orders/:id/shiprocket", verifyToken, verifyAdminVendorIndiv
       pickupAddress = pickupRes.rows[0];
       shiprocketPickupId = pickupAddress.shiprocket_pickup_id;
       pickupLocationName = pickupAddress.location_name;
-      console.log("Using pickup from vendor_pickup_addresses:", pickupAddress.location_name);
+      console.log("✅ Using pickup from vendor_pickup_addresses:", pickupAddress.location_name);
     } else {
       // Fallback to user's pickup details from users table
       const userPickupRes = await pool.query(
@@ -5298,7 +5326,7 @@ app.post("/api/admin/orders/:id/shiprocket", verifyToken, verifyAdminVendorIndiv
           shiprocket_synced: false
         };
         pickupLocationName = pickupAddress.location_name;
-        console.log("Using pickup from users table:", pickupAddress.location_name);
+        console.log("⚠️ Using pickup from users table:", pickupAddress.location_name);
       }
     }
 
@@ -5313,44 +5341,52 @@ app.post("/api/admin/orders/:id/shiprocket", verifyToken, verifyAdminVendorIndiv
 
     // Ensure pickup location exists in Shiprocket
     if (!shiprocketPickupId) {
-      console.log("No Shiprocket pickup ID found, creating new pickup location...");
-      
+      console.log("📡 No Shiprocket pickup ID found, creating new pickup location...");
+
       let token;
       try {
         token = await authenticateShiprocket();
       } catch (authError) {
-        console.error("Shiprocket auth error:", authError.message);
+        console.error("❌ Shiprocket auth error:", authError.message);
         return res.status(401).json({
           success: false,
           message: "Shiprocket authentication failed. Please check your Shiprocket credentials in Settings.",
           error: authError.message
         });
       }
-      
+
       // Get vendor contact info
       const vendorRes = await pool.query(
         `SELECT email, phone, name FROM users WHERE id = $1`,
         [vendorId]
       );
       const vendor = vendorRes.rows[0] || {};
-      
+
+      // Format address properly for Shiprocket
+      let formattedAddress = pickupAddress.address_line1 || "";
+      if (!formattedAddress || formattedAddress.length < 10) {
+        formattedAddress = `${pickupAddress.location_name || "Warehouse"}, ${pickupAddress.address_line1 || "Main Road"}, ${pickupAddress.city || ""}`;
+      }
+
       const createPayload = {
         pickup_location: pickupAddress.location_name,
         name: pickupAddress.location_name,
         email: vendor.email || "jayastrastore@gmail.com",
         phone: vendor.phone || "9652896180",
-        address: pickupAddress.address_line1,
+        address: formattedAddress,
         address_2: pickupAddress.address_line2 || "",
         city: pickupAddress.city,
         state: pickupAddress.state,
         pincode: pickupAddress.pincode,
         country: "India"
       };
-      
-      console.log("Creating pickup location with payload:", JSON.stringify(createPayload, null, 2));
-      
-      let responseText = "";
-      
+
+      console.log("📦 Creating pickup location with payload:", JSON.stringify(createPayload, null, 2));
+
+      // Initialize variables
+      let createResponse = null;
+      let createResult = null;
+
       try {
         createResponse = await fetch("https://apiv2.shiprocket.in/v1/external/settings/company/addpickup", {
           method: "POST",
@@ -5360,14 +5396,14 @@ app.post("/api/admin/orders/:id/shiprocket", verifyToken, verifyAdminVendorIndiv
           },
           body: JSON.stringify(createPayload)
         });
-        
-        responseText = await createResponse.text();
-        console.log("Shiprocket create pickup raw response:", responseText);
-        
+
+        const responseText = await createResponse.text();
+        console.log("📡 Shiprocket create pickup raw response:", responseText);
+
         try {
           createResult = JSON.parse(responseText);
         } catch (parseError) {
-          console.error("Failed to parse Shiprocket response:", parseError.message);
+          console.error("❌ Failed to parse Shiprocket response:", parseError.message);
           return res.status(502).json({
             success: false,
             message: "Shiprocket API returned an invalid response during pickup creation. Please try again.",
@@ -5375,24 +5411,24 @@ app.post("/api/admin/orders/:id/shiprocket", verifyToken, verifyAdminVendorIndiv
           });
         }
       } catch (fetchError) {
-        console.error("Network error calling Shiprocket:", fetchError.message);
+        console.error("❌ Network error calling Shiprocket:", fetchError.message);
         return res.status(502).json({
           success: false,
           message: "Network error connecting to Shiprocket. Please check your internet connection and try again.",
           error: fetchError.message
         });
       }
-      
-      console.log("Shiprocket create pickup response:", JSON.stringify(createResult, null, 2));
-      
-      const pickupId = createResult.pickup_id || 
-                       createResult.data?.pickup_id || 
-                       createResult.data?.pickup_location_id || 
-                       createResult.data?.id;
 
-      if (createResponse.ok && (pickupId || createResult.success || createResult.data)) {
+      console.log("📡 Shiprocket create pickup response:", JSON.stringify(createResult, null, 2));
+
+      const pickupId = createResult.pickup_id ||
+        createResult.data?.pickup_id ||
+        createResult.data?.pickup_location_id ||
+        createResult.data?.id;
+
+      if (createResponse && createResponse.ok && (pickupId || createResult.success || createResult.data)) {
         shiprocketPickupId = pickupId || createResult.data?.id || createResult.data?.pickup_location_id;
-        
+
         if (shiprocketPickupId) {
           // Save the ID to database
           if (pickupAddress.id) {
@@ -5408,13 +5444,13 @@ app.post("/api/admin/orders/:id/shiprocket", verifyToken, verifyAdminVendorIndiv
               `INSERT INTO vendor_pickup_addresses 
                (vendor_id, location_name, address_line1, address_line2, city, state, pincode, is_default, shiprocket_pickup_id, shiprocket_synced)
                VALUES ($1, $2, $3, $4, $5, $6, $7, true, $8, true)`,
-              [vendorId, pickupAddress.location_name, pickupAddress.address_line1, pickupAddress.address_line2, 
-               pickupAddress.city, pickupAddress.state, pickupAddress.pincode, shiprocketPickupId]
+              [vendorId, pickupAddress.location_name, pickupAddress.address_line1, pickupAddress.address_line2,
+                pickupAddress.city, pickupAddress.state, pickupAddress.pincode, shiprocketPickupId]
             );
           }
           console.log(`✅ Pickup location created in Shiprocket with ID: ${shiprocketPickupId}`);
         } else {
-          console.error("Shiprocket created pickup but no ID returned:", createResult);
+          console.error("❌ Shiprocket created pickup but no ID returned:", createResult);
           return res.status(400).json({
             success: false,
             message: "Pickup location created but no ID returned from Shiprocket. Please try again.",
@@ -5423,9 +5459,17 @@ app.post("/api/admin/orders/:id/shiprocket", verifyToken, verifyAdminVendorIndiv
         }
       } else {
         const errorMsg = createResult?.message || "Failed to create pickup location";
-        console.error("Shiprocket create pickup failed:", errorMsg);
-        
-        // Check for duplicate pickup location
+        console.error("❌ Shiprocket create pickup failed:", errorMsg);
+
+        // Check for specific validation errors
+        if (createResult && createResult.address) {
+          return res.status(400).json({
+            success: false,
+            message: `Address validation failed: ${createResult.address.join(', ')}. Please ensure address has house/flat/road number.`,
+            details: createResult
+          });
+        }
+
         if (errorMsg.toLowerCase().includes("already exists") || errorMsg.toLowerCase().includes("duplicate")) {
           return res.status(400).json({
             success: false,
@@ -5433,7 +5477,7 @@ app.post("/api/admin/orders/:id/shiprocket", verifyToken, verifyAdminVendorIndiv
             suggestion: "Go to Profile -> Pickup Addresses and click the sync button for this address."
           });
         }
-        
+
         return res.status(400).json({
           success: false,
           message: `Cannot push order: ${errorMsg}`,
@@ -5477,7 +5521,7 @@ app.post("/api/admin/orders/:id/shiprocket", verifyToken, verifyAdminVendorIndiv
     try {
       token = await authenticateShiprocket();
     } catch (authError) {
-      console.error("Shiprocket auth error for order creation:", authError.message);
+      console.error("❌ Shiprocket auth error for order creation:", authError.message);
       return res.status(401).json({
         success: false,
         message: "Shiprocket authentication failed. Please check your credentials in Settings.",
@@ -5490,16 +5534,16 @@ app.post("/api/admin/orders/:id/shiprocket", verifyToken, verifyAdminVendorIndiv
     if (!billingAddress || billingAddress === 'Address not specified') {
       billingAddress = `${addressComponents.houseNo ? addressComponents.houseNo + ', ' : ''}${addressComponents.streetArea ? addressComponents.streetArea : ''}`;
     }
-    
+
     if (!billingAddress || billingAddress === '') {
       billingAddress = "Address not specified";
     }
-    
+
     billingAddress = billingAddress.substring(0, 200);
 
     // Determine payment method
     const isPrepaid = order.payment_method === 'Prepaid' || order.payment_method === 'RAZORPAY' || order.payment_method === 'Online';
-    
+
     // Create Shiprocket order payload
     const payload = {
       order_id: `JAYASTRA-${order.id}`,
@@ -5525,12 +5569,12 @@ app.post("/api/admin/orders/:id/shiprocket", verifyToken, verifyAdminVendorIndiv
       weight: Math.max(pkgWeight, 0.5)
     };
 
-    console.log("Shiprocket order payload:", JSON.stringify(payload, null, 2));
+    console.log("📦 Shiprocket order payload:", JSON.stringify(payload, null, 2));
 
     // Create order in Shiprocket
     let fetchRes;
     let result;
-    
+
     try {
       fetchRes = await fetch("https://apiv2.shiprocket.in/v1/external/orders/create/adhoc", {
         method: "POST",
@@ -5540,14 +5584,14 @@ app.post("/api/admin/orders/:id/shiprocket", verifyToken, verifyAdminVendorIndiv
         },
         body: JSON.stringify(payload)
       });
-      
+
       const responseText = await fetchRes.text();
-      console.log("Shiprocket order creation raw response:", responseText);
-      
+      console.log("📡 Shiprocket order creation raw response:", responseText);
+
       try {
         result = JSON.parse(responseText);
       } catch (parseError) {
-        console.error("Failed to parse Shiprocket order response:", parseError.message);
+        console.error("❌ Failed to parse Shiprocket order response:", parseError.message);
         return res.status(502).json({
           success: false,
           message: `Shiprocket API returned status ${fetchRes.status} with an invalid JSON response. Please try again.`,
@@ -5555,20 +5599,20 @@ app.post("/api/admin/orders/:id/shiprocket", verifyToken, verifyAdminVendorIndiv
         });
       }
     } catch (fetchError) {
-      console.error("Network error creating Shiprocket order:", fetchError.message);
+      console.error("❌ Network error creating Shiprocket order:", fetchError.message);
       return res.status(502).json({
         success: false,
         message: "Network error connecting to Shiprocket. Please check your internet connection and try again.",
         error: fetchError.message
       });
     }
-    
-    console.log("Shiprocket order creation response:", JSON.stringify(result, null, 2));
+
+    console.log("📡 Shiprocket order creation response:", JSON.stringify(result, null, 2));
 
     if (fetchRes.ok && (result.order_id || result.shipment_id)) {
       const srOrderId = result.order_id ? result.order_id.toString() : null;
       const srShipmentId = result.shipment_id ? result.shipment_id.toString() : null;
-      
+
       // Update local order with Shiprocket IDs
       await pool.query(
         `UPDATE orders 
@@ -5593,21 +5637,21 @@ app.post("/api/admin/orders/:id/shiprocket", verifyToken, verifyAdminVendorIndiv
             await pool.query(`UPDATE orders SET awb_code = $1 WHERE id = $2`, [awbData.awb_code, orderId]);
           }
         } catch (awbErr) {
-          console.warn("Auto AWB assignment failed:", awbErr.message);
+          console.warn("⚠️ Auto AWB assignment failed:", awbErr.message);
         }
       }
 
-      return res.json({ 
-        success: true, 
+      return res.json({
+        success: true,
         message: "Order successfully pushed to Shiprocket! 🚀",
         pickup_location_used: pickupLocationName,
         shiprocket_order_id: srOrderId,
         shiprocket_shipment_id: srShipmentId,
-        data: result 
+        data: result
       });
     } else {
-      console.error("Shiprocket order creation failed:", result);
-      
+      console.error("❌ Shiprocket order creation failed:", result);
+
       let errorMessage = result?.message || "Failed to push to Shiprocket";
       if (result?.errors) {
         if (Array.isArray(result.errors)) {
@@ -5635,9 +5679,9 @@ app.post("/api/admin/orders/:id/shiprocket", verifyToken, verifyAdminVendorIndiv
       });
     }
   } catch (error) {
-    console.error("Shiprocket push error:", error);
-    res.status(500).json({ 
-      success: false, 
+    console.error("❌ Shiprocket push error:", error);
+    res.status(500).json({
+      success: false,
       message: error.message || "Server error pushing order",
       suggestion: "Please try again or contact support if issue persists."
     });
@@ -8058,11 +8102,11 @@ app.post("/api/admin/shiprocket-test", verifyToken, verifyAdminOrSuperAdmin, asy
 app.get("/api/admin/debug/shiprocket-connection", verifyToken, verifyAdminOrSuperAdmin, async (req, res) => {
   try {
     const config = await getShiprocketConfig(true);
-    
+
     // Test 1: Check if credentials exist in DB
     const hasEmail = !!config.shiprocket_email && config.shiprocket_email !== '';
     const hasPassword = !!config.shiprocket_password && config.shiprocket_password !== '' && config.shiprocket_password !== '********';
-    
+
     if (!hasEmail || !hasPassword) {
       return res.json({
         success: false,
@@ -8072,7 +8116,7 @@ app.get("/api/admin/debug/shiprocket-connection", verifyToken, verifyAdminOrSupe
         emailValue: config.shiprocket_email ? config.shiprocket_email.substring(0, 3) + '***' : null
       });
     }
-    
+
     // Test 2: Try to authenticate
     try {
       const token = await authenticateShiprocket();
