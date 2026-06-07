@@ -1889,7 +1889,7 @@ app.post("/api/vendor/pickup-addresses", verifyToken, async (req, res) => {
         country: "India"
       };
       
-      const response = await fetch("https://apiv2.shiprocket.in/v1/external/settings/company/pickup", {
+      const response = await fetch("https://apiv2.shiprocket.in/v1/external/settings/company/addpickup", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -1898,10 +1898,21 @@ app.post("/api/vendor/pickup-addresses", verifyToken, async (req, res) => {
         body: JSON.stringify(payload)
       });
       
-      const shiprocketResult = await response.json();
+      const responseText = await response.text();
+      let shiprocketResult = {};
+      try {
+        shiprocketResult = JSON.parse(responseText);
+      } catch (e) {
+        console.error("Failed to parse Shiprocket response:", responseText);
+      }
       
-      if (response.ok && (shiprocketResult.success || shiprocketResult.data)) {
-        shiprocketPickupId = shiprocketResult.data?.id || shiprocketResult.data?.pickup_location_id;
+      const pickupId = shiprocketResult.pickup_id || 
+                       shiprocketResult.data?.pickup_id || 
+                       shiprocketResult.data?.pickup_location_id || 
+                       shiprocketResult.data?.id;
+      
+      if (response.ok && (pickupId || shiprocketResult.success || shiprocketResult.data)) {
+        shiprocketPickupId = pickupId || shiprocketResult.data?.id || shiprocketResult.data?.pickup_location_id;
         
         if (shiprocketPickupId) {
           await client.query(
@@ -1914,7 +1925,7 @@ app.post("/api/vendor/pickup-addresses", verifyToken, async (req, res) => {
           newAddress.shiprocket_synced = true;
         }
       } else {
-        shiprocketError = shiprocketResult.message || "Failed to create in Shiprocket";
+        shiprocketError = shiprocketResult.message || "Failed to create in Shiprocket. " + (responseText.substring(0, 150));
       }
     } catch (err) {
       shiprocketError = err.message;
@@ -2016,6 +2027,7 @@ app.put("/api/vendor/pickup-addresses/:id", verifyToken, async (req, res) => {
           body: JSON.stringify(payload)
         });
         
+        const responseText = await response.text();
         if (response.ok) {
           shiprocketUpdated = true;
           await client.query(
@@ -2023,8 +2035,14 @@ app.put("/api/vendor/pickup-addresses/:id", verifyToken, async (req, res) => {
             [id]
           );
         } else {
-          const errorData = await response.json();
-          shiprocketError = errorData.message || "Failed to update in Shiprocket";
+          let errorMsg = "Failed to update in Shiprocket";
+          try {
+            const errorData = JSON.parse(responseText);
+            errorMsg = errorData.message || errorMsg;
+          } catch (e) {
+            errorMsg = responseText ? responseText.substring(0, 150) : errorMsg;
+          }
+          shiprocketError = errorMsg;
         }
       } catch (err) {
         shiprocketError = err.message;
@@ -2210,7 +2228,7 @@ app.post("/api/vendor/pickup-addresses/:id/sync", verifyToken, async (req, res) 
       country: "India"
     };
     
-    const response = await fetch("https://apiv2.shiprocket.in/v1/external/settings/company/pickup", {
+    const response = await fetch("https://apiv2.shiprocket.in/v1/external/settings/company/addpickup", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -2219,25 +2237,36 @@ app.post("/api/vendor/pickup-addresses/:id/sync", verifyToken, async (req, res) 
       body: JSON.stringify(payload)
     });
     
-    const result = await response.json();
+    const responseText = await response.text();
+    let result = {};
+    try {
+      result = JSON.parse(responseText);
+    } catch (e) {
+      console.error("Failed to parse Shiprocket response:", responseText);
+    }
     
-    if (response.ok && (result.success || result.data)) {
-      const pickupId = result.data?.id || result.data?.pickup_location_id;
+    const pickupId = result.pickup_id || 
+                     result.data?.pickup_id || 
+                     result.data?.pickup_location_id || 
+                     result.data?.id;
+    
+    if (response.ok && (pickupId || result.success || result.data)) {
+      const finalPickupId = pickupId || result.data?.id || result.data?.pickup_location_id;
       
       await pool.query(
         `UPDATE vendor_pickup_addresses 
          SET shiprocket_pickup_id = $1, shiprocket_synced = true, updated_at = NOW() 
          WHERE id = $2`,
-        [pickupId.toString(), id]
+        [finalPickupId.toString(), id]
       );
       
       res.json({ 
         success: true, 
         message: "Address synced with Shiprocket successfully!",
-        shiprocket_pickup_id: pickupId
+        shiprocket_pickup_id: finalPickupId
       });
     } else {
-      let errorMessage = result.message || "Failed to sync with Shiprocket";
+      let errorMessage = result.message || "Failed to sync with Shiprocket. " + (responseText.substring(0, 150));
       res.status(400).json({ success: false, message: errorMessage });
     }
     
@@ -5320,11 +5349,10 @@ app.post("/api/admin/orders/:id/shiprocket", verifyToken, verifyAdminVendorIndiv
       
       console.log("Creating pickup location with payload:", JSON.stringify(createPayload, null, 2));
       
-      let createResult;
-      let createResponse;
+      let responseText = "";
       
       try {
-        createResponse = await fetch("https://apiv2.shiprocket.in/v1/external/settings/company/pickup", {
+        createResponse = await fetch("https://apiv2.shiprocket.in/v1/external/settings/company/addpickup", {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
@@ -5333,7 +5361,7 @@ app.post("/api/admin/orders/:id/shiprocket", verifyToken, verifyAdminVendorIndiv
           body: JSON.stringify(createPayload)
         });
         
-        const responseText = await createResponse.text();
+        responseText = await createResponse.text();
         console.log("Shiprocket create pickup raw response:", responseText);
         
         try {
@@ -5342,7 +5370,7 @@ app.post("/api/admin/orders/:id/shiprocket", verifyToken, verifyAdminVendorIndiv
           console.error("Failed to parse Shiprocket response:", parseError.message);
           return res.status(502).json({
             success: false,
-            message: "Shiprocket API returned an invalid response. Please try again.",
+            message: "Shiprocket API returned an invalid response during pickup creation. Please try again.",
             raw_response: responseText.substring(0, 200)
           });
         }
@@ -5357,8 +5385,13 @@ app.post("/api/admin/orders/:id/shiprocket", verifyToken, verifyAdminVendorIndiv
       
       console.log("Shiprocket create pickup response:", JSON.stringify(createResult, null, 2));
       
-      if (createResponse.ok && (createResult.success || createResult.data)) {
-        shiprocketPickupId = createResult.data?.id || createResult.data?.pickup_location_id;
+      const pickupId = createResult.pickup_id || 
+                       createResult.data?.pickup_id || 
+                       createResult.data?.pickup_location_id || 
+                       createResult.data?.id;
+
+      if (createResponse.ok && (pickupId || createResult.success || createResult.data)) {
+        shiprocketPickupId = pickupId || createResult.data?.id || createResult.data?.pickup_location_id;
         
         if (shiprocketPickupId) {
           // Save the ID to database
@@ -5471,7 +5504,7 @@ app.post("/api/admin/orders/:id/shiprocket", verifyToken, verifyAdminVendorIndiv
     const payload = {
       order_id: `JAYASTRA-${order.id}`,
       order_date: new Date(order.created_at).toISOString().split('T')[0] + " 10:00",
-      pickup_location_id: parseInt(shiprocketPickupId), // Convert to number
+      pickup_location: pickupLocationName,
       billing_customer_name: (order.customer_name || "Customer").substring(0, 100),
       billing_last_name: "",
       billing_address: billingAddress,
@@ -5517,7 +5550,7 @@ app.post("/api/admin/orders/:id/shiprocket", verifyToken, verifyAdminVendorIndiv
         console.error("Failed to parse Shiprocket order response:", parseError.message);
         return res.status(502).json({
           success: false,
-          message: "Shiprocket API returned an invalid response. Please try again.",
+          message: `Shiprocket API returned status ${fetchRes.status} with an invalid JSON response. Please try again.`,
           raw_response: responseText.substring(0, 200)
         });
       }
