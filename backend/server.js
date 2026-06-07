@@ -5795,7 +5795,8 @@ app.post("/api/admin/orders/:id/awb", verifyToken, verifyAdminVendorIndividualAc
       const orderCheck = await pool.query(
         `SELECT DISTINCT o.id FROM orders o
          JOIN order_items oi ON o.id = oi.order_id
-         WHERE o.id = $1 AND oi.vendor_id = $2`,
+         JOIN products p ON oi.product_id = p.id
+         WHERE o.id = $1 AND p.vendor_id = $2`,
         [orderId, req.user.id]
       );
       if (orderCheck.rows.length === 0) {
@@ -5839,25 +5840,44 @@ app.post("/api/admin/orders/:id/awb", verifyToken, verifyAdminVendorIndividualAc
         "Authorization": `Bearer ${token}`
       },
       body: JSON.stringify({
-        shipment_id: parseInt(shipmentId),
-        courier_id: "",
-        status: ""
+        shipment_id: parseInt(shipmentId)
       })
     });
 
-    const assignResult = await assignResponse.json();
-    console.log("Assign AWB response:", assignResult);
+    const responseText = await assignResponse.text();
+    console.log("Assign AWB raw response:", responseText);
+
+    let assignResult;
+    try {
+      assignResult = JSON.parse(responseText);
+    } catch (e) {
+      console.error("Failed to parse AWB response:", e.message);
+      return res.status(502).json({
+        success: false,
+        message: "Invalid response from Shiprocket API",
+        raw_response: responseText.substring(0, 200)
+      });
+    }
+
+    console.log("Assign AWB parsed response:", JSON.stringify(assignResult, null, 2));
 
     let awbCode = null;
 
-    // Check if AWB was assigned successfully
+    // Check different response structures for AWB code
     if (assignResult.awb_assign_status === 1 || assignResult.awb_assign_status === true) {
-      awbCode = assignResult.awb_code || assignResult.response?.data?.awb_code;
+      awbCode = assignResult.awb_code ||
+        assignResult.data?.awb_code ||
+        assignResult.response?.data?.awb_code ||
+        assignResult.awb;
+    } else if (assignResult.status === 200 && assignResult.data) {
+      awbCode = assignResult.data.awb_code || assignResult.data.awb;
+    } else if (assignResult.success && assignResult.data) {
+      awbCode = assignResult.data.awb_code || assignResult.data.awb;
     }
 
-    // If direct assignment failed, try to fetch shipment details
+    // If direct assignment failed or no AWB, try to fetch shipment details
     if (!awbCode) {
-      console.log("Direct AWB assignment failed, fetching shipment details...");
+      console.log("Direct AWB assignment didn't return AWB, fetching shipment details...");
 
       const shipmentResponse = await fetch(`https://apiv2.shiprocket.in/v1/external/shipments/${shipmentId}`, {
         method: "GET",
@@ -5867,8 +5887,16 @@ app.post("/api/admin/orders/:id/awb", verifyToken, verifyAdminVendorIndividualAc
         }
       });
 
-      const shipmentData = await shipmentResponse.json();
-      console.log("Shipment details response:", shipmentData);
+      const shipmentText = await shipmentResponse.text();
+      let shipmentData;
+      try {
+        shipmentData = JSON.parse(shipmentText);
+      } catch (e) {
+        console.error("Failed to parse shipment response:", e.message);
+        shipmentData = {};
+      }
+
+      console.log("Shipment details response:", JSON.stringify(shipmentData, null, 2));
 
       // Extract AWB from shipment data
       if (shipmentData.data) {
@@ -5876,6 +5904,13 @@ app.post("/api/admin/orders/:id/awb", verifyToken, verifyAdminVendorIndividualAc
           shipmentData.data.awb ||
           shipmentData.data.shipment?.awb_code ||
           shipmentData.data.shipment?.awb;
+      }
+
+      if (!awbCode && shipmentData.awb_code) {
+        awbCode = shipmentData.awb_code;
+      }
+      if (!awbCode && shipmentData.awb) {
+        awbCode = shipmentData.awb;
       }
     }
 
@@ -5891,14 +5926,26 @@ app.post("/api/admin/orders/:id/awb", verifyToken, verifyAdminVendorIndividualAc
         }
       });
 
-      const orderData = await orderResponse.json();
-      console.log("Order details response:", orderData);
+      const orderText = await orderResponse.text();
+      let orderData;
+      try {
+        orderData = JSON.parse(orderText);
+      } catch (e) {
+        console.error("Failed to parse order response:", e.message);
+        orderData = {};
+      }
+
+      console.log("Order details response:", JSON.stringify(orderData, null, 2));
 
       if (orderData.data && orderData.data.shipments && orderData.data.shipments.length > 0) {
         awbCode = orderData.data.shipments[0].awb_code ||
           orderData.data.shipments[0].awb;
-      } else if (orderData.data && orderData.data.awb_code) {
+      }
+      if (!awbCode && orderData.data && orderData.data.awb_code) {
         awbCode = orderData.data.awb_code;
+      }
+      if (!awbCode && orderData.awb_code) {
+        awbCode = orderData.awb_code;
       }
     }
 
@@ -5924,10 +5971,12 @@ app.post("/api/admin/orders/:id/awb", verifyToken, verifyAdminVendorIndividualAc
       }
 
       // Check common issues
-      if (assignResult.message && assignResult.message.includes("pickup")) {
+      if (errorMessage.toLowerCase().includes("pickup")) {
         suggestion = "Please ensure the pickup location is valid and active in Shiprocket.";
-      } else if (assignResult.message && assignResult.message.includes("weight")) {
+      } else if (errorMessage.toLowerCase().includes("weight")) {
         suggestion = "Please check product weights in your order items.";
+      } else if (errorMessage.toLowerCase().includes("address")) {
+        suggestion = "Please verify the delivery address has correct city, state, and pincode.";
       } else {
         suggestion = "The shipment may need to be processed by Shiprocket first. Please wait a few minutes and try again, or check the Shiprocket dashboard.";
       }
