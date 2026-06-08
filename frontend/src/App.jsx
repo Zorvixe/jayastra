@@ -4,6 +4,7 @@ import {
   Routes,
   Route,
   useLocation,
+  Navigate,
 } from "react-router-dom";
 import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
@@ -22,6 +23,8 @@ import LoadingSpinner from "./components/LoadingSpinner";
 import MobileBottomNav from "./components/MobileBottomNav";
 
 import OrderSuccessPage from "./Pages/OrderSuccessPage/OrderSuccessPage";
+import NotFound from "./Pages/NotFound/NotFound"; // ✅ ADD THIS
+
 
 // Lazy load page components for faster initial load
 const Home = lazy(() => import("./Pages/Home"));
@@ -112,11 +115,14 @@ const AppContent = () => {
             <Route path="/terms-and-conditions" element={<TermsOfService />} />
             <Route path="/shipping-policy" element={<ShippingPolicy />} />
             <Route path="/order-success" element={<OrderSuccessPage />} />
+            <Route path="/404" element={<NotFound />} />
+            <Route path="*" element={<Navigate to="/404" replace />} />
           </Routes>
         </Suspense>
 
+
         {shouldShowFooter && <Footer />}
-        
+
         {/* Mobile Bottom Navigation */}
         <MobileBottomNav />
       </WishlistProvider>

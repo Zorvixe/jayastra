@@ -183,76 +183,6 @@ const AddressEditModal = ({ order, isOpen, onClose, onUpdate }) => {
   );
 };
 
-// Location Details Modal Component
-const LocationDetailsModal = ({ location, isOpen, onClose }) => {
-  if (!isOpen || !location) return null;
-
-  return (
-    <div className="custom-confirm-overlay" onClick={onClose}>
-      <div className="location-details-modal" onClick={(e) => e.stopPropagation()}>
-        <div className="modal-header">
-          <h4>📍 Location Details</h4>
-          <button className="close-btn" onClick={onClose}>✕</button>
-        </div>
-        <div className="modal-body">
-          <div className="details-section">
-            <div className="detail-row">
-              <span className="detail-label">Location Name:</span>
-              <span className="detail-value">{location.name || 'N/A'}</span>
-            </div>
-            <div className="detail-row">
-              <span className="detail-label">Vendor Name:</span>
-              <span className="detail-value">{location.vendor_name || location.name || 'N/A'}</span>
-            </div>
-            <div className="detail-row">
-              <span className="detail-label">Address:</span>
-              <span className="detail-value">{location.address || 'N/A'}</span>
-            </div>
-            <div className="detail-row">
-              <span className="detail-label">Address Line 2:</span>
-              <span className="detail-value">{location.address_2 || 'N/A'}</span>
-            </div>
-            <div className="detail-row">
-              <span className="detail-label">City:</span>
-              <span className="detail-value">{location.city || 'N/A'}</span>
-            </div>
-            <div className="detail-row">
-              <span className="detail-label">State:</span>
-              <span className="detail-value">{location.state || 'N/A'}</span>
-            </div>
-            <div className="detail-row">
-              <span className="detail-label">Pincode:</span>
-              <span className="detail-value">{location.pincode || 'N/A'}</span>
-            </div>
-            <div className="detail-row">
-              <span className="detail-label">Country:</span>
-              <span className="detail-value">{location.country || 'India'}</span>
-            </div>
-            <div className="detail-row">
-              <span className="detail-label">Phone:</span>
-              <span className="detail-value">{location.phone || 'N/A'}</span>
-            </div>
-            <div className="detail-row">
-              <span className="detail-label">Email:</span>
-              <span className="detail-value">{location.email || 'N/A'}</span>
-            </div>
-            {location.id && (
-              <div className="detail-row">
-                <span className="detail-label">Location ID:</span>
-                <span className="detail-value">{location.id}</span>
-              </div>
-            )}
-          </div>
-        </div>
-        <div className="modal-footer">
-          <button className="btn-cancel" onClick={onClose}>Close</button>
-        </div>
-      </div>
-    </div>
-  );
-};
-
-// Pickup Location Selector Modal Component with Dropdown Selection (Aligned with ShiprocketSettings)
 // Pickup Location Selector Modal Component
 const PickupLocationSelector = ({ isOpen, onClose, onConfirm, orderId, isLoading }) => {
   const [pickupLocations, setPickupLocations] = useState([]);
@@ -286,10 +216,8 @@ const PickupLocationSelector = ({ isOpen, onClose, onConfirm, orderId, isLoading
 
         setPickupLocations(locations);
         if (locations.length > 0) {
-          // Default to the first location if available
           const firstLocId = locations[0].id || locations[0].pickup_location_id || "";
           setSelectedPickupLocation(String(firstLocId));
-          console.log("Default selected location ID:", firstLocId);
         }
       } else {
         setPickupLocations([]);
@@ -308,12 +236,9 @@ const PickupLocationSelector = ({ isOpen, onClose, onConfirm, orderId, isLoading
       toast.error("Please select a pickup location");
       return;
     }
-
-    console.log("Confirming with location ID:", selectedPickupLocation);
     onConfirm(orderId, String(selectedPickupLocation));
   };
 
-  // Find the selected location details for display
   const selectedLocationDetails = pickupLocations.find(loc => {
     const locId = loc.id || loc.pickup_location_id;
     return String(locId) === String(selectedPickupLocation);
@@ -327,7 +252,6 @@ const PickupLocationSelector = ({ isOpen, onClose, onConfirm, orderId, isLoading
         <h5>Select Pickup Location</h5>
         <p>Choose a pickup location from Shiprocket for Order #{orderId}</p>
 
-        {/* Selected Location Address Card */}
         {selectedLocationDetails && !fetching && (
           <div className="selected-location-card">
             <div className="selected-location-header">
@@ -354,7 +278,6 @@ const PickupLocationSelector = ({ isOpen, onClose, onConfirm, orderId, isLoading
           </div>
         )}
 
-        {/* Dropdown Section */}
         <div className="location-dropdown-section">
           <div className="pickup-location-header">
             <label className="dropdown-label">Pickup Location</label>
@@ -378,10 +301,7 @@ const PickupLocationSelector = ({ isOpen, onClose, onConfirm, orderId, isLoading
           <div className="notion-select-wrapper">
             <select
               value={selectedPickupLocation}
-              onChange={(e) => {
-                console.log("Dropdown selection changed to:", e.target.value);
-                setSelectedPickupLocation(e.target.value);
-              }}
+              onChange={(e) => setSelectedPickupLocation(e.target.value)}
               className="location-dropdown"
               disabled={fetching || pickupLocations.length === 0}
             >
@@ -408,11 +328,7 @@ const PickupLocationSelector = ({ isOpen, onClose, onConfirm, orderId, isLoading
         )}
 
         <div className="confirm-actions">
-          <button
-            className="confirm-cancel-btn"
-            onClick={onClose}
-            disabled={isLoading}
-          >
+          <button className="confirm-cancel-btn" onClick={onClose} disabled={isLoading}>
             Cancel
           </button>
           <button
@@ -446,26 +362,22 @@ const Orders = () => {
   const [showAddressEditModal, setShowAddressEditModal] = useState(false);
   const [showPickupSelector, setShowPickupSelector] = useState(false);
   const [pendingPushOrder, setPendingPushOrder] = useState(null);
-  const [checkingAwb, setCheckingAwb] = useState(false); // NEW: State for checking AWB status
+  const [checkingAwb, setCheckingAwb] = useState(false);
 
   const [deleteConfirmOrder, setDeleteConfirmOrder] = useState(null);
   const [bulkDeleteMode, setBulkDeleteMode] = useState(false);
   const [selectedOrders, setSelectedOrders] = useState([]);
   const [bulkDeleting, setBulkDeleting] = useState(false);
 
-  // Date filter state - default to today
   const [filterDate, setFilterDate] = useState(new Date().toISOString().split('T')[0]);
 
   const token = localStorage.getItem("token");
 
-  // ================= FETCH ORDERS (WITH SILENT MODE FOR AUTO-SYNC) =================
   const fetchOrders = async (isSilent = false) => {
     try {
       if (!isSilent) setInitialLoading(true);
       const res = await axios.get(`${API_URL}/admin/orders`, {
-        headers: {
-          Authorization: `Bearer ${token}`
-        }
+        headers: { Authorization: `Bearer ${token}` }
       });
       setOrders(res.data.orders || []);
 
@@ -481,7 +393,6 @@ const Orders = () => {
     }
   };
 
-  // Auto-refresh orders every 10 seconds
   useEffect(() => {
     fetchOrders();
     const interval = setInterval(() => {
@@ -490,14 +401,12 @@ const Orders = () => {
     return () => clearInterval(interval);
   }, []);
 
-  // Filter orders by date
   const filteredOrders = orders.filter(order => {
     if (!filterDate) return true;
     const orderDate = new Date(order.created_at).toISOString().split('T')[0];
     return orderDate === filterDate;
   });
 
-  // ================= UPDATE ORDER STATUS =================
   const updateOrderStatus = async (id, status) => {
     try {
       setStatusUpdatingId(id);
@@ -518,7 +427,6 @@ const Orders = () => {
     }
   };
 
-  // ================= UPDATE ORDER ADDRESS =================
   const updateOrderAddress = async (orderId, addressData) => {
     try {
       setLoading(true);
@@ -544,7 +452,6 @@ const Orders = () => {
     }
   };
 
-  // ================= CHECK AWB STATUS (NEW FUNCTION) =================
   const checkAWBStatus = async (orderId) => {
     try {
       setCheckingAwb(true);
@@ -560,7 +467,7 @@ const Orders = () => {
             setSelectedOrder(prev => ({ ...prev, awb_code: res.data.awb_code }));
           }
         } else {
-          toast.info(res.data.message || "AWB not assigned yet");
+          toast.info(res.data.message || "AWB not assigned yet. It will be generated automatically by Shiprocket.");
           if (res.data.shipment_status) {
             toast.info(`Shipment Status: ${res.data.shipment_status}`);
           }
@@ -574,7 +481,6 @@ const Orders = () => {
     }
   };
 
-  // ================= Packed WITH PICKUP SELECTION =================
   const executePushToShiprocket = async (orderId, pickupLocationId) => {
     if (!pickupLocationId) {
       toast.error("Please select a pickup location");
@@ -587,88 +493,96 @@ const Orders = () => {
         { pickup_location_id: pickupLocationId },
         { headers: { Authorization: `Bearer ${token}` } }
       );
+
       if (res.data.success) {
-        toast.success("Order successfully pushed to Shiprocket! 🚀");
+        if (res.data.awb_code) {
+          toast.success(`✅ Order Packed! AWB: ${res.data.awb_code}`);
+        } else {
+          toast.success("Order Packed! AWB will be generated automatically.");
+        }
+
         await fetchOrders(true);
         setShowPickupSelector(false);
         setPendingPushOrder(null);
       }
     } catch (err) {
       console.error(err);
-      const errorMsg = err.response?.data?.message || "Failed to Packed";
+      const errorMsg = err.response?.data?.message || "Failed to push order to Shiprocket";
       toast.error(errorMsg);
     } finally {
       setPushLoading(false);
     }
   };
 
-  // Initiate Packed (opens pickup selector first)
   const initiatePushToShiprocket = (order) => {
     const pushCheck = canPushToShiprocket(order);
     if (!pushCheck.canPush) {
       toast.error(pushCheck.reason);
       return;
     }
-
     setPendingPushOrder(order);
     setShowPickupSelector(true);
   };
 
-  // ================= SHIPROCKET GENERATORS =================
-  const generateAWB = async (orderId) => {
-    try {
-      setLoading(true);
-      const res = await axios.post(`${API_URL}/admin/orders/${orderId}/awb`, {}, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      if (res.data.success) {
-        toast.success("AWB Generated Successfully!");
-        await fetchOrders(true);
-      }
-    } catch (err) {
-      toast.error(err.response?.data?.message || "Failed to generate AWB");
-    } finally {
-      setLoading(false);
-    }
-  };
-
+  // Download Shipping Label (to paste on package)
   const downloadLabel = async (orderId) => {
     try {
       setLoading(true);
+
+      // First check if order is ready for label
+      const order = orders.find(o => o.id === orderId);
+      const shippedStatuses = ['Shipped', 'Out for Delivery', 'Delivered'];
+
+      if (!shippedStatuses.includes(order?.order_status)) {
+        toast.warning("⚠️ Shipping label is not available yet. Please wait until the order status changes to 'Shipped' or later.");
+        return;
+      }
+
+      toast.info("Generating shipping label...");
       const res = await axios.post(`${API_URL}/admin/orders/${orderId}/label`, {}, {
         headers: { Authorization: `Bearer ${token}` }
       });
+
       if (res.data.success && res.data.label_url) {
         window.open(res.data.label_url, "_blank");
+        toast.success("Shipping label opened in new tab. You can print it now.");
       } else {
-        toast.error("Label URL not available");
+        toast.error("Label not ready yet. Please try again after some time.");
       }
     } catch (err) {
-      toast.error(err.response?.data?.message || "Failed to download label");
+      console.error("Label download error:", err);
+      if (err.response?.status === 400) {
+        toast.error("Label not available. Please wait for Shiprocket to process the shipment.");
+      } else {
+        toast.error(err.response?.data?.message || "Failed to download label");
+      }
     } finally {
       setLoading(false);
     }
   };
 
+  // Download Shiprocket Invoice (Tax Invoice)
   const downloadShiprocketInvoice = async (orderId) => {
     try {
       setLoading(true);
+      toast.info("Generating invoice...");
       const res = await axios.post(`${API_URL}/admin/orders/${orderId}/invoice`, {}, {
         headers: { Authorization: `Bearer ${token}` }
       });
       if (res.data.success && res.data.invoice_url) {
         window.open(res.data.invoice_url, "_blank");
+        toast.success("Invoice opened in new tab. You can download/print it now.");
       } else {
         toast.error("Invoice URL not available");
       }
     } catch (err) {
-      toast.error(err.response?.data?.message || "Failed to download Shiprocket invoice");
+      console.error("Invoice download error:", err);
+      toast.error(err.response?.data?.message || "Failed to download invoice");
     } finally {
       setLoading(false);
     }
   };
 
-  // Check if order has complete address for Shiprocket
   const canPushToShiprocket = (order) => {
     const hasCity = order.city && order.city !== '' && order.city !== 'City' && order.city !== 'city';
     const hasState = order.state && order.state !== '' && order.state !== 'State' && order.state !== 'state';
@@ -685,49 +599,15 @@ const Orders = () => {
         reason: `Missing delivery address details (${missing.join(', ')}). Please update the order address first.`
       };
     }
-
     return { canPush: true, reason: null };
   };
 
-  // Check courier availability
-  const checkCourierAvailability = async (order) => {
-    const pincode = order.pincode;
-    if (!pincode) {
-      toast.warning("No pincode found in address");
-      return;
-    }
-
-    try {
-      const totalWeight = order.items?.reduce((sum, item) => {
-        const itemWeight = parseFloat(item.weight) || 0.5;
-        return sum + (itemWeight * item.quantity);
-      }, 0) || 0.5;
-
-      const result = await shiprocketService.getCourierRecommendation(
-        pincode,
-        order.total_amount,
-        order.payment_method === 'COD',
-        totalWeight
-      );
-
-      if (result.serviceable && result.recommended_courier) {
-        toast.success(`✅ Recommended: ${result.recommended_courier.courier_name} - ₹${result.recommended_courier.rate} (Est. ${Math.ceil(result.recommended_courier.etd_hours / 24)} days)`);
-      } else {
-        toast.warning(result.message || "No courier available for this pincode");
-      }
-    } catch (error) {
-      toast.error("Failed to check courier availability");
-    }
-  };
-
-  // ================= PRINT LOCAL INVOICE =================
   const handlePrint = (order) => {
     const printWindow = window.open("", "_blank", "width=800,height=900");
 
     const totalAmount = parseFloat(order.total_amount) || 0;
     const discount = parseFloat(order.discount) || 0;
     const subtotal = totalAmount + discount;
-
     const bannerUrl = `${window.location.origin}/jayastra_banner.png`;
 
     const html = `
@@ -828,13 +708,12 @@ const Orders = () => {
         </script>
       </body>
     </html>
-  `;
+    `;
 
     printWindow.document.write(html);
     printWindow.document.close();
   };
 
-  // ================= DELETE ORDER FUNCTIONS =================
   const deleteOrder = async (orderId) => {
     try {
       setLoading(true);
@@ -914,7 +793,6 @@ const Orders = () => {
 
       <div className="orders-header-flex">
         <h4>Orders Management</h4>
-
         <div className="orders-filter-area">
           <div className="date-filter-group">
             <span className="filter-label">Filter by Date:</span>
@@ -1038,11 +916,7 @@ const Orders = () => {
                       )}
                     </td>
                     <td>
-                      <button
-                        className="view-btn-admin"
-                        onClick={() => setSelectedOrder(order)}
-                        disabled={loading}
-                      >
+                      <button className="view-btn-admin" onClick={() => setSelectedOrder(order)} disabled={loading}>
                         Details
                       </button>
                     </td>
@@ -1123,7 +997,7 @@ const Orders = () => {
         isLoading={pushLoading}
       />
 
-      {/* ================= ORDER DETAILS MODAL ================= */}
+      {/* Order Details Modal */}
       {selectedOrder && (
         <div className="order-modal-overlay">
           <div className="order-modal-card">
@@ -1182,37 +1056,55 @@ const Orders = () => {
 
             <div className="modal-footer-admin">
 
-              {/* Check AWB Status Button - NEW */}
-              {selectedOrder.shiprocket_order_id && (
-                <button
-                  className="invoice-btn-admin check-awb-status-btn"
-                  onClick={() => checkAWBStatus(selectedOrder.id)}
-                  disabled={checkingAwb}
-                  style={{ background: '#0891b2', color: 'white' }}
-                >
-                  <i className="bi bi-search"></i>
-                  {checkingAwb ? "Checking..." : "Check AWB Status"}
-                </button>
-              )}
 
+              {/* Push to Shiprocket Button (Packed) */}
               {(() => {
                 const pushCheck = canPushToShiprocket(selectedOrder);
+                const isPushed = selectedOrder.shiprocket_order_id;
                 return (
-                  <button className="invoice-btn-admin push-btn" onClick={() => initiatePushToShiprocket(selectedOrder)} disabled={selectedOrder.shiprocket_order_id || pushLoading || !pushCheck.canPush} title={!pushCheck.canPush ? pushCheck.reason : "Packed"}>
-                    {pushLoading && pendingPushOrder?.id === selectedOrder.id ? (<><div className="btn-spinner"></div>Pushing...</>) : (<><i className="bi bi-box-seam"></i>{selectedOrder.shiprocket_order_id ? "Pushed to Shiprocket" : "Packed"}</>)}
+                  <button
+                    className="invoice-btn-admin push-btn"
+                    onClick={() => initiatePushToShiprocket(selectedOrder)}
+                    disabled={isPushed || pushLoading || !pushCheck.canPush}
+                    title={!pushCheck.canPush ? pushCheck.reason : (isPushed ? "Already Packed" : "Pack Order")}
+                  >
+                    {pushLoading && pendingPushOrder?.id === selectedOrder.id ? (
+                      <><div className="btn-spinner"></div>Packing...</>
+                    ) : (
+                      <><i className="bi bi-box-seam"></i>{isPushed ? "Packed" : "Pack Order"}</>
+                    )}
                   </button>
                 );
               })()}
-              {selectedOrder.shiprocket_order_id && !selectedOrder.awb_code && (
-                <button className="invoice-btn-admin generate-awb-btn" onClick={() => generateAWB(selectedOrder.id)} disabled={loading}><i className="bi bi-upc-scan"></i> Generate AWB</button>
-              )}
+
+              {/* SHIPPING LABEL BUTTON - For pasting on package */}
               {selectedOrder.awb_code && (
-                <button className="invoice-btn-admin label-btn" onClick={() => downloadLabel(selectedOrder.id)} disabled={loading}><i className="bi bi-tag-fill"></i> Label (AWB: {selectedOrder.awb_code})</button>
+                <button
+                  className="invoice-btn-admin label-btn"
+                  onClick={() => downloadLabel(selectedOrder.id)}
+                  disabled={loading}
+                  style={{ background: '#10b981', color: 'white' }}
+                >
+                  <i className="bi bi-upc-scan"></i> Shipping Label
+                </button>
               )}
-              {selectedOrder.awb_code && (
-                <button className="invoice-btn-admin shiprocket-invoice-btn" onClick={() => downloadShiprocketInvoice(selectedOrder.id)} disabled={loading}><i className="bi bi-receipt"></i> SR Invoice</button>
+
+              {/* SR INVOICE BUTTON - Tax invoice for records */}
+              {selectedOrder.shiprocket_order_id && (
+                <button
+                  className="invoice-btn-admin shiprocket-invoice-btn"
+                  onClick={() => downloadShiprocketInvoice(selectedOrder.id)}
+                  disabled={loading}
+                  style={{ background: '#3b82f6', color: 'white' }}
+                >
+                  <i className="bi bi-receipt"></i> SR Invoice
+                </button>
               )}
-              <button className="invoice-btn-admin local-invoice-btn" onClick={() => handlePrint(selectedOrder)} disabled={loading}><i className="bi bi-printer"></i> Local Invoice</button>
+
+              {/* Local Invoice Button */}
+              <button className="invoice-btn-admin local-invoice-btn" onClick={() => handlePrint(selectedOrder)} disabled={loading}>
+                <i className="bi bi-printer"></i> Local Invoice
+              </button>
             </div>
           </div>
         </div>

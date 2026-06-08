@@ -1336,7 +1336,7 @@ html {
   display: flex;
   align-items: center;
   background-color: #f7ede2;
-  background-image: url('../assets/festive_banner.png');
+  background-image: url('../assets/banner_2.png');
   background-size: cover;
   background-position: center;
   background-attachment: fixed; /* Parallax effect */

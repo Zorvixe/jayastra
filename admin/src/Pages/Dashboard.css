@@ -3,7 +3,6 @@
 ========================================== */
 .dash-container {
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-  background-color: #f8f9fa;
   display: flex;
   flex-direction: column;
   gap: 14px;
@@ -591,14 +590,14 @@
   color: #64748b;
 }
 
-.dahs-table-headings{
+.dahs-table-headings {
   font-size: 1rem;
   font-weight: 800;
   color: #111;
   margin: 0 0 12px 0;
 }
 
-.dahs-table-headspan{
+.dahs-table-headspan {
   font-size: 0.8rem;
   color: #64748b;
   font-weight: 500;
@@ -609,7 +608,6 @@
   display: flex;
   justify-content: center;
   align-items: center;
-  height: 200px;
 }
 
 .dash-spinner {

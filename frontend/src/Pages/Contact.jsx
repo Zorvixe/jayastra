@@ -1,4 +1,7 @@
 import React, { useState } from "react";
+
+import Footer from "../components/Footer";
+
 import "./Contact.css";
 
 const Contact = () => {
@@ -17,11 +20,11 @@ const Contact = () => {
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    
+
     // Construct WhatsApp Message
     const whatsappNum = "919113657841"; // The number provided in footer
     const text = `*New Inquiry from Website*%0A%0A*Name:* ${formData.firstName} ${formData.lastName}%0A*Email:* ${formData.email}%0A*Phone:* ${formData.phone}%0A*Message:* ${formData.message}`;
-    
+
     const waUrl = `https://wa.me/${whatsappNum}?text=${text}`;
     window.open(waUrl, "_blank");
   };
@@ -48,58 +51,58 @@ const Contact = () => {
                   <div className="row g-3">
                     <div className="col-md-6">
                       <label className="form-label">First Name</label>
-                      <input 
-                        type="text" 
+                      <input
+                        type="text"
                         name="firstName"
-                        className="form-control" 
-                        placeholder="Jane" 
+                        className="form-control"
+                        placeholder="Jane"
                         value={formData.firstName}
                         onChange={handleChange}
-                        required 
+                        required
                       />
                     </div>
                     <div className="col-md-6">
                       <label className="form-label">Last Name</label>
-                      <input 
-                        type="text" 
+                      <input
+                        type="text"
                         name="lastName"
-                        className="form-control" 
-                        placeholder="Doe" 
+                        className="form-control"
+                        placeholder="Doe"
                         value={formData.lastName}
                         onChange={handleChange}
-                        required 
+                        required
                       />
                     </div>
                     <div className="col-12">
                       <label className="form-label">Email Address</label>
-                      <input 
-                        type="email" 
+                      <input
+                        type="email"
                         name="email"
-                        className="form-control" 
-                        placeholder="jane@example.com" 
+                        className="form-control"
+                        placeholder="jane@example.com"
                         value={formData.email}
                         onChange={handleChange}
-                        required 
+                        required
                       />
                     </div>
                     <div className="col-12">
                       <label className="form-label">Phone Number</label>
-                      <input 
-                        type="tel" 
+                      <input
+                        type="tel"
                         name="phone"
-                        className="form-control" 
-                        placeholder="+91 96526XXXXX" 
+                        className="form-control"
+                        placeholder="+91 96526XXXXX"
                         value={formData.phone}
                         onChange={handleChange}
-                        required 
+                        required
                       />
                     </div>
                     <div className="col-12">
                       <label className="form-label">How can we help?</label>
-                      <textarea 
+                      <textarea
                         name="message"
-                        className="form-control" 
-                        rows="5" 
+                        className="form-control"
+                        rows="5"
                         placeholder="Tell us about your requirement..."
                         value={formData.message}
                         onChange={handleChange}
@@ -119,7 +122,7 @@ const Contact = () => {
               <div className="info-wrapper p-4 h-100">
                 <h2 className="section-title mb-4">Visit Our Store</h2>
                 <div className="divider-left"></div>
-                
+
                 <div className="contact-info-list mt-4">
                   <div className="info-item mb-4">
                     <div className="info-icon">
@@ -127,7 +130,7 @@ const Contact = () => {
                     </div>
                     <div className="info-text">
                       <h4>Address</h4>
-                      <p>165/1, Priya Swaroop, 11th cross, beside RAINEO STUDIO, Modi Hospital Rd, Model LIC Colony, Basaveshwar Nagar, Bengaluru, Karnataka 560079</p>
+                      <p>12-62, K.Bollavaram, Gadivemula, Nandyal, Andhra Pradesh</p>
                     </div>
                   </div>
 
@@ -168,7 +171,7 @@ const Contact = () => {
                   <div className="social-box d-flex gap-3">
                     <a href="tel:+918328590444" className="social-link ph text-primary"><i className="bi bi-telephone"></i></a>
                     <a href="https://wa.me/918328590444" target="_blank" rel="noopener noreferrer" className="social-link wa text-success"><i className="bi bi-whatsapp"></i></a>
-                    <a href="https://instagram.com/jayastra" target="_blank" rel="noopener noreferrer" className="social-link ig text-danger"><i className="bi bi-instagram"></i></a>
+                    <a href="https://instagram.com/jayastra.in" target="_blank" rel="noopener noreferrer" className="social-link ig text-danger"><i className="bi bi-instagram"></i></a>
                   </div>
                 </div>
               </div>
@@ -179,17 +182,19 @@ const Contact = () => {
 
       {/* EMBEDDED MAP (Statically Placed) */}
       <section className="contact-map">
-        <iframe 
+
+        <iframe
           title="Store Location"
-          src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d15550.57539656133!2d77.5300!3d12.9850!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x3bae3d95c276378b%3A0xc2038562!2sBasaveshwar%20Nagar%2C%20Bengaluru%2C%20Karnataka!5e0!3m2!1sen!2sin!4v1712398432321!5m2!1sen!2sin" 
-          width="100%" 
-          height="450" 
-          style={{ border: 0 }} 
-          allowFullScreen="" 
-          loading="lazy" 
+          src="https://www.google.com/maps/embed?pb=!1m14!1m8!1m3!1d7683.903932377909!2d78.397607!3d15.6475461!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x3bb5b1128e852701%3A0x1bfdc8e2c690b96d!2z4LCG4LCC4LCc4LCo4LGH4LCvIOCwuOCxjeCwteCwvuCwruCwvyDgsKbgsYfgsK_gsLLgsK_gsII!5e0!3m2!1sen!2sin!4v1780936741071!5m2!1sen!2sin" width="100%"
+          height="450"
+          style={{ border: 0 }}
+          allowFullScreen=""
+          loading="lazy"
           referrerPolicy="no-referrer-when-downgrade">
         </iframe>
       </section>
+
+      <Footer />
     </div>
   );
 };

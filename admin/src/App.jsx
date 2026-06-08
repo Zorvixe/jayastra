@@ -32,6 +32,8 @@ import { setSessionExpiredModal } from "./utils/axiosConfig";
 import VendorWhatsAppSettings from "./Pages/VendorWhatsAppSettings/VendorWhatsAppSettings";
 import AddCategoryModal from "./Pages/AddCategoryModal";
 
+import NotFound from "./Pages/NotFound/NotFound";
+
 // Protected Route Component
 const ProtectedRoute = ({ children }) => {
   const token = localStorage.getItem("token");
@@ -66,7 +68,7 @@ function AppContent() {
   return (
     <>
       <ToastContainer position="top-right" autoClose={2000} />
-      <SessionExpiredModal 
+      <SessionExpiredModal
         isOpen={showSessionModal}
         message={sessionModalMessage}
         onConfirm={handleSessionExpiredConfirm}
@@ -108,7 +110,9 @@ function AppContent() {
 
         {/* Default redirect */}
         <Route path="/" element={<Navigate to="/admin/login" />} />
-      </Routes>
+        <Route path="/admin/not-found" element={<NotFound />} />
+        <Route path="/404" element={<NotFound />} />
+        <Route path="*" element={<Navigate to="/404" replace />} />      </Routes>
     </>
   );
 }

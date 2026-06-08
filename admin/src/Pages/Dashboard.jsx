@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from "react";
 import axios from '../utils/axiosConfig'; // Adjust path as needed
 
+import { useNavigate } from "react-router-dom";
+
 import {
   Chart as ChartJS,
   CategoryScale,
@@ -57,12 +59,12 @@ const Dashboard = () => {
     todayEarnings: 0,
   });
 
+  const navigate = useNavigate();
+
   // Single date filter state
   const [selectedDate, setSelectedDate] = useState("");
 
-  // Carousel State
-  const [currentSlide, setCurrentSlide] = useState(0);
-  const banners = [banner_1, banner_2, banner_3];
+
 
   const API_URL = process.env.REACT_APP_API_URL;
 
@@ -85,13 +87,7 @@ const Dashboard = () => {
     }
   }, [selectedDate]);
 
-  // Autoplay effect for the banner slider
-  useEffect(() => {
-    const timer = setInterval(() => {
-      setCurrentSlide((prevSlide) => (prevSlide + 1) % banners.length);
-    }, 5000);
-    return () => clearInterval(timer);
-  }, [banners.length]);
+
 
   const fetchDashboardData = async (date) => {
     try {
@@ -176,6 +172,10 @@ const Dashboard = () => {
     const today = new Date();
     setSelectedDate(formatDate(today));
   };
+
+  const handleSavedWishlistClick = () => {
+    navigate("/admin/wishlist");
+  }
 
   if (loading)
     return (
@@ -305,7 +305,7 @@ const Dashboard = () => {
           <h3>Manage Shopping List</h3>
         </div>
         <div className="dash-shopping-actions">
-          <button className="dash-action-tile" onClick={() => window.location.hash = "/wishlist"}>
+          <button className="dash-action-tile" onClick={handleSavedWishlistClick}>
             <div className="dash-action-icon icon-heart">
               <i className="bi bi-heart"></i>
               <span className="dash-plus-badge">+</span>
@@ -313,7 +313,7 @@ const Dashboard = () => {
             <span>Saved Product <i className="bi bi-arrow-right"></i></span>
           </button>
 
-          <button className="dash-action-tile" onClick={() => window.location.hash = "/product-notes"}>
+          <button className="dash-action-tile">
             <div className="dash-action-icon icon-notes">
               <i className="bi bi-journal-text"></i>
               <span className="dash-plus-badge">+</span>

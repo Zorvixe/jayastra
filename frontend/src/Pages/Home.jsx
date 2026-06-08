@@ -3,7 +3,8 @@ import { useNavigate } from "react-router-dom";
 import axios from "axios";
 import { motion, AnimatePresence } from "framer-motion";
 import "./Home.css";
-import akshayaBanner from "../assets/akshayaT.jpeg";
+import banner_2 from "../assets/banner_2.png";
+import banner_1 from "../assets/banner_1.png";
 import CategoriesScroll from "../components/CategoriesScroll/CategoriesScroll";
 import ServiceFeatures from "../components/ServiceFeatures/ServiceFeatures";
 import WorkWithUsMarquee from "../components/WorkWithUsMarquee/WorkWithUsMarquee";
@@ -398,7 +399,7 @@ const Home = () => {
   // Fallback slides in case DB has no active hero banners
   const defaultHeroSlides = [
     { 
-      image_url: akshayaBanner,
+      image_url: banner_2,
       title: "NEW BEGINNINGS",
       subtitle: "FLAT 15% OFF ON ALL SAREES",
       button_text: "Shop Collection",
@@ -409,7 +410,7 @@ const Home = () => {
       isDbBanner: false
     },
     { 
-      image_url: "/assets/hero28.jpeg",
+      image_url: "/assets/banner_1.png",
       title: "LUXURY SILKS",
       subtitle: "TRADITION FOR GENERATIONS",
       button_text: "Shop Collection",

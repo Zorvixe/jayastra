@@ -103,6 +103,187 @@ app.use(
   })
 );
 
+// ================= SHIPROCKET WEBHOOK (RENAMED - NO RESTRICTED KEYWORDS) =================
+app.post("/api/webhooks/order-tracking", express.raw({ type: 'application/json' }), async (req, res) => {
+  try {
+    // Get the webhook secret from database
+    const config = await getShiprocketConfig(true);
+    const webhookSecret = config.shiprocket_webhook_secret || process.env.SHIPROCKET_WEBHOOK_SECRET || "JayastraWebhookSecure123";
+
+    // Get signature from headers - Shiprocket uses 'x-api-key'
+    const apiKey = req.headers['x-api-key'];
+    const rawBody = req.body.toString();
+
+    console.log("📦 Webhook received at:", new Date().toISOString());
+    console.log("Headers:", JSON.stringify(req.headers, null, 2));
+    console.log("Raw body length:", rawBody.length);
+
+    // Verify the API key
+    if (webhookSecret && webhookSecret !== "JayastraWebhookSecure123") {
+      if (apiKey !== webhookSecret) {
+        console.warn("⚠️ Invalid webhook API key received");
+        return res.status(401).json({ success: false, message: "Invalid API key" });
+      } else {
+        console.log("✅ Webhook API key verified");
+      }
+    } else {
+      console.log("⚠️ Webhook secret not configured, accepting any key");
+    }
+
+    let payload;
+    try {
+      payload = JSON.parse(rawBody);
+    } catch (e) {
+      console.error("Failed to parse webhook body:", e.message);
+      return res.status(400).json({ success: false, message: "Invalid JSON" });
+    }
+
+    console.log("📦 Webhook payload:", JSON.stringify(payload, null, 2));
+
+    const { shipment_id, order_id, status, awb_code, event } = payload;
+
+    let dbStatus = null;
+    let eventType = event || payload.status;
+
+    // Map Shiprocket status to your order status
+    if (eventType) {
+      const s = eventType.toLowerCase();
+
+      if (s.includes("pickup") || s.includes("manifest") || s === "pickup_generated") {
+        dbStatus = "Processing";
+      } else if (s.includes("ship") || s === "shipped" || s.includes("transit")) {
+        dbStatus = "Shipped";
+      } else if (s.includes("out for delivery") || s === "out_for_delivery") {
+        dbStatus = "Out for Delivery";
+      } else if (s.includes("delivered") || s === "delivered") {
+        dbStatus = "Delivered";
+      } else if (s.includes("return") || s.includes("rto") || s === "return_to_origin") {
+        dbStatus = "Returned";
+      } else if (s.includes("cancel") || s === "cancelled") {
+        dbStatus = "Cancelled";
+      }
+    }
+
+    // Update order in database
+    if (dbStatus && (shipment_id || order_id)) {
+      let query = "UPDATE orders SET order_status = $1, updated_at = NOW()";
+      let params = [dbStatus];
+      let condition = "";
+      let conditionParam = "";
+
+      if (shipment_id) {
+        condition = " WHERE shiprocket_shipment_id = $2";
+        conditionParam = shipment_id.toString();
+        params.push(conditionParam);
+      } else if (order_id) {
+        condition = " WHERE shiprocket_order_id = $2";
+        conditionParam = order_id.toString();
+        params.push(conditionParam);
+      }
+
+      if (condition) {
+        const result = await pool.query(query + condition, params);
+
+        if (result.rowCount > 0) {
+          console.log(`✅ Updated order status to ${dbStatus} for ${conditionParam}`);
+
+          if (dbStatus === "Delivered") {
+            await pool.query(
+              `UPDATE orders SET payment_status = 'Completed' WHERE ${condition}`,
+              params
+            );
+          }
+
+          io.emit('order_status_updated', {
+            order_id: conditionParam,
+            status: dbStatus,
+            awb_code: awb_code
+          });
+        } else {
+          console.log(`⚠️ No order found with ${conditionParam}`);
+        }
+      }
+    }
+
+    // Update AWB code if provided
+    if (awb_code && shipment_id) {
+      await pool.query(
+        `UPDATE orders SET awb_code = $1 WHERE shiprocket_shipment_id = $2 AND (awb_code IS NULL OR awb_code = '')`,
+        [awb_code, shipment_id.toString()]
+      );
+      console.log(`✅ Updated AWB ${awb_code} for shipment ${shipment_id}`);
+    }
+
+    res.status(200).json({ success: true, message: "Webhook processed" });
+  } catch (error) {
+    console.error("❌ Webhook error:", error);
+    res.status(200).json({ success: false, message: error.message });
+  }
+});
+
+// Test endpoint for webhook
+app.get("/api/webhooks/order-tracking", (req, res) => {
+  res.status(200).json({
+    success: true,
+    message: "Webhook endpoint is working. Use POST method for webhook events.",
+    timestamp: new Date().toISOString()
+  });
+});
+
+app.post("/api/razorpay/webhook", express.raw({ type: 'application/json' }), async (req, res) => {
+  try {
+    const webhookSecret = process.env.RAZORPAY_WEBHOOK_SECRET;
+    const signature = req.headers['x-razorpay-signature'];
+
+    // Get the raw body as string
+    const rawBody = req.body.toString();
+
+    const expectedSignature = crypto
+      .createHmac('sha256', webhookSecret)
+      .update(rawBody)
+      .digest('hex');
+
+    console.log("Webhook received - signature valid:", signature === expectedSignature);
+
+    if (signature !== expectedSignature) {
+      console.error("Invalid webhook signature");
+      return res.status(400).json({ success: false, message: 'Invalid webhook signature' });
+    }
+
+    const event = JSON.parse(rawBody);
+    console.log("Webhook event:", event.event);
+
+    if (event.event === 'payment.captured') {
+      const payment = event.payload.payment.entity;
+      const orderId = payment.order_id;
+      const paymentId = payment.id;
+
+      // Update order payment status
+      await pool.query(
+        `UPDATE orders 
+         SET payment_status = 'Completed', 
+             razorpay_payment_id = $1, 
+             updated_at = NOW() 
+         WHERE razorpay_order_id = $2 AND payment_status != 'Completed'`,
+        [paymentId, orderId]
+      );
+
+      console.log(`✅ Payment captured for order: ${orderId}`);
+    }
+
+    if (event.event === 'payment.failed') {
+      const payment = event.payload.payment.entity;
+      console.log(`❌ Payment failed for order: ${payment.order_id}`);
+      // Optionally update order status
+    }
+
+    res.json({ success: true });
+  } catch (error) {
+    console.error("Webhook error:", error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
 
 app.use(express.json({ limit: '50mb' }));
 
@@ -5559,9 +5740,17 @@ app.post("/api/admin/orders/:id/shiprocket", verifyToken, verifyAdminVendorIndiv
         [srOrderId, srShipmentId, orderId]
       );
 
-      // Try to auto-generate AWB
+      // ========== AUTO-GENERATE AWB IMMEDIATELY ==========
+      let awbCode = null;
+
       if (srShipmentId) {
         try {
+          console.log(`🔄 Attempting to auto-generate AWB for shipment ${srShipmentId}...`);
+
+          // Wait a moment for Shiprocket to process the order
+          await new Promise(resolve => setTimeout(resolve, 3000));
+
+          // Method 1: Try to assign AWB directly
           const awbRes = await fetch("https://apiv2.shiprocket.in/v1/external/courier/assign/awb", {
             method: "POST",
             headers: {
@@ -5570,21 +5759,92 @@ app.post("/api/admin/orders/:id/shiprocket", verifyToken, verifyAdminVendorIndiv
             },
             body: JSON.stringify({ shipment_id: parseInt(srShipmentId) })
           });
+
           const awbData = await awbRes.json();
+          console.log("AWB assign response:", JSON.stringify(awbData, null, 2));
+
+          // Extract AWB from response
           if (awbData.awb_code) {
-            await pool.query(`UPDATE orders SET awb_code = $1 WHERE id = $2`, [awbData.awb_code, orderId]);
+            awbCode = awbData.awb_code;
+          } else if (awbData.awb_assign_status === 1 && awbData.awb_code) {
+            awbCode = awbData.awb_code;
+          } else if (awbData.data && awbData.data.awb_code) {
+            awbCode = awbData.data.awb_code;
+          } else if (awbData.data && awbData.data.awb) {
+            awbCode = awbData.data.awb;
+          }
+
+          // If direct assignment didn't give AWB, fetch shipment details
+          if (!awbCode) {
+            console.log("Fetching shipment details for AWB...");
+            await new Promise(resolve => setTimeout(resolve, 2000));
+
+            const shipmentRes = await fetch(`https://apiv2.shiprocket.in/v1/external/shipments/${srShipmentId}`, {
+              method: "GET",
+              headers: {
+                "Content-Type": "application/json",
+                "Authorization": `Bearer ${token}`
+              }
+            });
+
+            const shipmentData = await shipmentRes.json();
+            console.log("Shipment details:", JSON.stringify(shipmentData, null, 2));
+
+            if (shipmentData.data) {
+              awbCode = shipmentData.data.awb_code || shipmentData.data.awb;
+            }
+            if (!awbCode && shipmentData.awb_code) {
+              awbCode = shipmentData.awb_code;
+            }
+            if (!awbCode && shipmentData.awb) {
+              awbCode = shipmentData.awb;
+            }
+          }
+
+          if (awbCode) {
+            await pool.query(
+              `UPDATE orders SET awb_code = $1 WHERE id = $2`,
+              [awbCode, orderId]
+            );
+            console.log(`✅ AWB auto-generated successfully: ${awbCode}`);
+          } else {
+            console.log("⚠️ AWB not immediately available. It will be generated by Shiprocket automatically.");
+
+            // Try one more time after a longer delay
+            await new Promise(resolve => setTimeout(resolve, 5000));
+
+            const retryShipmentRes = await fetch(`https://apiv2.shiprocket.in/v1/external/shipments/${srShipmentId}`, {
+              method: "GET",
+              headers: {
+                "Content-Type": "application/json",
+                "Authorization": `Bearer ${token}`
+              }
+            });
+
+            const retryShipmentData = await retryShipmentRes.json();
+            if (retryShipmentData.data && retryShipmentData.data.awb_code) {
+              awbCode = retryShipmentData.data.awb_code;
+              await pool.query(
+                `UPDATE orders SET awb_code = $1 WHERE id = $2`,
+                [awbCode, orderId]
+              );
+              console.log(`✅ AWB found on retry: ${awbCode}`);
+            }
           }
         } catch (awbErr) {
-          console.warn("Auto AWB assignment failed:", awbErr.message);
+          console.error("Auto AWB assignment error:", awbErr.message);
+          // Don't fail the whole operation if AWB generation fails
+          // Shiprocket will generate it later
         }
       }
 
       return res.json({
         success: true,
-        message: "Order successfully pushed to Shiprocket! 🚀",
+        message: awbCode ? "Order pushed to Shiprocket with AWB! 🚀" : "Order pushed to Shiprocket successfully! AWB will be generated automatically by Shiprocket within a few minutes.",
         pickup_location_used: selectedPickupLocation.name,
         shiprocket_order_id: srOrderId,
         shiprocket_shipment_id: srShipmentId,
+        awb_code: awbCode,
         data: result
       });
     } else {
@@ -5603,7 +5863,7 @@ app.post("/api/admin/orders/:id/shiprocket", verifyToken, verifyAdminVendorIndiv
         success: false,
         message: errorMessage,
         errors: result?.errors,
-        pickup_location_used: selectedPickupLocation.name
+        pickup_location_used: selectedPickupLocation?.name
       });
     }
   } catch (error) {

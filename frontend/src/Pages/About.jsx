@@ -7,15 +7,15 @@ const About = () => {
   const blogs = [
     {
       id: 1,
-      title: "The Timeless Elegance of Kanchipuram Silk",
-      excerpt: "Dive into the rich history of the 'Queen of Sarees'. Discover why authentic JAYASTRA Kanchipuram silk is a must-have for every wedding...",
+      title: "The Timeless Art of Handwoven Silks",
+      excerpt: "Dive into the rich heritage of Indian handlooms. Discover why authentic JAYASTRA silks and weaves are a must-have for every celebration...",
       date: "March 20, 2026",
       image: "/assets/kanchip.jpeg"
     },
     {
       id: 2,
-      title: "Draping Handlooms for the Modern Woman",
-      excerpt: "Sarees are transcending conventional styling. Here are 5 ways to drape luxurious JAYASTRA sarees for an elegant and powerful modern look...",
+      title: "Styling Luxury Weaves for the Modern Woman",
+      excerpt: "From sarees to lehengas and dupattas, here are 5 ways to drape and style JAYASTRA's luxury collection for an elegant and powerful modern look...",
       date: "March 28, 2026",
       image: "/assets/sarry3.jpeg"
     },
@@ -44,20 +44,20 @@ const About = () => {
           <div className="row align-items-center">
             <div className="col-lg-6 mb-4 mb-lg-0">
               <div className="story-img-frame">
-                <img src="/assets/about.jpeg" alt="Our Story" className="img-fluid" />
+                <img src="/assets/about.png" alt="Our Story" className="img-fluid" />
               </div>
             </div>
             <div className="col-lg-6 shop-story-content">
               <h2 className="section-title">The JAYASTRA Story</h2>
               <div className="divider-left"></div>
               <p>
-                Founded in the heart of Bengaluru, <strong>JAYASTRA</strong> began with a simple yet powerful dream: to bring back the lost glory of authentic Indian handlooms. We believe that every saree tells a story – a story of an artisan's dedicated hours, the rhythm of the loom, and the rich cultural heritage that binds us all.
+                Founded in the heart of Andhra Pradesh, <strong>JAYASTRA</strong> began with a simple yet powerful dream: to bring back the lost glory of authentic Indian handlooms. We believe that every piece of clothing tells a story – a story of an artisan's dedicated hours, the rhythm of the loom, and the rich cultural heritage that binds us all.
               </p>
               <p>
-                Specializing exclusively in premium, hand-picked luxury sarees, we have become a trusted destination for modern women who value purity, quality, and timeless elegance. Every drape is a testament to the master weavers of India.
+                Specializing exclusively in premium, hand-picked luxury weaves including <strong>sarees, lehengas, dupattas, and ethnic ensembles</strong>, we have become a trusted destination for modern women who value purity, quality, and timeless elegance. Every drape is a testament to the master weavers of India.
               </p>
               <p>
-                From the royal courts of Kanchipuram to the vibrant lanes of Banaras, we travel across the country to bring you the finest silk and handloom weaves, curated with love and delivered with a sense of pride.
+                From the royal courts of Kanchipuram to the vibrant lanes of Banaras and beyond, we travel across the country to bring you the finest silk and handloom creations, curated with love and delivered with a sense of pride. Based in Andhra Pradesh and Hyderabad, our reach extends nationwide via Shiprocket.
               </p>
             </div>
           </div>
@@ -74,14 +74,14 @@ const About = () => {
               <div className="commitment-card">
                 <i className="bi bi-patch-check"></i>
                 <h3>100% Authentic</h3>
-                <p>No compromises on origin. Every saree is sourced directly from master weavers across India.</p>
+                <p>No compromises on origin. Every piece is sourced directly from master weavers across India.</p>
               </div>
             </div>
             <div className="col-md-4">
               <div className="commitment-card">
                 <i className="bi bi-stars"></i>
                 <h3>Timeless Elegance</h3>
-                <p>Every saree is crafted with precision and passion, giving you a luxurious feel that lasts generations.</p>
+                <p>Every creation is crafted with precision and passion, giving you a luxurious feel that lasts generations.</p>
               </div>
             </div>
             <div className="col-md-4">
@@ -104,9 +104,9 @@ const About = () => {
             {blogs.map((blog) => (
               <div className="col-md-4" key={blog.id}>
                 <div className="blog-card">
-                  <div className="blog-img">
+                  {/* <div className="blog-img">
                     <img src={blog.image} alt={blog.title} />
-                  </div>
+                  </div> */}
                   <div className="blog-body">
                     <span className="blog-date">{blog.date}</span>
                     <h3 className="blog-title">{blog.title}</h3>
