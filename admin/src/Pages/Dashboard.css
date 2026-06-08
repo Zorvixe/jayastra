@@ -1,583 +1,659 @@
-/* ==========================
-   GLOBAL LAYOUT & CONTAINER
-========================== */
+/* ==========================================
+   GLOBAL & LAYOUT RESET
+========================================== */
 .dash-container {
-  margin: 0 auto;
   box-sizing: border-box;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  background-color: #f8f9fa;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
 }
 
-/* ==========================
+
+
+/* ==========================================
    DATE FILTER BAR
-========================== */
+========================================== */
 .dash-date-filter-bar {
   display: flex;
   justify-content: space-between;
   align-items: center;
   background: white;
-  padding: 16px 24px;
+  padding: 12px 18px;
   border-radius: 16px;
-  margin-bottom: 30px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
   flex-wrap: wrap;
-  gap: 16px;
+  gap: 12px;
 }
 
 .dash-today-date {
   display: flex;
   align-items: center;
-  gap: 12px;
-  background: #f8fafc;
-  padding: 8px 16px;
-  border-radius: 40px;
-  flex-wrap: wrap;
+  gap: 8px;
 }
 
 .dash-today-label {
   font-weight: 600;
   color: #1e293b;
   font-size: 0.9rem;
-  letter-spacing: 0.5px;
 }
 
 .dash-today-value {
-  font-size: 0.95rem;
+  font-size: 0.85rem;
+  color: #64748b;
+  background: #f1f5f9;
+  padding: 4px 10px;
+  border-radius: 20px;
   font-weight: 500;
-  color: #3b82f6;
-  background: white;
-  padding: 4px 12px;
-  border-radius: 30px;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
 }
 
 .dash-date-range-controls {
   display: flex;
   align-items: center;
-  gap: 16px;
+  gap: 12px;
   flex-wrap: wrap;
 }
 
 .dash-date-input-group {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
   background: #f1f5f9;
-  padding: 6px 14px;
-  border-radius: 40px;
+  padding: 6px 12px;
+  border-radius: 12px;
 }
 
 .dash-date-input-group label {
   font-weight: 500;
-  color: #334155;
-  font-size: 0.85rem;
+  color: #475569;
+  font-size: 0.8rem;
 }
 
 .dash-date-input-group input {
   border: none;
   background: transparent;
-  padding: 4px;
   font-family: inherit;
-  font-size: 0.9rem;
+  font-size: 0.85rem;
   color: #0f172a;
   outline: none;
-  cursor: pointer;
-}
-
-.dash-date-input-group input:focus {
-  background: white;
-  border-radius: 20px;
-  box-shadow: 0 0 0 2px #3b82f6;
 }
 
 .dash-reset-btn {
-  background: #eff6ff;
+  background: #8e213910;
   border: none;
-  padding: 8px 16px;
-  border-radius: 30px;
+  padding: 8px 14px;
+  border-radius: 12px;
   font-size: 0.85rem;
   font-weight: 600;
-  color: #2563eb;
+  color: #8E2139;
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: all 0.2s;
+}
+
+.dash-reset-btn:hover {
+  background: #8e21391a;
+}
+
+/* ==========================================
+   PENDING PAYMENT CARD (MOCKUP ACCURATE)
+========================================== */
+.dash-pending-payment {
+  background-color: #eaf6ef;
+  /* Soft light mint green */
+  border-radius: 20px;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  box-shadow: 0 4px 12px rgba(19, 115, 51, 0.04);
+}
+
+.dash-payment-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+}
+
+.dash-payment-title-group {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.dash-payment-tag {
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: #556066;
+  letter-spacing: 0.5px;
+}
+
+.dash-payment-header h2 {
+  font-size: 1.8rem;
+  font-weight: 800;
+  color: #111;
+  margin: 0;
+}
+
+.dash-payment-info {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
+}
+
+.dash-payment-info span {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #556066;
+}
+
+.dash-view-all-link {
+  color: #064e3b;
+  font-size: 0.8rem;
+  font-weight: 700;
+  text-decoration: none;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.dash-view-all-link:hover {
+  color: #047857;
+}
+
+.dash-payment-body-card {
+  background: white;
+  border-radius: 16px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.02);
+}
+
+.dash-payment-details {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.dash-payment-field {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.dash-field-label {
+  font-size: 0.8rem;
+  font-weight: 500;
+  color: #8a969c;
+}
+
+.dash-field-value-strong {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: #111;
+}
+
+.dash-field-value-currency {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: #111;
+}
+
+.dash-supplier-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.dash-due-badge {
+  background: #fef3c7;
+  color: #b45309;
+  font-size: 0.7rem;
+  font-weight: 700;
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+
+.dash-payment-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-top: 1px dashed #e2e8f0;
+  padding-top: 14px;
+}
+
+.dash-payment-date {
   display: flex;
   align-items: center;
   gap: 6px;
 }
 
-.dash-reset-btn:hover {
-  background: #dbeafe;
-  transform: translateY(-1px);
+.dash-payment-date .dash-field-value {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: #111;
 }
 
-/* ==========================
-   SUMMARY CARDS
-========================== */
-.dash-cards {
-  display: grid;
-  /* Automatically adjusts columns. min() ensures it doesn't break on <220px screens */
-  grid-template-columns: repeat(auto-fit, minmax(min(100%, 240px), 1fr));
-  gap: 20px;
-  margin-bottom: 30px;
+.dash-pay-now-btn {
+  background: #064e3b;
+  /* Dark green matching Pay Now style */
+  color: white;
+  border: none;
+  border-radius: 12px;
+  padding: 8px 18px;
+  font-size: 0.85rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: opacity 0.2s;
 }
 
-.dash-card {
-  background: #ffffff;
+.dash-pay-now-btn:hover {
+  opacity: 0.95;
+}
+
+/* ==========================================
+   ORDER OVERVIEW CONTAINER CARD
+========================================== */
+.dash-section-card {
+  background: white;
+  border-radius: 20px;
   padding: 20px;
-  border-radius: 16px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.02);
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.dash-section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.dash-section-header h3 {
+  font-size: 1.1rem;
+  font-weight: 800;
+  color: #111;
+  margin: 0;
+}
+
+.dash-period-selector {
   display: flex;
   align-items: center;
-  gap: 16px;
-  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.05);
-  transition: 0.3s;
+  gap: 6px;
+  background: #f1f5f9;
+  padding: 6px 12px;
+  border-radius: 12px;
+  cursor: pointer;
 }
 
-.dash-card:hover {
-  transform: translateY(-5px);
-  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.08);
+.dash-period-selector span {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #334155;
 }
 
-.dash-card-icon {
-  font-size: 24px;
+.dash-period-selector i {
+  font-size: 0.7rem;
+  color: #64748b;
+}
+
+/* ==========================================
+   ORDER OVERVIEW PASTEL CARDS
+========================================== */
+.dash-overview-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 14px;
+}
+
+.dash-overview-item {
+  border-radius: 16px;
+  padding: 16px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.dash-overview-icon {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
-  border-radius: 14px;
-  color: white;
-  min-width: 50px;
-  min-height: 50px;
+  font-size: 1.25rem;
 }
 
-.dash-card-products .dash-card-icon {
-  background: #3b82f6;
-}
-
-.dash-card-orders .dash-card-icon {
-  background: #10b981;
-}
-
-.dash-card-users .dash-card-icon {
-  background: #f59e0b;
-}
-
-.dash-card-revenue .dash-card-icon {
-  background: #ef4444;
-}
-
-.dash-card-notifications .dash-card-icon {
-  background: #8E2139;
-}
-
-.dash-card-content {
+.dash-overview-content {
   display: flex;
   flex-direction: column;
+  gap: 4px;
 }
 
-.dash-card h4 {
-  font-size: 1.5rem;
-  font-weight: 700;
+.dash-overview-label {
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: #8a969c;
   margin: 0;
-  color: #1e293b;
-  word-break: break-word;
-  /* Prevents long numbers from overflowing */
 }
 
-.dash-card p {
-  margin: 0 0 4px 0;
-  font-size: 0.85rem;
-  font-weight: 600;
-  color: #64748b;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-}
-
-/* ==========================
-   CHART SECTION
-========================== */
-.dash-chart {
-  background: white;
-  padding: 20px;
-  border-radius: 16px;
-  margin-bottom: 30px;
-  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.05);
-}
-
-.dash-chart-header {
-  margin-bottom: 15px;
-}
-
-.dash-chart-header h5 {
-  margin: 0;
-  font-size: 1.1rem;
-  color: #1e293b;
-}
-
-.dash-period-text {
-  font-weight: normal;
-  color: #64748b;
+.dash-overview-count {
   font-size: 0.95rem;
+  font-weight: 800;
+  color: #111;
+  margin: 0;
 }
 
-/* Responsive chart wrapper */
+/* Color Themes for pastel cards */
+.item-pending {
+  background-color: #fff9eb;
+  /* Orange/Yellow pastel */
+}
+
+.item-pending .dash-overview-icon {
+  background-color: #fff1cc;
+  color: #d97706;
+}
+
+.item-onway {
+  background-color: #f0f7ff;
+  /* Blue pastel */
+}
+
+.item-onway .dash-overview-icon {
+  background-color: #e0f0ff;
+  color: #2563eb;
+}
+
+.item-delivered {
+  background-color: #f0fdf4;
+  /* Green pastel */
+}
+
+.item-delivered .dash-overview-icon {
+  background-color: #dcfce7;
+  color: #16a34a;
+}
+
+.item-cancelled {
+  background-color: #fdf2f8;
+  /* Red/pink pastel */
+}
+
+.item-cancelled .dash-overview-icon {
+  background-color: #fce7f3;
+  color: #db2777;
+}
+
+/* ==========================================
+   MANAGE SHOPPING LIST SECTION
+========================================== */
+.dash-shopping-actions {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+}
+
+.dash-action-tile {
+  background: white;
+  border: 1px solid #f1f5f9;
+  border-radius: 16px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  cursor: pointer;
+  transition: all 0.2s;
+  width: 100%;
+}
+
+.dash-action-tile:hover {
+  background: #f8fafc;
+  transform: translateY(-2px);
+}
+
+.dash-action-icon {
+  position: relative;
+  width: 44px;
+  height: 44px;
+  font-size: 1.4rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.icon-heart {
+  color: #ea580c;
+}
+
+.icon-notes {
+  color: #0d9488;
+}
+
+.dash-plus-badge {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  font-size: 0.8rem;
+  font-weight: bold;
+}
+
+.dash-action-tile span {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: #111;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+/* ==========================================
+   REORDER REGULAR BANNER
+========================================== */
+.dash-reorder-promo {
+  background: linear-gradient(135deg, #fefce8 0%, #fef3c7 100%);
+  border-radius: 20px;
+  padding: 20px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  position: relative;
+  overflow: hidden;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.02);
+  width: 100%;
+}
+
+.dash-reorder-text h3 {
+  font-size: 1rem;
+  font-weight: 800;
+  color: #111;
+  margin: 0 0 4px 0;
+}
+
+.dash-reorder-text p {
+  font-size: 0.8rem;
+  color: #64748b;
+  margin: 0 0 14px 0;
+  font-weight: 500;
+}
+
+.dash-reorder-now-btn {
+  background-color: #064e3b;
+  color: white;
+  border: none;
+  border-radius: 12px;
+  padding: 8px 16px;
+  font-size: 0.8rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: opacity 0.2s;
+}
+
+.dash-reorder-now-btn:hover {
+  opacity: 0.95;
+}
+
+.dash-reorder-graphics {
+  position: relative;
+  width: 120px;
+  height: 90px;
+}
+
+/* Small graphic circles flying up */
+.dash-graphic-circle {
+  position: absolute;
+  background: white;
+  border-radius: 50%;
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.9rem;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+}
+
+.dash-graphic-circle.apple {
+  top: 5px;
+  left: 5px;
+}
+
+.dash-graphic-circle.milk {
+  top: -10px;
+  left: 45px;
+}
+
+.dash-graphic-circle.flour {
+  top: 10px;
+  left: 85px;
+}
+
+/* Card Box Graphics */
+.dash-graphic-box {
+  position: absolute;
+  bottom: -5px;
+  left: 20px;
+  width: 80px;
+  height: 50px;
+}
+
+.dash-box-lid {
+  background: #fde047;
+  height: 8px;
+  border-radius: 4px 4px 0 0;
+  width: 100%;
+}
+
+.dash-box-body {
+  background: #f59e0b;
+  height: 42px;
+  width: 90%;
+  margin: 0 auto;
+  border-radius: 0 0 6px 6px;
+}
+
+/* ==========================================
+   CHART & TABLES
+========================================== */
+.dash-chart,
+.dash-table {
+  background: white;
+  border-radius: 20px;
+  padding: 20px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.02);
+}
+
 .dash-chart-canvas-wrap {
   position: relative;
   width: 100%;
-  height: 350px;
+  height: 300px;
 }
 
-/* ==========================
-   TABLE SECTION
-========================== */
-.dash-table {
-  background: white;
-  padding: 20px;
-  border-radius: 16px;
-  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.05);
-}
-
-.dash-table h5 {
-  margin: 0 0 15px 0;
-  font-size: 1.1rem;
-  color: #1e293b;
-}
-
-/* Enable Horizontal Scrolling for Tables on Mobile */
 .dash-table-responsive {
   width: 100%;
   overflow-x: auto;
-  -webkit-overflow-scrolling: touch;
 }
 
 .dash-table table {
   width: 100%;
   border-collapse: collapse;
-  min-width: 600px;
-  /* Forces table to be scrollable if screen is too small */
 }
 
 .dash-table th,
 .dash-table td {
-  padding: 14px 12px;
+  padding: 12px;
   text-align: left;
-  border-bottom: 1px solid #e5e7eb;
-  white-space: nowrap;
-  /* Prevents text from stacking weirdly in small columns */
+  font-size: 0.85rem;
+  border-bottom: 1px solid #f1f5f9;
 }
 
 .dash-table th {
-  background: #f9fafb;
   font-weight: 600;
-  color: #475569;
+  color: #64748b;
 }
 
-.dash-table td {
-  color: #1e293b;
-  font-size: 0.95rem;
-}
-
-/* Status Badges */
-.dash-status {
-  padding: 6px 12px;
-  border-radius: 20px;
-  font-size: 0.75rem;
-  font-weight: 600;
-  color: white;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-  display: inline-block;
-}
-
-.dash-status-delivered,
-.dash-status-completed {
-  background: #10b981;
-}
-
-.dash-status-pending {
-  background: #f59e0b;
-}
-
-.dash-status-processing,
-.dash-status-shipped {
-  background: #3b82f6;
-}
-
-.dash-status-cancelled,
-.dash-status-failed {
-  background: #ef4444;
-}
-
-.dash-status-refunded {
-  background: #6b7280;
-}
-
-.dash-status-returned {
-  background: #9ca3af;
-}
-
-.dash-status-on-hold {
-  background: #d1d5db;
-  color: #333;
-}
-
-/* ==========================
-   LOADER
-========================== */
+/* Spinner */
 .dash-loader-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
   display: flex;
-  align-items: center;
   justify-content: center;
-  z-index: 9999;
+  align-items: center;
+  height: 200px;
 }
 
 .dash-spinner {
-  width: 50px;
-  height: 50px;
-  border: 5px solid #f3f3f3;
-  border-top: 5px solid #8E2139;
+  width: 40px;
+  height: 40px;
+  border: 4px solid #f1f5f9;
+  border-top-color: #8E2139;
   border-radius: 50%;
-  animation: dash-spin 1s linear infinite;
+  animation: spin 1s linear infinite;
 }
 
-@keyframes dash-spin {
-  0% {
-    transform: rotate(0deg);
-  }
-
-  100% {
+@keyframes spin {
+  to {
     transform: rotate(360deg);
   }
 }
 
-.dash-text-center {
-  text-align: center;
-}
-
-/* ==========================
-   RESPONSIVENESS (MEDIA QUERIES)
-========================== */
-
-/* LARGE DEVICES (Laptops / Small Desktops - max 1024px) */
-@media (max-width: 1024px) {
-  .dash-date-filter-bar {
-    flex-direction: column;
-    align-items: stretch;
-  }
-
-  .dash-today-date {
-    justify-content: center;
-  }
-
-  .dash-date-range-controls {
-    justify-content: center;
-  }
-}
-
-/* MEDIUM DEVICES (Tablets - max 768px) */
-@media (max-width: 768px) {
+/* ==========================================
+   RESPONSIVE DESIGN (DESKTOP ADJUSTMENTS)
+========================================== */
+@media (min-width: 768px) {
   .dash-container {
-    padding: 10px;
+    max-width: 1100px;
+    padding: 24px;
+    grid-template-columns: repeat(12, 1fr);
+    display: grid;
+    gap: 24px;
   }
 
-  .dash-chart-canvas-wrap {
-    height: 300px;
+  .dash-date-filter-bar {
+    grid-column: span 12;
   }
 
-  .dash-card h4 {
-    font-size: 1.3rem;
+  .dash-pending-payment {
+    grid-column: span 6;
   }
 
-  .dash-table,
+  .dash-reorder-promo {
+    grid-column: span 6;
+    height: 100%;
+  }
+
+  .dash-section-card {
+    grid-column: span 6;
+  }
+
   .dash-chart {
-    padding: 15px;
-  }
-}
-
-/* SMALL DEVICES (Mobile Phones - max 576px) */
-@media (max-width: 576px) {
-  .dash-date-range-controls {
-    flex-direction: column;
-    align-items: stretch;
+    grid-column: span 12;
   }
 
-  .dash-date-input-group {
-    justify-content: space-between;
-    width: 100%;
-  }
-
-  .dash-reset-btn {
-    justify-content: center;
-    width: 100%;
-  }
-
-  .dash-cards {
-    grid-template-columns: 1fr;
-    /* 1 column on very small phones */
-  }
-
-  .dash-chart-canvas-wrap {
-    height: 250px;
-    /* Reduce chart height for tiny screens */
-  }
-
-  .dash-chart-header h5 {
-    display: flex;
-    flex-direction: column;
-    gap: 5px;
-  }
-}
-
-/* ==========================
-   LARGE CARDS (TODAY'S STATS)
-========================== */
-.dash-large-cards {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 24px;
-  margin-bottom: 30px;
-}
-
-.dash-large-card {
-  background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
-  border-radius: 24px;
-  padding: 14px 12px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.08), 0 8px 10px -6px rgba(0, 0, 0, 0.02);
-  transition: all 0.3s ease;
-  position: relative;
-  overflow: hidden;
-}
-
-.dash-large-card::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: 4px;
-}
-
-.dash-large-card:hover {
-  transform: translateY(-4px);
-  box-shadow: 0 20px 30px -12px rgba(0, 0, 0, 0.15);
-}
-
-
-.dash-large-card-icon {
-  width: 70px;
-  height: 70px;
-  border-radius: 20px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 32px;
-  background: rgba(142, 33, 57, 0.1);
-  color: #8E2139;
-}
-
-.dash-large-card-orders .dash-large-card-icon {
-  background: rgba(59, 130, 246, 0.1);
-  color: #3b82f6;
-}
-
-.dash-large-card-earnings .dash-large-card-icon {
-  background: rgba(16, 185, 129, 0.1);
-  color: #10b981;
-}
-
-.dash-large-card-content {
-  flex: 1;
-  margin-left: 20px;
-}
-
-.dash-large-card-content p {
-  margin: 0;
-  font-size: 0.9rem;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-  color: #64748b;
-  margin-bottom: 8px;
-}
-
-.dash-large-card-content h2 {
-  margin: 0;
-  font-size: 2.2rem;
-  font-weight: 800;
-  color: #1e293b;
-  line-height: 1.2;
-}
-
-.dash-large-card-subtitle {
-  font-size: 0.75rem;
-  color: #94a3b8;
-  margin-top: 8px;
-  display: inline-block;
-}
-
-.dash-large-card-trend {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  background: #f1f5f9;
-  padding: 6px 12px;
-  border-radius: 40px;
-  font-size: 0.8rem;
-  font-weight: 600;
-  color: #10b981;
-}
-
-.dash-large-card-trend i {
-  font-size: 1rem;
-}
-
-.dash-large-card-trend span {
-  font-size: 0.75rem;
-}
-
-/* Responsive for large cards */
-@media (max-width: 768px) {
-  .dash-large-cards {
-    grid-template-columns: 1fr;
-    gap: 16px;
-  }
-
-  .dash-large-card {
-    padding: 20px 16px;
-  }
-
-  .dash-large-card-content h2 {
-    font-size: 1.6rem;
-  }
-
-  .dash-large-card-icon {
-    width: 55px;
-    height: 55px;
-    font-size: 26px;
-  }
-}
-
-@media (max-width: 480px) {
-
-  .dash-large-card-icon {
-    margin-right: 10px;
-  }
-
-  .dash-large-card {
-    flex-wrap: wrap;
-  }
-
-  .dash-large-card-content {
-    margin-left: 0;
-    margin-top: 12px;
-    width: 100%;
-  }
-
-  .dash-large-card-trend {
-    margin-left: auto;
+  .dash-table {
+    grid-column: span 12;
   }
 }

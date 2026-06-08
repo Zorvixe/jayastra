@@ -1,4 +1,3 @@
-// Dashboard.js
 import React, { useState, useEffect } from "react";
 import axios from '../utils/axiosConfig'; // Adjust path as needed
 import {
@@ -30,25 +29,39 @@ const Dashboard = () => {
     totalOrders: 0,
     totalUsers: 0,
     totalRevenue: 0,
+    stockNotificationCount: 0,
   });
+
+  const [orderOverview, setOrderOverview] = useState({
+    pending: 0,
+    onTheWay: 0,
+    delivered: 0,
+    cancelled: 0
+  });
+
+  const [pendingPayment, setPendingPayment] = useState({
+    count: 0,
+    amount: 0,
+    supplierName: "",
+    issueDate: ""
+  });
+
   const userRole = localStorage.getItem("userRole");
   const [recentOrders, setRecentOrders] = useState([]);
   const [dailySales, setDailySales] = useState([]);
   const [loading, setLoading] = useState(true);
-  
-  // New state for today's stats
+
   const [todayStats, setTodayStats] = useState({
     todayOrders: 0,
     todayEarnings: 0,
   });
 
-  // Date filter state
+  // Date filter states
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
 
   const API_URL = process.env.REACT_APP_API_URL;
 
-  // Set default dates (last 30 days) on mount
   useEffect(() => {
     const today = new Date();
     const thirtyDaysAgo = new Date();
@@ -59,36 +72,34 @@ const Dashboard = () => {
     setEndDate(formatDate(today));
   }, []);
 
-  // Fetch data whenever startDate or endDate changes
   useEffect(() => {
     if (startDate && endDate) {
       fetchDashboardData(startDate, endDate);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [startDate, endDate]);
 
   const fetchDashboardData = async (start, end) => {
     try {
       setLoading(true);
       const token = localStorage.getItem("token");
-      
-      // Fetch main dashboard stats
+
       const res = await axios.get(`${API_URL}/admin/dashboard/stats`, {
         params: { startDate: start, endDate: end },
         headers: { Authorization: `Bearer ${token}` },
       });
 
-      // Fetch today's stats separately
       const todayRes = await axios.get(`${API_URL}/admin/dashboard/today-stats`, {
         headers: { Authorization: `Bearer ${token}` },
       });
 
       if (res.data.success) {
         setStats(res.data.stats || {});
+        setOrderOverview(res.data.orderOverview || { pending: 0, onTheWay: 0, delivered: 0, cancelled: 0 });
+        setPendingPayment(res.data.pendingPayment || { count: 0, amount: 0, supplierName: "", issueDate: "" });
         setRecentOrders(res.data.recentOrders || []);
         setDailySales(res.data.dailySales || []);
       }
-      
+
       if (todayRes.data.success) {
         setTodayStats({
           todayOrders: todayRes.data.todayOrders || 0,
@@ -102,7 +113,6 @@ const Dashboard = () => {
     }
   };
 
-  // Chart data (daily sales from the filtered period)
   const chartData = {
     labels: dailySales.map((d) => d.day),
     datasets: [
@@ -110,7 +120,7 @@ const Dashboard = () => {
         label: "Sales (₹)",
         data: dailySales.map((d) => d.amount),
         borderColor: "#8E2139",
-        backgroundColor: "rgba(142, 33, 57, 0.1)",
+        backgroundColor: "rgba(142, 33, 57, 0.05)",
         tension: 0.4,
         fill: true,
         pointRadius: 4,
@@ -137,14 +147,13 @@ const Dashboard = () => {
     scales: {
       y: {
         beginAtZero: true,
-        grid: { color: "#f0f0f0" },
+        grid: { color: "#f5f5f5" },
         ticks: { callback: (value) => "₹" + value },
       },
       x: { grid: { display: false } },
     },
   };
 
-  // Handlers for date inputs
   const handleStartDateChange = (e) => setStartDate(e.target.value);
   const handleEndDateChange = (e) => setEndDate(e.target.value);
   const handleReset = () => {
@@ -158,9 +167,7 @@ const Dashboard = () => {
   if (loading)
     return (
       <div className="dash-loader-overlay">
-        <div className="dash-loader-container">
-          <div className="dash-spinner"></div>
-        </div>
+        <div className="dash-spinner"></div>
       </div>
     );
 
@@ -168,120 +175,139 @@ const Dashboard = () => {
     <div className="dash-container">
       {/* ================= DATE FILTER ================= */}
       <div className="dash-date-filter-bar">
-        <div className="dash-today-date">
-          <span className="dash-today-label">📅 Today</span>
-          <span className="dash-today-value">
-            {new Date().toLocaleDateString("en-IN", {
-              weekday: "long",
-              year: "numeric",
-              month: "long",
-              day: "numeric",
-            })}
-          </span>
+        <div><img src="" /> </div>
+      </div>
+
+      {/* ================= PENDING PAYMENT BANNER ================= */}
+      {pendingPayment.amount > 0 && (
+        <div className="dash-pending-payment">
+          <div className="dash-payment-header">
+            <div className="dash-payment-title-group">
+              <span className="dash-payment-tag">PENDING PAYMENT</span>
+              <h2>₹ {pendingPayment.amount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</h2>
+            </div>
+            <div className="dash-payment-info">
+              <span>{pendingPayment.count} Invoice Pending</span>
+              <a href="#/payouts" className="dash-view-all-link">VIEW ALL <i className="bi bi-chevron-right"></i></a>
+            </div>
+          </div>
+
+          <div className="dash-payment-body-card">
+            <div className="dash-payment-details">
+              <div className="dash-payment-field">
+                <span className="dash-field-label">Supplier Name</span>
+                <div className="dash-supplier-wrapper">
+                  <span className="dash-field-value-strong">{pendingPayment.supplierName || "Pran Group Limited"}</span>
+                  <span className="dash-due-badge">UPCOMING DUE</span>
+                </div>
+              </div>
+              <div className="dash-payment-field">
+                <span className="dash-field-label">Due Balance</span>
+                <span className="dash-field-value-currency">₹{pendingPayment.amount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
+              </div>
+            </div>
+            <div className="dash-payment-footer">
+              <div className="dash-payment-date">
+                <span className="dash-field-label">Issue Date:</span>
+                <span className="dash-field-value">{pendingPayment.issueDate || "29 Aug, 2025"}</span>
+              </div>
+              <button className="dash-pay-now-btn">Pay Now</button>
+            </div>
+          </div>
         </div>
-        <div className="dash-date-range-controls">
-          <div className="dash-date-input-group">
-            <label>From</label>
-            <input
-              type="date"
-              value={startDate}
-              onChange={handleStartDateChange}
-            />
+      )}
+
+      {/* ================= ORDER OVERVIEW (MOCKUP STYLE) ================= */}
+      <div className="dash-section-card">
+        <div className="dash-section-header">
+          <h3>Order Overview</h3>
+          <div className="dash-period-selector">
+            <span>30 Days</span>
+            <i className="bi bi-caret-down-fill"></i>
           </div>
-          <div className="dash-date-input-group">
-            <label>To</label>
-            <input type="date" value={endDate} onChange={handleEndDateChange} />
+        </div>
+
+        <div className="dash-overview-grid">
+          <div className="dash-overview-item item-pending">
+            <div className="dash-overview-icon">
+              <i className="bi bi-box"></i>
+            </div>
+            <div className="dash-overview-content">
+              <p className="dash-overview-label">Pending Order</p>
+              <h4 className="dash-overview-count">{orderOverview.pending} Orders</h4>
+            </div>
           </div>
-          <button onClick={handleReset} className="dash-reset-btn">
-            ↺ Reset to 30 days
+
+          <div className="dash-overview-item item-onway">
+            <div className="dash-overview-icon">
+              <i className="bi bi-truck"></i>
+            </div>
+            <div className="dash-overview-content">
+              <p className="dash-overview-label">On the Way</p>
+              <h4 className="dash-overview-count">{orderOverview.onTheWay} Orders</h4>
+            </div>
+          </div>
+
+          <div className="dash-overview-item item-delivered">
+            <div className="dash-overview-icon">
+              <i className="bi bi-check2-circle"></i>
+            </div>
+            <div className="dash-overview-content">
+              <p className="dash-overview-label">Delivered Order</p>
+              <h4 className="dash-overview-count">{orderOverview.delivered} Orders</h4>
+            </div>
+          </div>
+
+          <div className="dash-overview-item item-cancelled">
+            <div className="dash-overview-icon">
+              <i className="bi bi-x-circle"></i>
+            </div>
+            <div className="dash-overview-content">
+              <p className="dash-overview-label">Cancelled Order</p>
+              <h4 className="dash-overview-count">{orderOverview.cancelled} Orders</h4>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* ================= MANAGE SHOPPING LIST ================= */}
+      <div className="dash-section-card">
+        <div className="dash-section-header">
+          <h3>Manage Shopping List</h3>
+        </div>
+        <div className="dash-shopping-actions">
+          <button className="dash-action-tile" onClick={() => window.location.hash = "/wishlist"}>
+            <div className="dash-action-icon icon-heart">
+              <i className="bi bi-heart"></i>
+              <span className="dash-plus-badge">+</span>
+            </div>
+            <span>Saved Product <i className="bi bi-arrow-right"></i></span>
+          </button>
+
+          <button className="dash-action-tile" onClick={() => window.location.hash = "/product-notes"}>
+            <div className="dash-action-icon icon-notes">
+              <i className="bi bi-journal-text"></i>
+              <span className="dash-plus-badge">+</span>
+            </div>
+            <span>Product Notes <i className="bi bi-arrow-right"></i></span>
           </button>
         </div>
       </div>
 
-      {/* ================= LARGE TODAY CARDS (ROW 1) ================= */}
-      <div className="dash-large-cards">
-        <div className="dash-large-card dash-large-card-orders">
-          <div className="dash-large-card-icon">
-            <i className="bi bi-calendar-check"></i>
-          </div>
-          <div className="dash-large-card-content">
-            <p>Today's Orders</p>
-            <h2>{todayStats.todayOrders}</h2>
-            <span className="dash-large-card-subtitle">Orders placed today</span>
-          </div>
-          <div className="dash-large-card-trend">
-            <i className="bi bi-arrow-up-short"></i>
-            <span>+{todayStats.todayOrders > 0 ? Math.round((todayStats.todayOrders / (stats.totalOrders || 1)) * 100) : 0}%</span>
-          </div>
+      {/* ================= REORDER PROMO BANNER ================= */}
+      <div className="dash-reorder-promo">
+        <div className="dash-reorder-text">
+          <h3>Reorder Your Regular Items</h3>
+          <p>Saves time and efforts</p>
+          <button className="dash-reorder-now-btn">Reorder Now</button>
         </div>
-
-        <div className="dash-large-card dash-large-card-earnings">
-          <div className="dash-large-card-icon">
-            <i className="bi bi-wallet2"></i>
-          </div>
-          <div className="dash-large-card-content">
-            <p>Today's Earnings</p>
-            <h2>₹{todayStats.todayEarnings.toLocaleString()}</h2>
-            <span className="dash-large-card-subtitle">
-              {userRole === 'vendor' ? 'Your earnings today' : 'Store earnings today'}
-            </span>
-          </div>
-          <div className="dash-large-card-trend">
-            <i className="bi bi-arrow-up-short"></i>
-            <span>+{todayStats.todayEarnings > 0 ? Math.round((todayStats.todayEarnings / (stats.totalRevenue || 1)) * 100) : 0}%</span>
-          </div>
-        </div>
-      </div>
-
-      {/* ================= SUMMARY CARDS (ROW 2) ================= */}
-      <div className="dash-cards">
-        <div className="dash-card dash-card-products">
-          <div className="dash-card-icon">
-            <i className="bi bi-box-seam"></i>
-          </div>
-          <div className="dash-card-content">
-            <p>Total Products</p>
-            <h4>{stats.totalProducts}</h4>
-          </div>
-        </div>
-        <div className="dash-card dash-card-orders">
-          <div className="dash-card-icon">
-            <i className="bi bi-cart-check"></i>
-          </div>
-          <div className="dash-card-content">
-            <p>Total Orders</p>
-            <h4>{stats.totalOrders}</h4>
-          </div>
-        </div>
-
-        {userRole !== 'vendor' && (
-        <div className="dash-card dash-card-users">
-          <div className="dash-card-icon">
-            <i className="bi bi-people"></i>
-          </div>
-          <div className="dash-card-content">
-            <p>Total Users</p>
-            <h4>{stats.totalUsers}</h4>
-          </div>
-        </div>
-        )}
-
-        <div className="dash-card dash-card-revenue">
-          <div className="dash-card-icon">
-            <i className="bi bi-currency-rupee"></i>
-          </div>
-          <div className="dash-card-content">
-           <p>{userRole === 'vendor' ? 'Total Earnings' : 'Total Revenue'}</p>
-            <h4>₹{(stats.totalRevenue ?? 0).toLocaleString()}</h4>
-          </div>
-        </div>
-        <div className="dash-card dash-card-notifications">
-          <div className="dash-card-icon">
-            <i className="bi bi-bell"></i>
-          </div>
-          <div className="dash-card-content">
-            <p>Stock Requests</p>
-            <h4>{stats.stockNotificationCount || 0}</h4>
+        <div className="dash-reorder-graphics">
+          <div className="dash-graphic-circle apple">🍏</div>
+          <div className="dash-graphic-circle milk">🥛</div>
+          <div className="dash-graphic-circle flour">🌾</div>
+          <div className="dash-graphic-box">
+            <div className="dash-box-lid shadow"></div>
+            <div className="dash-box-body"></div>
           </div>
         </div>
       </div>
@@ -294,8 +320,7 @@ const Dashboard = () => {
           </h5>
         </div>
         <div className="dash-chart-canvas-wrap">
-          <Line data={chartData} options={options} />
-        </div>
+          <Line data={chartData} options={options} />        </div>
       </div>
 
       {/* ================= RECENT ORDERS ================= */}
