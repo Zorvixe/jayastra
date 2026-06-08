@@ -7180,6 +7180,239 @@ app.get("/api/admin/payouts/earning-stats", verifyToken, verifyAdminVendorIndivi
     res.status(500).json({ success: false, message: err.message });
   }
 });
+
+// ================= DASHBOARD STATS BY DATE =================
+app.get("/api/admin/dashboard/stats-by-date", verifyToken, verifyAnyAdmin, async (req, res) => {
+  try {
+    const { date } = req.query;
+    const userRole = req.user.role?.toLowerCase();
+    const vendorId = req.user.id;
+
+    // Set date range (start of selected date to end of selected date)
+    const startDate = new Date(date);
+    startDate.setHours(0, 0, 0, 0);
+    const endDate = new Date(date);
+    endDate.setHours(23, 59, 59, 999);
+
+    const startDateStr = startDate.toISOString();
+    const endDateStr = endDate.toISOString();
+
+    // 1. Order Overview for the selected date
+    let overviewQuery = `
+      SELECT 
+        COUNT(CASE WHEN o.order_status IN ('Placed', 'Pending', 'Processing') THEN 1 END)::int as pending,
+        COUNT(CASE WHEN o.order_status IN ('Shipped', 'On the Way', 'Out for Delivery') THEN 1 END)::int as on_the_way,
+        COUNT(CASE WHEN o.order_status = 'Delivered' THEN 1 END)::int as delivered,
+        COUNT(CASE WHEN o.order_status = 'Cancelled' THEN 1 END)::int as cancelled
+      FROM orders o
+      WHERE o.created_at BETWEEN $1 AND $2
+    `;
+    let overviewParams = [startDateStr, endDateStr];
+
+    // For vendors, filter orders containing their products
+    if (userRole !== 'super_admin') {
+      overviewQuery = `
+        SELECT 
+          COUNT(CASE WHEN o.order_status IN ('Placed', 'Pending', 'Processing') THEN 1 END)::int as pending,
+          COUNT(CASE WHEN o.order_status IN ('Shipped', 'On the Way', 'Out for Delivery') THEN 1 END)::int as on_the_way,
+          COUNT(CASE WHEN o.order_status = 'Delivered' THEN 1 END)::int as delivered,
+          COUNT(CASE WHEN o.order_status = 'Cancelled' THEN 1 END)::int as cancelled
+        FROM orders o
+        JOIN order_items oi ON o.id = oi.order_id
+        WHERE o.created_at BETWEEN $1 AND $2 AND oi.vendor_id = $3
+      `;
+      overviewParams.push(vendorId);
+    }
+
+    const overviewRes = await pool.query(overviewQuery, overviewParams);
+    const dbOverview = overviewRes.rows[0];
+
+    const orderOverview = {
+      pending: dbOverview.pending || 0,
+      onTheWay: dbOverview.on_the_way || 0,
+      delivered: dbOverview.delivered || 0,
+      cancelled: dbOverview.cancelled || 0
+    };
+
+    // 2. Pending Payment for the selected date
+    let payoutQuery;
+    let payoutParams = [];
+
+    if (userRole !== 'super_admin') {
+      payoutQuery = `
+        SELECT 
+          COUNT(*)::int as invoice_count,
+          COALESCE(SUM(amount), 0.00)::float as total_amount,
+          MAX(requested_at) as latest_date
+        FROM payouts 
+        WHERE vendor_id = $1 AND status = 'Pending' AND requested_at BETWEEN $2 AND $3
+      `;
+      payoutParams = [vendorId, startDateStr, endDateStr];
+    } else {
+      payoutQuery = `
+        SELECT 
+          COUNT(*)::int as invoice_count,
+          COALESCE(SUM(p.amount), 0.00)::float as total_amount,
+          MAX(p.requested_at) as latest_date,
+          COALESCE(MAX(u.store_name), MAX(u.name)) as supplier_name
+        FROM payouts p
+        JOIN users u ON p.vendor_id = u.id
+        WHERE p.status = 'Pending' AND p.requested_at BETWEEN $1 AND $2
+      `;
+      payoutParams = [startDateStr, endDateStr];
+    }
+
+    const payoutRes = await pool.query(payoutQuery, payoutParams);
+    const dbPayout = payoutRes.rows[0];
+
+    let pendingPayment = {
+      count: 0,
+      amount: 0,
+      supplierName: userRole !== 'super_admin' ? "Jayastra Platform Admin" : "Vendor Partner",
+      issueDate: ""
+    };
+
+    if (dbPayout && dbPayout.total_amount > 0) {
+      pendingPayment = {
+        count: dbPayout.invoice_count || 0,
+        amount: parseFloat(dbPayout.total_amount) || 0,
+        supplierName: userRole !== 'super_admin' ? "Jayastra Platform Admin" : (dbPayout.supplier_name || "Vendor Partner"),
+        issueDate: dbPayout.latest_date ? new Date(dbPayout.latest_date).toLocaleDateString('en-IN', {
+          day: 'numeric', month: 'short', year: 'numeric'
+        }) : ""
+      };
+    }
+
+    // 3. Recent Orders for the selected date
+    let recentQuery = `
+      SELECT o.id, o.customer_name, o.created_at, o.total_amount, o.order_status,
+        u.name as user_name
+      FROM orders o
+      LEFT JOIN users u ON o.user_id = u.id
+      WHERE o.created_at BETWEEN $1 AND $2
+      ORDER BY o.created_at DESC
+      LIMIT 10
+    `;
+    let recentParams = [startDateStr, endDateStr];
+
+    if (userRole !== 'super_admin') {
+      recentQuery = `
+        SELECT DISTINCT o.id, o.customer_name, o.created_at, o.total_amount, o.order_status,
+          u.name as user_name
+        FROM orders o
+        LEFT JOIN users u ON o.user_id = u.id
+        JOIN order_items oi ON o.id = oi.order_id
+        JOIN products p ON oi.product_id = p.id
+        WHERE o.created_at BETWEEN $1 AND $2 AND p.vendor_id = $3
+        ORDER BY o.created_at DESC
+        LIMIT 10
+      `;
+      recentParams.push(vendorId);
+    }
+
+    const recentRes = await pool.query(recentQuery, recentParams);
+    const recentOrders = recentRes.rows;
+
+    // 4. Daily Sales for the selected date (last 7 days)
+    const dailySalesQuery = `
+      SELECT 
+        TO_CHAR(o.created_at, 'Dy') as day,
+        COALESCE(SUM(${userRole !== 'super_admin' ? 'oi.vendor_earning' : 'o.total_amount'}), 0)::float as amount
+      FROM orders o
+      ${userRole !== 'super_admin' ? 'JOIN order_items oi ON o.id = oi.order_id' : ''}
+      WHERE o.created_at >= (DATE($1) - INTERVAL '6 days')
+        AND o.created_at <= DATE($1) + INTERVAL '23 hours 59 minutes'
+      ${userRole !== 'super_admin' ? 'AND oi.vendor_id = $2' : ''}
+      GROUP BY DATE_TRUNC('day', o.created_at), TO_CHAR(o.created_at, 'Dy')
+      ORDER BY DATE_TRUNC('day', o.created_at) ASC
+    `;
+
+    let salesParams = [date];
+    if (userRole !== 'super_admin') {
+      salesParams.push(vendorId);
+    }
+
+    const salesRes = await pool.query(dailySalesQuery, salesParams);
+    const dailySales = salesRes.rows;
+
+    // 5. Stats (overall counts for the selected date)
+    let statsQuery = `
+      SELECT 
+        COUNT(DISTINCT o.id)::int as total_orders,
+        COALESCE(SUM(${userRole !== 'super_admin' ? 'oi.vendor_earning' : 'o.total_amount'}), 0)::float as total_revenue
+      FROM orders o
+      ${userRole !== 'super_admin' ? 'JOIN order_items oi ON o.id = oi.order_id' : ''}
+      WHERE o.created_at BETWEEN $1 AND $2
+      ${userRole !== 'super_admin' ? 'AND oi.vendor_id = $3' : ''}
+    `;
+
+    let statsParams = [startDateStr, endDateStr];
+    if (userRole !== 'super_admin') {
+      statsParams.push(vendorId);
+    }
+
+    const statsRes = await pool.query(statsQuery, statsParams);
+
+    // Get product count for the selected date
+    let productQuery = `
+      SELECT COUNT(*)::int as total_products
+      FROM products
+      WHERE created_at BETWEEN $1 AND $2
+      ${userRole !== 'super_admin' ? 'AND vendor_id = $3' : ''}
+    `;
+
+    const productRes = await pool.query(productQuery, productParams || [...statsParams]);
+
+    // Get user count (for super admin only)
+    let userCount = 0;
+    if (userRole === 'super_admin') {
+      const userRes = await pool.query(
+        "SELECT COUNT(*)::int as total_users FROM users WHERE created_at BETWEEN $1 AND $2 AND role = 'user'",
+        [startDateStr, endDateStr]
+      );
+      userCount = userRes.rows[0]?.total_users || 0;
+    }
+
+    // Get stock notification count
+    let stockQuery = `
+      SELECT COUNT(*)::int as stock_notification_count
+      FROM stock_notifications
+      WHERE created_at BETWEEN $1 AND $2
+      ${userRole !== 'super_admin' ? 'AND vendor_id = $3' : ''}
+    `;
+
+    const stockRes = await pool.query(stockQuery, statsParams);
+
+    const stats = {
+      totalProducts: productRes.rows[0]?.total_products || 0,
+      totalOrders: statsRes.rows[0]?.total_orders || 0,
+      totalUsers: userCount,
+      totalRevenue: parseFloat(statsRes.rows[0]?.total_revenue || 0),
+      stockNotificationCount: stockRes.rows[0]?.stock_notification_count || 0
+    };
+
+    res.json({
+      success: true,
+      stats,
+      orderOverview,
+      pendingPayment,
+      recentOrders,
+      dailySales
+    });
+
+  } catch (error) {
+    console.error("Dashboard stats by date error:", error);
+    res.status(500).json({
+      success: false,
+      message: error.message,
+      stats: {},
+      orderOverview: { pending: 0, onTheWay: 0, delivered: 0, cancelled: 0 },
+      pendingPayment: { count: 0, amount: 0, supplierName: "", issueDate: "" },
+      recentOrders: [],
+      dailySales: []
+    });
+  }
+});
 // Add this to your existing routes in the backend file
 
 // ================= INVOICES ROUTES WITH PROPER PDF =================

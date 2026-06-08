@@ -1,75 +1,38 @@
 /* ==========================================
-   GLOBAL & LAYOUT RESET
+   GLOBAL APP CONTAINER
 ========================================== */
 .dash-container {
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  gap: 18px;
+  margin: 0 auto;
+  box-sizing: border-box;
 }
 
 /* ==========================================
-   DATE FILTER BAR - UPDATED FOR SINGLE DATE
+   DATE FILTER BAR
 ========================================== */
 .dash-date-filter-bar {
   display: flex;
   justify-content: space-between;
   align-items: center;
   background: white;
-  padding: 12px 18px;
-  border-radius: 16px;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
-  flex-wrap: wrap;
-  gap: 12px;
+  padding: 10px 16px;
+  border-radius: 14px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
 }
 
 .dash-today-date {
-  display: flex;
-  flex-direction: row;
-  align-items: center;
-  gap: 8px;
   background: #f1f5f9;
-  padding: 5px 12px;
+  padding: 6px 14px;
   border-radius: 30px;
-  transition: background 0.2s;
-}
-
-.dash-today-date:hover {
-  background: #e2e8f0;
 }
 
 .dash-today-label {
-  font-weight: 600;
+  font-weight: 700;
   color: #1e293b;
-  font-size: 0.9rem;
-}
-
-.dash-today-value {
   font-size: 0.85rem;
-  color: #0f172a;
-  font-weight: 600;
-}
-
-.dash-date-range-controls {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  flex-wrap: wrap;
-}
-
-.dash-date-input-group {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  background: #f1f5f9;
-  padding: 6px 12px;
-  border-radius: 12px;
-}
-
-.dash-date-input-group label {
-  font-weight: 500;
-  color: #475569;
-  font-size: 0.8rem;
 }
 
 .dash-date-input-group input {
@@ -77,28 +40,29 @@
   background: transparent;
   font-family: inherit;
   font-size: 0.85rem;
-  color: #0f172a;
+  color: #1e293b;
+  font-weight: 600;
   outline: none;
 }
 
 /* ==========================================
-   PENDING PAYMENT CARD (MOCKUP ACCURATE)
+   1. PENDING PAYMENT CARD
 ========================================== */
-.dash-pending-payment {
-  background-color: #eaf6ef;
-  /* Soft light mint green */
+.dash-pending-payment-container {
+  background-color: #eaf6f3; /* Matching Mockup's light pastel green background */
   border-radius: 20px;
-  padding: 20px;
+  padding: 16px;
   display: flex;
   flex-direction: column;
-  gap: 16px;
-  box-shadow: 0 4px 12px rgba(19, 115, 51, 0.04);
+  gap: 14px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.02);
 }
 
 .dash-payment-header {
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
+  padding: 0 4px;
 }
 
 .dash-payment-title-group {
@@ -110,339 +74,316 @@
 .dash-payment-tag {
   font-size: 0.75rem;
   font-weight: 700;
-  color: #556066;
+  color: #64748b;
   letter-spacing: 0.5px;
 }
 
 .dash-payment-header h2 {
-  font-size: 1.8rem;
+  font-size: 1.6rem;
   font-weight: 800;
-  color: #111;
+  color: #0f172a;
   margin: 0;
 }
 
-.dash-payment-info {
+.dash-payment-info-group {
   display: flex;
   flex-direction: column;
   align-items: flex-end;
-  gap: 4px;
+  gap: 6px;
 }
 
-.dash-payment-info span {
-  font-size: 0.85rem;
+.dash-payment-count {
+  font-size: 0.8rem;
   font-weight: 600;
-  color: #556066;
+  color: #475569;
 }
 
 .dash-view-all-link {
-  color: #064e3b;
+  color: #044e36; /* Mockup Dark Green Link */
   font-size: 0.8rem;
-  font-weight: 700;
+  font-weight: 800;
   text-decoration: none;
   display: flex;
   align-items: center;
   gap: 2px;
 }
 
-.dash-view-all-link:hover {
-  color: #047857;
-}
-
-.dash-payment-body-card {
-  background: white;
+/* Embedded White Card */
+.dash-payment-inner-card {
+  background: #ffffff;
   border-radius: 16px;
   padding: 16px;
   display: flex;
   flex-direction: column;
-  gap: 16px;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.02);
+  gap: 14px;
 }
 
-.dash-payment-details {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-
-.dash-payment-field {
+.dash-inner-card-row {
   display: flex;
   justify-content: space-between;
-  align-items: center;
 }
 
-.dash-field-label {
-  font-size: 0.8rem;
-  font-weight: 500;
-  color: #8a969c;
+.dash-inner-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
 }
 
-.dash-field-value-strong {
-  font-size: 0.95rem;
-  font-weight: 700;
-  color: #111;
-}
-
-.dash-field-value-currency {
-  font-size: 0.95rem;
-  font-weight: 700;
-  color: #111;
-}
-
-.dash-supplier-wrapper {
+.dash-supplier-title-row {
   display: flex;
   align-items: center;
   gap: 8px;
 }
 
-.dash-due-badge {
-  background: #fef3c7;
-  color: #b45309;
-  font-size: 0.7rem;
-  font-weight: 700;
-  padding: 2px 6px;
-  border-radius: 4px;
+.dash-field-label {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #94a3b8;
 }
 
-.dash-payment-footer {
+.dash-field-value-strong {
+  font-size: 0.9rem;
+  font-weight: 800;
+  color: #0f172a;
+}
+
+.dash-field-value-currency {
+  font-size: 0.95rem;
+  font-weight: 800;
+  color: #0f172a;
+}
+
+.dash-due-badge {
+  background: #fef3c7; /* Soft yellow badge */
+  color: #d97706;
+  font-size: 0.65rem;
+  font-weight: 800;
+  padding: 2px 6px;
+  border-radius: 6px;
+}
+
+.dash-inner-card-footer {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  border-top: 1px dashed #e2e8f0;
-  padding-top: 14px;
+  border-top: 1px dashed #f1f5f9;
+  padding-top: 12px;
 }
 
 .dash-payment-date {
-  display: flex;
-  align-items: center;
-  gap: 6px;
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+.dash-payment-date .dash-field-label {
+  color: #94a3b8;
 }
 
 .dash-payment-date .dash-field-value {
-  font-size: 0.85rem;
-  font-weight: 700;
-  color: #111;
+  color: #0f172a;
+  font-weight: 800;
 }
 
 .dash-pay-now-btn {
-  background: #064e3b;
-  /* Dark green matching Pay Now style */
-  color: white;
+  background: #044e36; /* Dark forest green button from image */
+  color: #ffffff;
   border: none;
-  border-radius: 12px;
-  padding: 8px 18px;
+  border-radius: 20px;
+  padding: 8px 22px;
   font-size: 0.85rem;
   font-weight: 700;
   cursor: pointer;
-  transition: opacity 0.2s;
-}
-
-.dash-pay-now-btn:hover {
-  opacity: 0.95;
 }
 
 /* ==========================================
-   ORDER OVERVIEW CONTAINER CARD
+   2. ORDER OVERVIEW
 ========================================== */
-.dash-section-card {
-  background: white;
-  border-radius: 20px;
-  padding: 20px;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.02);
+.dash-order-overview-container {
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 12px;
 }
 
-.dash-section-header {
+.dash-overview-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
 }
 
-.dash-section-header h3 {
-  font-size: 1.1rem;
+.dash-overview-header h3 {
+  font-size: 1.05rem;
   font-weight: 800;
-  color: #111;
+  color: #0f172a;
   margin: 0;
 }
 
-.dash-period-selector {
+.dash-time-selector {
   display: flex;
   align-items: center;
   gap: 6px;
-  background: #f1f5f9;
-  padding: 6px 12px;
-  border-radius: 12px;
-  cursor: pointer;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  padding: 4px 12px;
+  border-radius: 20px;
 }
 
-.dash-period-selector span {
-  font-size: 0.8rem;
-  font-weight: 600;
-  color: #334155;
+.dash-time-selector span {
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: #1e293b;
 }
 
-.dash-period-selector i {
+.dash-time-selector i {
   font-size: 0.7rem;
   color: #64748b;
 }
 
-/* ==========================================
-   ORDER OVERVIEW PASTEL CARDS
-========================================== */
+/* Grid layout exactly matching mockup */
 .dash-overview-grid {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
-  gap: 14px;
-}
-
-.dash-overview-item {
-  border-radius: 16px;
-  padding: 16px;
-  display: flex;
-  align-items: center;
   gap: 12px;
 }
 
+.dash-overview-item {
+  background: #ffffff;
+  border-radius: 14px;
+  padding: 12px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.01);
+}
+
 .dash-overview-icon {
-  width: 44px;
-  height: 44px;
+  width: 40px;
+  height: 40px;
   border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 1.25rem;
+  font-size: 1.1rem;
 }
 
 .dash-overview-content {
   display: flex;
   flex-direction: column;
-  gap: 4px;
 }
 
 .dash-overview-label {
   font-size: 0.75rem;
-  font-weight: 500;
-  color: #8a969c;
-  margin: 0;
+  font-weight: 600;
+  color: #94a3b8;
 }
 
 .dash-overview-count {
   font-size: 0.95rem;
   font-weight: 800;
-  color: #111;
+  color: #0f172a;
+  margin: 2px 0 0 0;
+}
+
+/* Pastel colors matching structural details */
+.icon-pending {
+  background-color: #fffbeb;
+  color: #f59e0b;
+}
+
+.icon-onway {
+  background-color: #eff6ff;
+  color: #3b82f6;
+}
+
+.icon-delivered {
+  background-color: #f0fdf4;
+  color: #10b981;
+}
+
+.icon-cancelled {
+  background-color: #fdf2f8;
+  color: #ec4899;
+}
+
+/* ==========================================
+   3. MANAGE SHOPPING LIST
+========================================== */
+.dash-manage-shopping-container {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.dash-block-title {
+  font-size: 1.05rem;
+  font-weight: 800;
+  color: #0f172a;
   margin: 0;
 }
 
-/* Color Themes for pastel cards */
-.item-pending {
-  background-color: #fff9eb;
-  /* Orange/Yellow pastel */
-}
-
-.item-pending .dash-overview-icon {
-  background-color: #fff1cc;
-  color: #d97706;
-}
-
-.item-onway {
-  background-color: #f0f7ff;
-  /* Blue pastel */
-}
-
-.item-onway .dash-overview-icon {
-  background-color: #e0f0ff;
-  color: #2563eb;
-}
-
-.item-delivered {
-  background-color: #f0fdf4;
-  /* Green pastel */
-}
-
-.item-delivered .dash-overview-icon {
-  background-color: #dcfce7;
-  color: #16a34a;
-}
-
-.item-cancelled {
-  background-color: #fdf2f8;
-  /* Red/pink pastel */
-}
-
-.item-cancelled .dash-overview-icon {
-  background-color: #fce7f3;
-  color: #db2777;
-}
-
-/* ==========================================
-   MANAGE SHOPPING LIST SECTION
-========================================== */
-.dash-shopping-actions {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 12px;
-}
-
-.dash-action-tile {
-  background: white;
-  border: 1px solid #f1f5f9;
+.dash-shopping-list-card {
+  background: #ffffff;
   border-radius: 16px;
-  padding: 16px;
+  display: flex;
+  align-items: center;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.01);
+}
+
+.dash-shopping-section {
+  flex: 1;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 12px;
+  justify-content: center;
+  padding: 16px;
   cursor: pointer;
-  transition: all 0.2s;
-  width: 100%;
+  gap: 8px;
 }
 
-.dash-action-tile:hover {
-  background: #f8fafc;
-  transform: translateY(-2px);
+.dash-shopping-divider {
+  width: 1px;
+  height: 50px;
+  background-color: #f1f5f9;
 }
 
-.dash-action-icon {
+.dash-shopping-icon-wrap {
   position: relative;
-  width: 44px;
-  height: 44px;
-  font-size: 1.4rem;
+  width: 40px;
+  height: 40px;
   display: flex;
   align-items: center;
   justify-content: center;
+  font-size: 1.4rem;
 }
 
-.icon-heart {
-  color: #ea580c;
+.inline-heart {
+  color: #0f172a;
 }
 
-.icon-notes {
-  color: #0d9488;
+.inline-notes {
+  color: #0f172a;
 }
 
-.dash-plus-badge {
+/* Dotted Badge '+' element on icon top-right */
+.dash-icon-plus-badge {
   position: absolute;
-  top: 2px;
-  right: 2px;
+  top: 0px;
+  right: 0px;
   font-size: 0.8rem;
-  font-weight: bold;
+  font-weight: 800;
+  color: #10b981; /* Soft Green '+' symbol matching image */
 }
 
-.dash-action-tile span {
-  font-size: 0.85rem;
+.dash-shopping-text {
+  font-size: 0.8rem;
   font-weight: 700;
-  color: #111;
-  display: flex;
-  align-items: center;
-  gap: 4px;
+  color: #0f172a;
 }
 
 /* ==========================================
-   REORDER REGULAR BANNER - FULL WIDTH FIX
+   4. REORDER PROMO BANNER
 ========================================== */
-.dash-reorder-promo {
-  background: linear-gradient(135deg, #fefce8 0%, #fef3c7 100%);
+.dash-reorder-promo-banner {
+  background: linear-gradient(135deg, #fefbeb 0%, #ecfdf5 100%); /* Perfect soft gradient mapping */
   border-radius: 20px;
   padding: 20px;
   display: flex;
@@ -450,55 +391,41 @@
   align-items: center;
   position: relative;
   overflow: hidden;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.02);
-  width: auto;
-  grid-column: 1 / -1;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.01);
 }
 
-/* Ensure it takes full width even when not in a grid context (mobile) */
-.dash-reorder-promo {
-  width: 100%;
-  box-sizing: border-box;
-}
-
-.dash-reorder-text h3 {
-  font-size: 1rem;
+.dash-promo-content h3 {
+  font-size: 1.05rem;
   font-weight: 800;
-  color: #111;
-  margin: 0 0 4px 0;
+  color: #0f172a;
+  margin: 0;
 }
 
-.dash-reorder-text p {
+.dash-promo-content p {
   font-size: 0.8rem;
   color: #64748b;
-  margin: 0 0 14px 0;
-  font-weight: 500;
+  margin: 4px 0 16px 0;
 }
 
-.dash-reorder-now-btn {
-  background-color: #064e3b;
-  color: white;
+.dash-promo-btn {
+  background: #044e36;
+  color: #ffffff;
   border: none;
-  border-radius: 12px;
-  padding: 8px 16px;
+  border-radius: 20px;
+  padding: 8px 18px;
   font-size: 0.8rem;
   font-weight: 700;
   cursor: pointer;
-  transition: opacity 0.2s;
 }
 
-.dash-reorder-now-btn:hover {
-  opacity: 0.95;
-}
-
-.dash-reorder-graphics {
+/* Inline Box Graphics Layout */
+.dash-promo-graphics {
   position: relative;
-  width: 120px;
+  width: 110px;
   height: 90px;
 }
 
-/* Small graphic circles flying up */
-.dash-graphic-circle {
+.dash-promo-bubble {
   position: absolute;
   background: white;
   border-radius: 50%;
@@ -507,64 +434,119 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 0.9rem;
-  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+  font-size: 0.95rem;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+  z-index: 2;
 }
 
-.dash-graphic-circle.apple {
-  top: 5px;
-  left: 5px;
+.bubble-apple {
+  top: 15px;
+  left: 0px;
 }
 
-.dash-graphic-circle.milk {
-  top: -10px;
-  left: 45px;
+.bubble-milk {
+  top: -5px;
+  left: 40px;
 }
 
-.dash-graphic-circle.flour {
+.bubble-grain {
+  top: 15px;
+  left: 80px;
+}
+
+.dash-dotted-lines {
+  position: absolute;
   top: 10px;
-  left: 85px;
+  left: 10px;
+  z-index: 1;
 }
 
-/* Card Box Graphics */
-.dash-graphic-box {
+.dash-promo-box {
   position: absolute;
   bottom: -5px;
   left: 20px;
-  width: 80px;
-  height: 50px;
+  width: 70px;
+  height: 40px;
 }
 
-.dash-box-lid {
-  background: #fde047;
-  height: 8px;
+.dash-promo-box-lid {
+  background: #fef08a;
+  height: 6px;
   border-radius: 4px 4px 0 0;
-  width: 100%;
 }
 
-.dash-box-body {
+.dash-promo-box-body {
   background: #f59e0b;
-  height: 42px;
+  height: 34px;
   width: 90%;
   margin: 0 auto;
-  border-radius: 0 0 6px 6px;
+  border-radius: 0 0 4px 4px;
 }
 
 /* ==========================================
-   CHART & TABLES
+   EXTRA SECTIONS (CHARTS, TABLES & STATS)
 ========================================== */
-.dash-chart,
-.dash-table {
-  background: white;
-  border-radius: 20px;
-  padding: 20px;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.02);
+.dash-extra-content-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  margin-top: 24px;
+  border-top: 1px solid #f1f5f9;
+  padding-top: 24px;
+}
+
+.dash-stats-row {
+  display: flex;
+  gap: 12px;
+}
+
+.dash-stat-card {
+  flex: 1;
+  background: #ffffff;
+  padding: 14px;
+  border-radius: 16px;
+}
+
+.dash-stat-content {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.dash-stat-icon {
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  background: #eaf6f3;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #044e36;
+}
+
+.dash-stat-label {
+  font-size: 0.75rem;
+  color: #64748b;
+  margin: 0;
+}
+
+.dash-stat-value {
+  font-size: 1.1rem;
+  font-weight: 800;
+  color: #0f172a;
+  margin: 0;
+}
+
+.dash-chart, .dash-table {
+  background: #ffffff;
+  border-radius: 16px;
+  padding: 16px;
 }
 
 .dash-chart-canvas-wrap {
   position: relative;
   width: 100%;
-  height: 300px;
+  height: 220px;
 }
 
 .dash-table-responsive {
@@ -572,49 +554,60 @@
   overflow-x: auto;
 }
 
-.dash-table table {
+.dash-orders-table {
   width: 100%;
   border-collapse: collapse;
 }
 
-.dash-table th,
-.dash-table td {
-  padding: 12px;
+.dash-orders-table th, .dash-orders-table td {
+  padding: 10px;
+  font-size: 0.8rem;
   text-align: left;
-  font-size: 0.85rem;
   border-bottom: 1px solid #f1f5f9;
 }
 
-.dash-table th {
-  font-weight: 600;
+.dash-orders-table th {
   color: #64748b;
+  font-weight: 600;
 }
 
 .dahs-table-headings {
-  font-size: 1rem;
+  font-size: 0.95rem;
   font-weight: 800;
-  color: #111;
+  color: #0f172a;
   margin: 0 0 12px 0;
 }
 
-.dahs-table-headspan {
-  font-size: 0.8rem;
-  color: #64748b;
-  font-weight: 500;
+.dash-status {
+  padding: 2px 8px;
+  border-radius: 12px;
+  font-size: 0.7rem;
+  font-weight: 700;
 }
 
-/* Spinner */
+.dash-status-pending {
+  background-color: #fffbeb;
+  color: #d97706;
+}
+
+.dash-status-delivered {
+  background-color: #ecfdf5;
+  color: #10b981;
+}
+
+/* Spinner Overlay */
 .dash-loader-overlay {
   display: flex;
   justify-content: center;
   align-items: center;
+  height: 100vh;
 }
 
 .dash-spinner {
-  width: 40px;
-  height: 40px;
-  border: 4px solid #f1f5f9;
-  border-top-color: #8E2139;
+  width: 32px;
+  height: 32px;
+  border: 3px solid #f1f5f9;
+  border-top-color: #044e36;
   border-radius: 50%;
   animation: spin 1s linear infinite;
 }
@@ -622,49 +615,5 @@
 @keyframes spin {
   to {
     transform: rotate(360deg);
-  }
-}
-
-/* ==========================================
-   RESPONSIVE DESIGN (DESKTOP ADJUSTMENTS)
-========================================== */
-@media (min-width: 768px) {
-  .dash-container {
-    display: grid;
-    grid-template-columns: repeat(12, 1fr);
-    gap: 24px;
-  }
-
-  .dash-date-filter-bar {
-    grid-column: span 12;
-  }
-
-  .dash-banner-carousel {
-    grid-column: span 12;
-  }
-
-  .dash-banner-slide img {
-    height: 240px;
-  }
-
-  .dash-pending-payment {
-    grid-column: span 6;
-  }
-
-  /* Reorder promo spans full width on desktop as well */
-  .dash-reorder-promo {
-    grid-column: span 12;
-  }
-
-  .dash-section-card {
-    grid-column: span 6;
-  }
-
-  .dash-chart {
-    grid-column: span 12;
-  }
-
-  .dash-table {
-    grid-column: span 12;
   }
 }
