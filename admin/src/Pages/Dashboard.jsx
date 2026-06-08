@@ -1,10 +1,6 @@
 import React, { useState, useEffect } from "react";
 import axios from '../utils/axiosConfig'; // Adjust path as needed
 
-import banner_1 from "../assets/banner-1.png";
-import banner_2 from "../assets/banner-2.png";
-import banner_3 from "../assets/banner-3.png";
-
 import {
   Chart as ChartJS,
   CategoryScale,
