@@ -1,5 +1,10 @@
 import React, { useState, useEffect } from "react";
 import axios from '../utils/axiosConfig'; // Adjust path as needed
+
+import banner_1 from "../assets/banner-1.png";
+import banner_2 from "../assets/banner-2.png";
+import banner_3 from "../assets/banner-3.png";
+
 import {
   Chart as ChartJS,
   CategoryScale,
@@ -56,35 +61,50 @@ const Dashboard = () => {
     todayEarnings: 0,
   });
 
-  // Date filter states
-  const [startDate, setStartDate] = useState("");
-  const [endDate, setEndDate] = useState("");
+  // Single date filter state
+  const [selectedDate, setSelectedDate] = useState("");
+
+  // Carousel State
+  const [currentSlide, setCurrentSlide] = useState(0);
+  const banners = [banner_1, banner_2, banner_3];
 
   const API_URL = process.env.REACT_APP_API_URL;
 
+  // Helper: format date as YYYY-MM-DD
+  const formatDate = (date) => date.toISOString().split("T")[0];
+
+  // Helper: format date as "DD MMM, YYYY" for display (e.g., "08 Jun, 2026")
+  const formatDisplayDate = (date) => {
+    return date.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
+  };
+
   useEffect(() => {
     const today = new Date();
-    const thirtyDaysAgo = new Date();
-    thirtyDaysAgo.setDate(today.getDate() - 30);
-
-    const formatDate = (date) => date.toISOString().split("T")[0];
-    setStartDate(formatDate(thirtyDaysAgo));
-    setEndDate(formatDate(today));
+    setSelectedDate(formatDate(today));
   }, []);
 
   useEffect(() => {
-    if (startDate && endDate) {
-      fetchDashboardData(startDate, endDate);
+    if (selectedDate) {
+      fetchDashboardData(selectedDate);
     }
-  }, [startDate, endDate]);
+  }, [selectedDate]);
 
-  const fetchDashboardData = async (start, end) => {
+  // Autoplay effect for the banner slider
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setCurrentSlide((prevSlide) => (prevSlide + 1) % banners.length);
+    }, 5000);
+    return () => clearInterval(timer);
+  }, [banners.length]);
+
+  const fetchDashboardData = async (date) => {
     try {
       setLoading(true);
       const token = localStorage.getItem("token");
 
-      const res = await axios.get(`${API_URL}/admin/dashboard/stats`, {
-        params: { startDate: start, endDate: end },
+      // Fetch data for the selected date
+      const res = await axios.get(`${API_URL}/admin/dashboard/stats-by-date`, {
+        params: { date: date },
         headers: { Authorization: `Bearer ${token}` },
       });
 
@@ -154,14 +174,11 @@ const Dashboard = () => {
     },
   };
 
-  const handleStartDateChange = (e) => setStartDate(e.target.value);
-  const handleEndDateChange = (e) => setEndDate(e.target.value);
-  const handleReset = () => {
+  const handleDateChange = (e) => setSelectedDate(e.target.value);
+
+  const handleTodayClick = () => {
     const today = new Date();
-    const thirtyDaysAgo = new Date();
-    thirtyDaysAgo.setDate(today.getDate() - 30);
-    setStartDate(thirtyDaysAgo.toISOString().split("T")[0]);
-    setEndDate(today.toISOString().split("T")[0]);
+    setSelectedDate(formatDate(today));
   };
 
   if (loading)
@@ -173,57 +190,73 @@ const Dashboard = () => {
 
   return (
     <div className="dash-container">
-      {/* ================= DATE FILTER ================= */}
+      {/* ================= DATE FILTER BAR - SINGLE DATE PICKER ================= */}
       <div className="dash-date-filter-bar">
-        <div><img src="" /> </div>
-      </div>
+        <div className="dash-today-date" onClick={handleTodayClick} style={{ cursor: 'pointer' }}>
+          <div className="dash-today-label">Today</div>
 
-      {/* ================= PENDING PAYMENT BANNER ================= */}
-      {pendingPayment.amount > 0 && (
-        <div className="dash-pending-payment">
-          <div className="dash-payment-header">
-            <div className="dash-payment-title-group">
-              <span className="dash-payment-tag">PENDING PAYMENT</span>
-              <h2>₹ {pendingPayment.amount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</h2>
-            </div>
-            <div className="dash-payment-info">
-              <span>{pendingPayment.count} Invoice Pending</span>
-              <a href="#/payouts" className="dash-view-all-link">VIEW ALL <i className="bi bi-chevron-right"></i></a>
-            </div>
-          </div>
+        </div>
 
-          <div className="dash-payment-body-card">
-            <div className="dash-payment-details">
-              <div className="dash-payment-field">
-                <span className="dash-field-label">Supplier Name</span>
-                <div className="dash-supplier-wrapper">
-                  <span className="dash-field-value-strong">{pendingPayment.supplierName || "Pran Group Limited"}</span>
-                  <span className="dash-due-badge">UPCOMING DUE</span>
-                </div>
-              </div>
-              <div className="dash-payment-field">
-                <span className="dash-field-label">Due Balance</span>
-                <span className="dash-field-value-currency">₹{pendingPayment.amount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
-              </div>
-            </div>
-            <div className="dash-payment-footer">
-              <div className="dash-payment-date">
-                <span className="dash-field-label">Issue Date:</span>
-                <span className="dash-field-value">{pendingPayment.issueDate || "29 Aug, 2025"}</span>
-              </div>
-              <button className="dash-pay-now-btn">Pay Now</button>
-            </div>
+        <div className="dash-date-range-controls">
+          <div className="dash-date-input-group">
+            <input
+              type="date"
+              value={selectedDate}
+              onChange={handleDateChange}
+            />
           </div>
         </div>
-      )}
+      </div>
+
+
+      {/* ================= PENDING PAYMENT BANNER ================= */}
+      {
+        pendingPayment.amount > 0 && (
+          <div className="dash-pending-payment">
+            <div className="dash-payment-header">
+              <div className="dash-payment-title-group">
+                <span className="dash-payment-tag">PENDING PAYMENT</span>
+                <h2>₹ {pendingPayment.amount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</h2>
+              </div>
+              <div className="dash-payment-info">
+                <span>{pendingPayment.count} Invoice Pending</span>
+                <a href="#/payouts" className="dash-view-all-link">VIEW ALL <i className="bi bi-chevron-right"></i></a>
+              </div>
+            </div>
+
+            <div className="dash-payment-body-card">
+              <div className="dash-payment-details">
+                <div className="dash-payment-field">
+                  <span className="dash-field-label">Supplier Name</span>
+                  <div className="dash-supplier-wrapper">
+                    <span className="dash-field-value-strong">{pendingPayment.supplierName || "Pran Group Limited"}</span>
+                    <span className="dash-due-badge">UPCOMING DUE</span>
+                  </div>
+                </div>
+                <div className="dash-payment-field">
+                  <span className="dash-field-label">Due Balance</span>
+                  <span className="dash-field-value-currency">₹{pendingPayment.amount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
+                </div>
+              </div>
+              <div className="dash-payment-footer">
+                <div className="dash-payment-date">
+                  <span className="dash-field-label">Issue Date:</span>
+                  <span className="dash-field-value">{pendingPayment.issueDate || "29 Aug, 2025"}</span>
+                </div>
+                <button className="dash-pay-now-btn">Pay Now</button>
+              </div>
+            </div>
+          </div>
+        )
+      }
 
       {/* ================= ORDER OVERVIEW (MOCKUP STYLE) ================= */}
       <div className="dash-section-card">
         <div className="dash-section-header">
           <h3>Order Overview</h3>
           <div className="dash-period-selector">
-            <span>30 Days</span>
-            <i className="bi bi-caret-down-fill"></i>
+            <span>{formatDisplayDate(new Date(selectedDate))}</span>
+            <i className="bi bi-calendar"></i>
           </div>
         </div>
 
@@ -315,17 +348,18 @@ const Dashboard = () => {
       {/* ================= SALES CHART ================= */}
       <div className="dash-chart">
         <div className="dash-chart-header">
-          <h5>
-            Sales Overview (₹) <span className="dash-period-text">– {startDate} to {endDate}</span>
+          <h5 className="dahs-table-headings">
+            Sales Overview (₹) <span className="dahs-table-headspan">– {formatDisplayDate(new Date(selectedDate))}</span>
           </h5>
         </div>
         <div className="dash-chart-canvas-wrap">
-          <Line data={chartData} options={options} />        </div>
+          <Line data={chartData} options={options} />
+        </div>
       </div>
 
       {/* ================= RECENT ORDERS ================= */}
       <div className="dash-table">
-        <h5>Recent Orders ({startDate} to {endDate})</h5>
+        <h5 className="dahs-table-headings">Recent Orders <span className="dahs-table-headspan">({formatDisplayDate(new Date(selectedDate))})</span> </h5>
         <div className="dash-table-responsive">
           <table>
             <thead>
@@ -356,7 +390,7 @@ const Dashboard = () => {
               {recentOrders.length === 0 && (
                 <tr>
                   <td colSpan="5" className="dash-text-center">
-                    No orders in this period
+                    No orders for this date
                   </td>
                 </tr>
               )}
@@ -364,7 +398,7 @@ const Dashboard = () => {
           </table>
         </div>
       </div>
-    </div>
+    </div >
   );
 };
 
