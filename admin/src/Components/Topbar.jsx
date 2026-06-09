@@ -24,6 +24,7 @@ const Topbar = ({ toggleSidebar, isSidebarCollapsed }) => {
   const [storeName, setStoreName] = useState("");
   const [storeActive, setStoreActive] = useState(true);
   const [togglingStore, setTogglingStore] = useState(false);
+  const [showStoreWarningModal, setShowStoreWarningModal] = useState(false);
   const [loadingProfile, setLoadingProfile] = useState(true);
 
   // State for wallet balance
@@ -259,6 +260,20 @@ const Topbar = ({ toggleSidebar, isSidebarCollapsed }) => {
   const showPlatformRevenue = userRole === 'super_admin';
   const showStoreToggle = userRole && userRole !== 'user';
 
+  useEffect(() => {
+    if (loadingProfile || !showStoreToggle || storeActive) {
+      setShowStoreWarningModal(false);
+      return undefined;
+    }
+
+    setShowStoreWarningModal(true);
+    const warningInterval = setInterval(() => {
+      setShowStoreWarningModal(true);
+    }, 30000);
+
+    return () => clearInterval(warningInterval);
+  }, [loadingProfile, showStoreToggle, storeActive]);
+
   // Handle wallet card click for mobile
   const handleWalletClick = () => {
     if (isMobile) {
@@ -276,24 +291,32 @@ const Topbar = ({ toggleSidebar, isSidebarCollapsed }) => {
     }
   };
 
-  const handleStoreToggle = async (e) => {
-    e.stopPropagation();
+  const updateStoreStatus = async (nextStoreActive) => {
     if (!token || !checkTokenAndRedirect()) return;
 
     try {
       setTogglingStore(true);
       const res = await axios.put(
         `${REACT_APP_API_URL}/user/profile/all`,
-        { store_active: !storeActive },
+        { store_active: nextStoreActive },
         { headers: { Authorization: `Bearer ${token}` } }
       );
       const updated = res.data?.user?.store_active;
-      setStoreActive(typeof updated === 'boolean' ? updated : !storeActive);
+      setStoreActive(typeof updated === 'boolean' ? updated : nextStoreActive);
     } catch (error) {
       console.error("Failed to toggle store status:", error);
     } finally {
       setTogglingStore(false);
     }
+  };
+
+  const handleStoreToggle = (e) => {
+    e.stopPropagation();
+    updateStoreStatus(!storeActive);
+  };
+
+  const handleTurnStoreOn = () => {
+    updateStoreStatus(true);
   };
 
   // Get current balance value
@@ -554,6 +577,36 @@ const Topbar = ({ toggleSidebar, isSidebarCollapsed }) => {
                 <i className={`bi ${refreshingBalance ? 'bi-arrow-repeat spinner' : 'bi-arrow-repeat'}`}></i> Refresh
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {showStoreWarningModal && (
+        <div className="store-warning-modal-overlay" onClick={() => setShowStoreWarningModal(false)}>
+          <div className="store-warning-modal" onClick={(e) => e.stopPropagation()}>
+            <button
+              type="button"
+              className="store-warning-close"
+              onClick={() => setShowStoreWarningModal(false)}
+              aria-label="Close store warning"
+            >
+              <i className="bi bi-x-lg"></i>
+            </button>
+            <div className="store-warning-icon">
+              <i className="bi bi-exclamation-triangle"></i>
+            </div>
+            <div className="store-warning-content">
+              <h3>Store is off</h3>
+              <p>Warning: you are in off mode. Turn on your store to sell your products.</p>
+            </div>
+            <button
+              type="button"
+              className="store-warning-action"
+              onClick={handleTurnStoreOn}
+              disabled={togglingStore}
+            >
+              {togglingStore ? 'Turning on...' : 'Turn On Store'}
+            </button>
           </div>
         </div>
       )}

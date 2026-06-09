@@ -45,7 +45,6 @@ const Settings = () => {
           razorpay_key_secret: s.razorpay_key_secret || "",
           platform_fee_percent: parseFloat(s.platform_fee_percent || 10)
         });
-        toast.success("Settings loaded successfully");
       }
     } catch (err) {
       console.error("Failed to fetch settings", err);

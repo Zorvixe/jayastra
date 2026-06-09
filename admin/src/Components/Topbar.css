@@ -908,6 +908,102 @@
   background: #e2e8f0;
 }
 
+/* Store Off Warning Modal */
+.store-warning-modal-overlay {
+  position: fixed;
+  right: 24px;
+  bottom: 24px;
+  z-index: 1200;
+  pointer-events: none;
+  animation: fadeIn 0.2s ease;
+}
+
+.store-warning-modal {
+  position: relative;
+  width: 320px;
+  max-width: calc(100vw - 32px);
+  background: #ffffff;
+  border: 1px solid #f5c2d2;
+  border-left: 4px solid #8E2139;
+  border-radius: 10px;
+  box-shadow: 0 16px 36px rgba(15, 23, 42, 0.18);
+  padding: 16px;
+  pointer-events: auto;
+  animation: slideUp 0.25s ease;
+}
+
+.store-warning-close {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  width: 28px;
+  height: 28px;
+  border: none;
+  border-radius: 50%;
+  background: #f8fafc;
+  color: #64748b;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font-size: 12px;
+  transition: all 0.2s ease;
+}
+
+.store-warning-close:hover {
+  background: #f1f5f9;
+  color: #8E2139;
+}
+
+.store-warning-icon {
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  background: #fff1f2;
+  color: #8E2139;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 20px;
+  margin-bottom: 12px;
+}
+
+.store-warning-content h3 {
+  margin: 0 32px 6px 0;
+  color: #1f2937;
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.store-warning-content p {
+  margin: 0 0 14px 0;
+  color: #64748b;
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.store-warning-action {
+  width: 100%;
+  border: none;
+  border-radius: 8px;
+  background: #8E2139;
+  color: #ffffff;
+  padding: 10px 14px;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.2s ease, opacity 0.2s ease;
+}
+
+.store-warning-action:hover:not(:disabled) {
+  background: #6b192b;
+}
+
+.store-warning-action:disabled {
+  cursor: not-allowed;
+  opacity: 0.65;
+}
+
 @keyframes fadeIn {
   from {
     opacity: 0;
@@ -993,5 +1089,15 @@
 @media (max-width: 480px) {
   .wallet-refresh-btn {
     display: none;
+  }
+
+  .store-warning-modal-overlay {
+    right: 16px;
+    bottom: 100px;
+    left: 16px;
+  }
+
+  .store-warning-modal {
+    width: 100%;
   }
 }
