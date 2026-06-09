@@ -524,6 +524,31 @@ const Orders = () => {
     setShowPickupSelector(true);
   };
 
+  // Helper function to dynamically download files locally without popping open new windows
+  const triggerDirectDownload = async (fileUrl, filename) => {
+    try {
+      const response = await axios.post(`${API_URL}/admin/orders/proxy-download`, 
+        { url: fileUrl }, 
+        {
+          headers: { Authorization: `Bearer ${token}` },
+          responseType: 'blob' // Important: capture stream directly as Blob binary
+        }
+      );
+      const blob = new Blob([response.data], { type: 'application/pdf' });
+      const downloadUrl = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = downloadUrl;
+      link.setAttribute('download', filename);
+      document.body.appendChild(link);
+      link.click();
+      link.parentNode.removeChild(link);
+      window.URL.revokeObjectURL(downloadUrl);
+    } catch (err) {
+      console.error("Direct download failure:", err);
+      throw new Error("Unable to download the document directly.");
+    }
+  };
+
   // Download Shipping Label (to paste on package)
   const downloadLabel = async (orderId) => {
     try {
@@ -544,8 +569,8 @@ const Orders = () => {
       });
 
       if (res.data.success && res.data.label_url) {
-        window.open(res.data.label_url, "_blank");
-        toast.success("Shipping label opened in new tab. You can print it now.");
+        await triggerDirectDownload(res.data.label_url, `ShippingLabel-ORD${orderId}.pdf`);
+        toast.success("Shipping label downloaded successfully.");
       } else {
         toast.error("Label not ready yet. Please try again after some time.");
       }
@@ -554,7 +579,7 @@ const Orders = () => {
       if (err.response?.status === 400) {
         toast.error("Label not available. Please wait for Shiprocket to process the shipment.");
       } else {
-        toast.error(err.response?.data?.message || "Failed to download label");
+        toast.error(err.message || "Failed to download label");
       }
     } finally {
       setLoading(false);
@@ -570,14 +595,14 @@ const Orders = () => {
         headers: { Authorization: `Bearer ${token}` }
       });
       if (res.data.success && res.data.invoice_url) {
-        window.open(res.data.invoice_url, "_blank");
-        toast.success("Invoice opened in new tab. You can download/print it now.");
+        await triggerDirectDownload(res.data.invoice_url, `SRInvoice-ORD${orderId}.pdf`);
+        toast.success("Invoice downloaded successfully.");
       } else {
         toast.error("Invoice URL not available");
       }
     } catch (err) {
       console.error("Invoice download error:", err);
-      toast.error(err.response?.data?.message || "Failed to download invoice");
+      toast.error(err.message || "Failed to download invoice");
     } finally {
       setLoading(false);
     }
@@ -602,116 +627,35 @@ const Orders = () => {
     return { canPush: true, reason: null };
   };
 
-  const handlePrint = (order) => {
-    const printWindow = window.open("", "_blank", "width=800,height=900");
+  // Download local PDF invoice directly from backend stream
+  const downloadLocalInvoice = async (order) => {
+    try {
+      setLoading(true);
+      toast.info("Generating PDF invoice...");
 
-    const totalAmount = parseFloat(order.total_amount) || 0;
-    const discount = parseFloat(order.discount) || 0;
-    const subtotal = totalAmount + discount;
-    const bannerUrl = `${window.location.origin}/jayastra_banner.png`;
+      const response = await axios.get(`${API_URL}/admin/orders/${order.id}/local-pdf`, {
+        headers: { Authorization: `Bearer ${token}` },
+        responseType: "blob" // Handle binary data stream
+      });
 
-    const html = `
-    <!DOCTYPE html>
-    <html>
-      <head>
-        <title>Invoice - ORD${order.id}</title>
-        <meta charset="utf-8">
-        <style>
-          * { margin: 0; padding: 0; box-sizing: border-box; }
-          body { font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; padding: 40px; color: #1e293b; line-height: 1.5; background: #f8fafc; }
-          .invoice-box { max-width: 900px; margin: 0 auto; background: white; border-radius: 16px; box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.05), 0 10px 10px -5px rgba(0, 0, 0, 0.01); overflow: hidden; }
-          .invoice-inner { padding: 40px; }
-          .header { display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 2px solid #e2e8f0; padding-bottom: 24px; margin-bottom: 32px; }
-          .logo { display: flex; flex-direction: column; }
-          .logo-img { max-height: 60px; width: auto; object-fit: contain; margin-bottom: 8px; }
-          .logo-text { font-size: 28px; font-weight: 800; color: #8E2139; letter-spacing: -0.5px; }
-          .logo p { color: #64748b; font-size: 12px; margin-top: 4px; }
-          .title h2 { font-size: 20px; color: #475569; font-weight: 500; margin: 0; }
-          .title p { font-size: 12px; color: #94a3b8; margin-top: 4px; text-align: right; }
-          .meta { display: grid; grid-template-columns: 1fr 1fr; gap: 40px; margin-bottom: 40px; padding: 20px; border-radius: 12px; }
-          .meta h5 { margin: 0 0 12px 0; color: #64748b; text-transform: uppercase; font-size: 11px; letter-spacing: 0.5px; font-weight: 600; }
-          .meta p { margin: 6px 0; font-size: 14px; }
-          .meta strong { color: #1e293b; }
-          table { width: 100%; border-collapse: collapse; margin-bottom: 40px; }
-          th { background: #f1f5f9; text-align: left; padding: 14px 12px; border-bottom: 2px solid #e2e8f0; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; font-weight: 600; color: #475569; }
-          td { padding: 14px 12px; border-bottom: 1px solid #e2e8f0; font-size: 14px; }
-          .totals { margin-left: auto; width: 300px; margin-top: 20px; }
-          .total-row { display: flex; justify-content: space-between; padding: 8px 0; font-size: 14px; }
-          .total-row.grand { border-top: 2px solid #e2e8f0; margin-top: 8px; padding-top: 12px; font-weight: 700; font-size: 18px; color: #8E2139; }
-          .footer { text-align: center; margin-top: 40px; padding-top: 24px; font-size: 11px; color: #94a3b8; border-top: 1px solid #e2e8f0; }
-          .thank-you { text-align: center; margin-top: 24px; padding: 16px; background: #fef2f2; border-radius: 8px; color: #8E2139; font-weight: 500; }
-          @media print {
-            body { background: white; padding: 0; }
-            .invoice-box { box-shadow: none; border-radius: 0; }
-            .meta { background: none; border: 1px solid #e2e8f0; }
-          }
-        </style>
-      </head>
-      <body>
-        <div class="invoice-box">
-          <div class="invoice-inner">
-            <div class="header">
-              <div class="logo">
-                <img src="${bannerUrl}" alt="JAYASTRA" class="logo-img" onerror="this.style.display='none'; this.nextElementSibling.style.display='block';" />
-                <div class="logo-text" style="display: none;">JAYASTRA</div>
-                <p>Premium Products | Since 2026</p>
-              </div>
-              <div class="title">
-                <h2>TAX INVOICE</h2>
-                <p>GSTIN: xxxxxxxxxxxxx</p>
-              </div>
-            </div>
-            <div class="meta">
-              <div>
-                <h5>BILLED TO:</h5>
-                <p><strong>${escapeHtml(order.customer_name)}</strong></p>
-                <p>${escapeHtml(order.address || '')}</p>
-                <p>📞 ${order.phone || 'N/A'}</p>
-                <p>✉️ ${order.email || 'N/A'}</p>
-              </div>
-              <div>
-                <h5>ORDER DETAILS:</h5>
-                <p><strong>Order ID:</strong> #ORD${order.id}</p>
-                <p><strong>Order Date:</strong> ${new Date(order.created_at).toLocaleDateString('en-IN')}</p>
-                <p><strong>Payment Method:</strong> ${order.payment_method || 'COD'}</p>
-                <p><strong>Order Status:</strong> ${order.order_status || 'Placed'}</p>
-              </div>
-            </div>
-            <table>
-              <thead>
-                <tr><th>SL No.</th><th>Product ID</th><th>Item Description</th><th>Price (₹)</th><th>Qty</th><th>Total (₹)</th></tr>
-              </thead>
-              <tbody>
-                ${order.items && order.items.map((item, index) => {
-      const price = parseFloat(item.price) || 0;
-      const quantity = parseInt(item.quantity) || 0;
-      const itemTotal = price * quantity;
-      return `<tr><td>${index + 1}</td><td>${escapeHtml(item.product_code || 'N/A')}</td><td>${escapeHtml(item.name)}</td><td>₹${price.toFixed(2)}</td><td>${quantity}</td><td>₹${itemTotal.toFixed(2)}</td></tr>`;
-    }).join('')}
-              </tbody>
-            </table>
-            <div class="totals">
-              <div class="total-row"><span>Subtotal:</span><span>₹${subtotal.toFixed(2)}</span></div>
-              ${discount > 0 ? `<div class="total-row"><span>Discount:</span><span>- ₹${discount.toFixed(2)}</span></div>` : ''}
-              <div class="total-row grand"><span>Grand Total:</span><span>₹${totalAmount.toFixed(2)}</span></div>
-            </div>
-            ${order.payment_method === 'COD' ? `<div class="thank-you">💰 Cash on Delivery - Pay ₹${totalAmount.toFixed(2)} at the time of delivery</div>` : `<div class="thank-you">✅ Payment Successful via ${order.payment_method}</div>`}
-            <div class="footer">
-              <p>Thank you for shopping with JAYASTRA!</p>
-              <p>This is a computer generated invoice and does not require a physical signature.</p>
-              <p>For any queries, contact us at jayastrastore@gmail.com | 📞 +91 9652896180</p>
-            </div>
-          </div>
-        </div>
-        <script>
-          window.onload = function() { window.print(); window.onafterprint = function() { window.close(); }; };
-        </script>
-      </body>
-    </html>
-    `;
+      // Create blob URL to trigger silent, automatic file download
+      const blob = new Blob([response.data], { type: "application/pdf" });
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.setAttribute("download", `Invoice-ORD${order.id}.pdf`);
+      document.body.appendChild(link);
+      link.click();
+      link.parentNode.removeChild(link);
+      window.URL.revokeObjectURL(url);
 
-    printWindow.document.write(html);
-    printWindow.document.close();
+      toast.success("Invoice PDF downloaded successfully!");
+    } catch (err) {
+      console.error("Local PDF download error:", err);
+      toast.error("Failed to download PDF invoice");
+    } finally {
+      setLoading(false);
+    }
   };
 
   const deleteOrder = async (orderId) => {
@@ -1101,9 +1045,9 @@ const Orders = () => {
                 </button>
               )}
 
-              {/* Local Invoice Button */}
-              <button className="invoice-btn-admin local-invoice-btn" onClick={() => handlePrint(selectedOrder)} disabled={loading}>
-                <i className="bi bi-printer"></i> Local Invoice
+              {/* Local PDF Invoice Download Button */}
+              <button className="invoice-btn-admin local-invoice-btn" onClick={() => downloadLocalInvoice(selectedOrder)} disabled={loading}>
+                <i className="bi bi-file-earmark-pdf"></i> Local Invoice
               </button>
             </div>
           </div>

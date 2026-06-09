@@ -9041,6 +9041,167 @@ app.get("/api/admin/debug/shiprocket-connection", verifyToken, verifyAdminOrSupe
   }
 });
 
+// ================= CUSTOM LOCAL PDF INVOICE GENERATOR =================
+app.get("/api/admin/orders/:id/local-pdf", verifyToken, verifyAdminVendorIndividualAccess, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const userRole = req.user.role?.toLowerCase();
+
+    // 1. Fetch order details
+    const orderRes = await pool.query("SELECT * FROM orders WHERE id = $1", [id]);
+    if (orderRes.rows.length === 0) {
+      return res.status(404).json({ success: false, message: "Order not found" });
+    }
+    const order = orderRes.rows[0];
+
+    // 2. Fetch order items (scoped to vendor if not super_admin)
+    let itemsQuery = `
+      SELECT oi.*, p.name as product_name, p.product_code
+      FROM order_items oi
+      JOIN products p ON oi.product_id = p.id
+      WHERE oi.order_id = $1
+    `;
+    let params = [id];
+    if (userRole !== 'super_admin') {
+      itemsQuery += " AND p.vendor_id = $2";
+      params.push(req.user.id);
+    }
+    const itemsRes = await pool.query(itemsQuery, params);
+    const items = itemsRes.rows;
+
+    // 3. Initialize PDF Kit Document
+    const doc = new PDFDocument({ margin: 50, size: 'A4' });
+
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename="Invoice-ORD${id}.pdf"`);
+
+    doc.pipe(res);
+
+    // Brand Header
+    doc.fontSize(24).font('Helvetica-Bold').fillColor('#8E2139').text('JAYASTRA', { align: 'left' });
+    doc.fontSize(10).font('Helvetica').fillColor('#64748b').text('Premium Products | Since 2026', { align: 'left' });
+    doc.moveDown(1);
+
+    // Invoice Meta
+    doc.fontSize(16).font('Helvetica-Bold').fillColor('#1e293b').text('TAX INVOICE', { align: 'right' });
+    doc.fontSize(10).font('Helvetica').fillColor('#64748b').text(`Order ID: #ORD${order.id}`, { align: 'right' });
+    doc.text(`Date: ${new Date(order.created_at).toLocaleDateString('en-IN')}`, { align: 'right' });
+    doc.moveDown(2);
+
+    // Invoice Billing Split Details
+    const startY = doc.y;
+    doc.fontSize(11).font('Helvetica-Bold').fillColor('#475569').text('BILLED TO:', 50, startY);
+    doc.font('Helvetica').fillColor('#1e293b').text(order.customer_name || 'N/A', 50, startY + 15);
+    doc.text(order.address || 'N/A', 50, startY + 30, { width: 220 });
+    doc.text(`Phone: ${order.phone || 'N/A'}`, 50, startY + 65);
+    doc.text(`Email: ${order.email || 'N/A'}`, 50, startY + 80);
+
+    doc.font('Helvetica-Bold').fillColor('#475569').text('ORDER DETAILS:', 320, startY);
+    doc.font('Helvetica').fillColor('#1e293b').text(`Payment Method: ${order.payment_method || 'COD'}`, 320, startY + 15);
+    doc.text(`Payment Status: ${order.payment_status || 'Pending'}`, 320, startY + 30);
+    doc.text(`Order Status: ${order.order_status || 'Placed'}`, 320, startY + 45);
+
+    doc.moveDown(4);
+
+    // Structured Table Header
+    const tableTop = doc.y + 40;
+    doc.rect(50, tableTop, 500, 20).fill('#f1f5f9');
+    doc.fontSize(9).font('Helvetica-Bold').fillColor('#475569');
+    doc.text('SL No.', 60, tableTop + 5);
+    doc.text('Product Code', 110, tableTop + 5);
+    doc.text('Item Description', 210, tableTop + 5);
+    doc.text('Price (₹)', 360, tableTop + 5);
+    doc.text('Qty', 430, tableTop + 5);
+    doc.text('Total (₹)', 480, tableTop + 5);
+
+    // Structured Table Content Rows
+    let currentY = tableTop + 20;
+    items.forEach((item, index) => {
+      doc.fontSize(9).font('Helvetica').fillColor('#1e293b');
+      doc.text(String(index + 1), 60, currentY + 5);
+      doc.text(item.product_code || 'N/A', 110, currentY + 5);
+      doc.text(item.product_name || 'N/A', 210, currentY + 5, { width: 140 });
+
+      const price = parseFloat(item.price) || 0;
+      const qty = parseInt(item.quantity) || 0;
+      const total = price * qty;
+
+      doc.text(`₹${price.toFixed(2)}`, 360, currentY + 5);
+      doc.text(String(qty), 430, currentY + 5);
+      doc.text(`₹${total.toFixed(2)}`, 480, currentY + 5);
+
+      doc.strokeColor('#e2e8f0').lineWidth(1).moveTo(50, currentY + 20).lineTo(550, currentY + 20).stroke();
+      currentY += 20;
+    });
+
+    // Totals Block
+    doc.moveDown(2);
+    const totalsY = doc.y + 10;
+    const totalAmount = parseFloat(order.total_amount) || 0;
+    const discount = parseFloat(order.discount) || 0;
+    const subtotal = totalAmount + discount;
+
+    doc.fontSize(10).font('Helvetica').fillColor('#475569');
+    doc.text('Subtotal:', 350, totalsY);
+    doc.text(`₹${subtotal.toFixed(2)}`, 480, totalsY);
+
+    if (discount > 0) {
+      doc.text('Discount:', 350, totalsY + 15);
+      doc.text(`- ₹${discount.toFixed(2)}`, 480, totalsY + 15);
+    }
+
+    doc.font('Helvetica-Bold').fillColor('#8E2139');
+    doc.text('Grand Total:', 350, totalsY + 30);
+    doc.text(`₹${totalAmount.toFixed(2)}`, 480, totalsY + 30);
+
+    // Informational Footer Band
+    doc.moveDown(4);
+    const footerY = doc.y + 20;
+    doc.rect(50, footerY, 500, 30).fill('#fef2f2');
+    doc.fontSize(10).font('Helvetica-Bold').fillColor('#8E2139');
+    if (order.payment_method === 'COD') {
+      doc.text(`Cash on Delivery - Pay ₹${totalAmount.toFixed(2)} at the time of delivery`, 60, footerY + 10, { align: 'center' });
+    } else {
+      doc.text(`Payment Successful via ${order.payment_method}`, 60, footerY + 10, { align: 'center' });
+    }
+
+    doc.fontSize(8).font('Helvetica').fillColor('#94a3b8');
+    doc.text('Thank you for shopping with JAYASTRA!', 50, footerY + 45, { align: 'center' });
+    doc.text('For any queries, contact us at jayastrastore@gmail.com | +91 9652896180', 50, footerY + 60, { align: 'center' });
+
+    doc.end();
+  } catch (err) {
+    console.error("Local PDF generation error:", err);
+    res.status(500).json({ success: false, message: "Failed to generate local PDF" });
+  }
+});
+
+// ================= SECURE EXTERNAL FILE DOWNLOAD PROXY =================
+app.post("/api/admin/orders/proxy-download", verifyToken, verifyAdminVendorIndividualAccess, async (req, res) => {
+  try {
+    const { url } = req.body;
+    if (!url) {
+      return res.status(400).json({ success: false, message: "URL is required" });
+    }
+
+    // Stream download directly from Shiprocket's remote S3 bucket on your server
+    const fileRes = await fetch(url);
+    if (!fileRes.ok) {
+      throw new Error("Unable to fetch external document from remote storage");
+    }
+
+    const arrayBuffer = await fileRes.arrayBuffer();
+    const buffer = Buffer.from(arrayBuffer);
+
+    // Stream file binary directly to the browser
+    res.setHeader('Content-Type', 'application/pdf');
+    res.send(buffer);
+  } catch (error) {
+    console.error("Proxy download error:", error.message);
+    res.status(500).json({ success: false, message: "Server was unable to retrieve and download the requested file." });
+  }
+});
+
 app.get("/", (req, res) => res.send("Jayastra API is running 🚀"));
 
 app.use((err, req, res, next) => {
