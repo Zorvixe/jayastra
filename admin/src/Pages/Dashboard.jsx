@@ -45,8 +45,8 @@ const Dashboard = () => {
     amount: 0,
     supplierName: "",
     issueDate: "",
-    status: "",        // withdrawal status: Pending, Approved, Rejected
-    requestId: null    // withdrawal request ID
+    status: "",
+    requestId: null
   });
 
   const userRole = localStorage.getItem("userRole");
@@ -79,43 +79,41 @@ const Dashboard = () => {
     }
   }, [selectedDate]);
 
-  // Fetch withdrawal/payment data based on user role
+  // Fetch withdrawal/payment data
   const fetchPaymentData = async () => {
     try {
       const token = localStorage.getItem("token");
       const role = userRole?.toLowerCase();
       
-      if (role === 'vendor' || role === 'admin') {
-        // For vendors: fetch their withdrawal requests
-        const res = await axios.get(`${API_URL}/admin/payouts`, {
-          headers: { Authorization: `Bearer ${token}` }
-        });
+      const res = await axios.get(`${API_URL}/api/admin/payouts`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      
+      if (res.data.success) {
+        const payouts = res.data.payouts || [];
         
-        if (res.data.success) {
-          const payouts = res.data.payouts || [];
-          // Get pending withdrawal requests
+        if (role === 'vendor' || role === 'admin') {
           const pendingWithdrawals = payouts.filter(p => p.status === 'Pending');
           const totalPendingAmount = pendingWithdrawals.reduce((sum, p) => sum + (parseFloat(p.amount) || 0), 0);
           
           if (pendingWithdrawals.length > 0) {
-            const latestWithdrawal = pendingWithdrawals[0];
+            const latest = pendingWithdrawals[0];
             setPendingPayment({
               count: pendingWithdrawals.length,
               amount: totalPendingAmount,
               supplierName: "My Withdrawal Request",
-              issueDate: latestWithdrawal.requested_at ? new Date(latestWithdrawal.requested_at).toLocaleDateString('en-IN', {
+              issueDate: latest.requested_at ? new Date(latest.requested_at).toLocaleDateString('en-IN', {
                 day: 'numeric', month: 'short', year: 'numeric'
               }) : "",
               status: "Pending",
-              requestId: latestWithdrawal.id
+              requestId: latest.id
             });
           } else {
-            // Check if there are any completed/rejected withdrawals
-            const anyWithdrawals = payouts.filter(p => p.status === 'Paid' || p.status === 'Rejected' || p.status === 'Cancelled');
-            if (anyWithdrawals.length > 0) {
-              const latest = anyWithdrawals[0];
+            const completedWithdrawals = payouts.filter(p => p.status === 'Paid');
+            if (completedWithdrawals.length > 0) {
+              const latest = completedWithdrawals[0];
               setPendingPayment({
-                count: anyWithdrawals.length,
+                count: completedWithdrawals.length,
                 amount: parseFloat(latest.amount) || 0,
                 supplierName: latest.status === 'Paid' ? "Withdrawal Completed" : "Withdrawal " + latest.status,
                 issueDate: latest.requested_at ? new Date(latest.requested_at).toLocaleDateString('en-IN', {
@@ -135,56 +133,31 @@ const Dashboard = () => {
               });
             }
           }
-        }
-      } else if (role === 'super_admin') {
-        // For super admin: fetch pending vendor withdrawals
-        const res = await axios.get(`${API_URL}/admin/payouts`, {
-          headers: { Authorization: `Bearer ${token}` }
-        });
-        
-        if (res.data.success) {
-          const payouts = res.data.payouts || [];
+        } else if (role === 'super_admin') {
           const pendingWithdrawals = payouts.filter(p => p.status === 'Pending');
           const totalPendingAmount = pendingWithdrawals.reduce((sum, p) => sum + (parseFloat(p.amount) || 0), 0);
           
           if (pendingWithdrawals.length > 0) {
-            const latestWithdrawal = pendingWithdrawals[0];
-            const vendorName = latestWithdrawal.store_name || latestWithdrawal.vendor_name || "Vendor";
+            const latest = pendingWithdrawals[0];
             setPendingPayment({
               count: pendingWithdrawals.length,
               amount: totalPendingAmount,
-              supplierName: vendorName,
-              issueDate: latestWithdrawal.requested_at ? new Date(latestWithdrawal.requested_at).toLocaleDateString('en-IN', {
+              supplierName: latest.store_name || latest.vendor_name || "Vendor",
+              issueDate: latest.requested_at ? new Date(latest.requested_at).toLocaleDateString('en-IN', {
                 day: 'numeric', month: 'short', year: 'numeric'
               }) : "",
               status: "Pending Approval",
-              requestId: latestWithdrawal.id
+              requestId: latest.id
             });
           } else {
-            // Check recent completed withdrawals
-            const completedWithdrawals = payouts.filter(p => p.status === 'Paid');
-            if (completedWithdrawals.length > 0) {
-              const latest = completedWithdrawals[0];
-              setPendingPayment({
-                count: completedWithdrawals.length,
-                amount: parseFloat(latest.amount) || 0,
-                supplierName: latest.store_name || latest.vendor_name || "Vendor",
-                issueDate: latest.processed_at ? new Date(latest.processed_at).toLocaleDateString('en-IN', {
-                  day: 'numeric', month: 'short', year: 'numeric'
-                }) : "",
-                status: "Completed",
-                requestId: latest.id
-              });
-            } else {
-              setPendingPayment({
-                count: 0,
-                amount: 0,
-                supplierName: "No pending withdrawals",
-                issueDate: "",
-                status: "",
-                requestId: null
-              });
-            }
+            setPendingPayment({
+              count: 0,
+              amount: 0,
+              supplierName: "No pending withdrawals",
+              issueDate: "",
+              status: "",
+              requestId: null
+            });
           }
         }
       }
@@ -198,20 +171,30 @@ const Dashboard = () => {
       setLoading(true);
       const token = localStorage.getItem("token");
 
-      const res = await axios.get(`${API_URL}/api/admin/dashboard/stats-by-date`, {
+      // Main dashboard data - includes stats, orderOverview, recentOrders, dailySales
+      const dashboardRes = await axios.get(`${API_URL}/api/admin/dashboard/stats-by-date`, {
         params: { date: date },
         headers: { Authorization: `Bearer ${token}` },
       });
 
+      // Today's stats
       const todayRes = await axios.get(`${API_URL}/api/admin/dashboard/today-stats`, {
         headers: { Authorization: `Bearer ${token}` },
       });
 
-      if (res.data.success) {
-        setStats(res.data.stats);
-        setOrderOverview(res.data.orderOverview);
-        setRecentOrders(res.data.recentOrders);
-        setDailySales(res.data.dailySales);
+      if (dashboardRes.data.success) {
+        setStats(dashboardRes.data.stats);
+        setOrderOverview(dashboardRes.data.orderOverview);
+        setRecentOrders(dashboardRes.data.recentOrders);
+        setDailySales(dashboardRes.data.dailySales);
+        
+        // Update pending payment if returned from stats-by-date
+        if (dashboardRes.data.pendingPayment) {
+          setPendingPayment(prev => ({
+            ...prev,
+            ...dashboardRes.data.pendingPayment
+          }));
+        }
       }
 
       if (todayRes.data.success) {
@@ -221,7 +204,7 @@ const Dashboard = () => {
         });
       }
 
-      // Fetch payment/withdrawal data
+      // Fetch additional payment/withdrawal data
       await fetchPaymentData();
       
     } catch (error) {
@@ -284,7 +267,6 @@ const Dashboard = () => {
     navigate("/admin/payouts");
   };
 
-  // Get status badge class
   const getStatusBadgeClass = () => {
     const status = pendingPayment.status?.toLowerCase();
     if (status === 'pending' || status === 'pending approval') return 'status-pending';

@@ -1116,3 +1116,353 @@
     background: rgba(30, 0, 10, 0.95);
     border: 1px solid rgba(239, 68, 68, 0.2);
 }
+/* ================= SHIPROCKET LIVE TRACKING SCREEN ================= */
+.live-tracking-screen {
+   background-color: #f8fafc;
+   min-height: 100vh;
+   display: flex;
+   flex-direction: column;
+   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+}
+
+.live-tracking-header {
+   background: #fff;
+   padding: 15px 20px;
+   border-bottom: 1px solid #e2e8f0;
+   display: flex;
+   align-items: center;
+}
+
+.back-to-order-btn {
+   background: none;
+   border: none;
+   font-weight: 700;
+   color: #334155;
+   display: flex;
+   align-items: center;
+   gap: 8px;
+   cursor: pointer;
+   font-size: 14px;
+   text-transform: uppercase;
+   letter-spacing: 0.5px;
+   transition: color 0.2s ease;
+}
+
+.back-to-order-btn:hover {
+   color: #8E2139;
+}
+
+.live-tracking-body {
+   flex: 1;
+   max-width: 600px;
+   width: 100%;
+   margin: 0 auto;
+   padding: 20px;
+   box-sizing: border-box;
+}
+
+.courier-info-card {
+   background: #fff;
+   border-radius: 12px;
+   padding: 15px 20px;
+   margin-bottom: 20px;
+   box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+   display: flex;
+   justify-content: space-between;
+   align-items: center;
+   border: 1px solid #e2e8f0;
+}
+
+.courier-details p {
+   margin: 4px 0;
+}
+
+.courier-label {
+   font-size: 14px;
+   color: #64748b;
+}
+
+.courier-value {
+   font-weight: 700;
+   color: #1e293b;
+   font-size: 16px;
+}
+
+.tracking-id-label {
+   font-size: 13px;
+   color: #64748b;
+}
+
+.tracking-value {
+   font-weight: 600;
+   color: #475569;
+   font-family: monospace;
+   font-size: 14px;
+   letter-spacing: 0.5px;
+}
+
+.share-awb-btn {
+   background: #f1f5f9;
+   border: none;
+   width: 40px;
+   height: 40px;
+   border-radius: 50px;
+   display: flex;
+   align-items: center;
+   justify-content: center;
+   color: #475569;
+   cursor: pointer;
+   transition: background 0.2s ease;
+}
+
+.share-awb-btn:hover {
+   background: #e2e8f0;
+   color: #0f172a;
+}
+
+/* Tracking Timeline Container */
+.live-timeline-container {
+   background: #fff;
+   border-radius: 12px;
+   padding: 24px;
+   box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+   border: 1px solid #e2e8f0;
+}
+
+.live-timeline-step {
+   display: flex;
+   position: relative;
+   margin-bottom: 30px;
+}
+
+.live-timeline-step:last-child {
+   margin-bottom: 0;
+}
+
+.step-left {
+   width: 70px;
+   text-align: right;
+   padding-right: 15px;
+   font-size: 13px;
+   font-weight: 700;
+   color: #475569;
+   line-height: 24px;
+}
+
+.step-center {
+   display: flex;
+   flex-direction: column;
+   align-items: center;
+   position: relative;
+   width: 30px;
+}
+
+.step-indicator-dot {
+   width: 24px;
+   height: 24px;
+   border-radius: 50%;
+   background: #fff;
+   border: 2px solid #cbd5e1;
+   display: flex;
+   align-items: center;
+   justify-content: center;
+   z-index: 2;
+   font-size: 12px;
+   color: #94a3b8;
+}
+
+.step-indicator-dot.checked {
+   background: #10b981;
+   border-color: #10b981;
+   color: #fff;
+}
+
+/* Blue timeline dot highlighting your active transit stage */
+.step-indicator-dot.current {
+   background: #3b82f6;
+   border-color: #3b82f6;
+   color: #fff;
+   box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.2);
+}
+
+.step-indicator-line {
+   width: 2px;
+   background: #e2e8f0;
+   position: absolute;
+   top: 24px;
+   bottom: -30px;
+   z-index: 1;
+}
+
+.step-indicator-line.active {
+   background: #10b981;
+}
+
+.step-right {
+   flex: 1;
+   padding-left: 15px;
+}
+
+.activity-status-pill {
+   background: #eff6ff;
+   color: #1d4ed8;
+   font-size: 12px;
+   font-weight: 700;
+   padding: 4px 12px;
+   border-radius: 12px;
+   display: inline-block;
+   margin-bottom: 6px;
+}
+
+.step-time {
+   display: block;
+   font-size: 11px;
+   color: #94a3b8;
+   margin-bottom: 4px;
+}
+
+.step-description {
+   margin: 0;
+   font-size: 14px;
+   color: #1e293b;
+   font-weight: 500;
+   line-height: 1.5;
+}
+
+.step-location {
+   margin: 6px 0 0 0;
+   font-size: 12px;
+   color: #64748b;
+   display: flex;
+   align-items: center;
+   gap: 4px;
+}
+
+/* Bottom Action Layout */
+.live-tracking-footer {
+   background: #fff;
+   border-top: 1px solid #e2e8f0;
+   padding: 16px 20px;
+   display: flex;
+   justify-content: center;
+   gap: 12px;
+   position: sticky;
+   bottom: 0;
+   z-index: 10;
+}
+
+.btn-open-tracking-link, .btn-go-back {
+   flex: 1;
+   max-width: 250px;
+   padding: 12px 20px;
+   font-size: 14px;
+   font-weight: 600;
+   border-radius: 8px;
+   text-align: center;
+   cursor: pointer;
+   text-decoration: none;
+   transition: all 0.2s ease;
+}
+
+.btn-open-tracking-link {
+   background: #fff;
+   color: #1e293b;
+   border: 1px solid #cbd5e1;
+   display: flex;
+   align-items: center;
+   justify-content: center;
+   gap: 8px;
+}
+
+.btn-open-tracking-link:hover {
+   background: #f8fafc;
+   border-color: #94a3b8;
+   color: #0f172a;
+}
+
+.btn-go-back {
+   background: #8E2139;
+   color: #fff;
+   border: none;
+}
+
+.btn-go-back:hover {
+   background: #721a2d;
+}
+
+.live-tracking-loader {
+   display: flex;
+   flex-direction: column;
+   align-items: center;
+   justify-content: center;
+   padding: 80px 0;
+   color: #64748b;
+}
+
+.tracking-error-container {
+   text-align: center;
+   padding: 40px 20px;
+   color: #64748b;
+}
+
+.tracking-error-container i {
+   font-size: 40px;
+   color: #ef4444;
+   margin-bottom: 15px;
+   display: block;
+}
+
+/* Custom interactive trigger cards */
+.live-track-trigger-section {
+   margin-top: 15px;
+   padding: 15px;
+   background: #f8fafc;
+   border-radius: 8px;
+   border: 1px dashed #cbd5e1;
+}
+
+.btn-track-live {
+   background: #8E2139;
+   color: #fff;
+   border: none;
+   padding: 10px 20px;
+   border-radius: 6px;
+   font-weight: 600;
+   font-size: 13px;
+   cursor: pointer;
+   display: flex;
+   align-items: center;
+   gap: 6px;
+   margin-top: 8px;
+   transition: background 0.2s ease;
+}
+
+.btn-track-live:hover {
+   background: #721a2d;
+}
+
+.awb-info-text {
+   font-size: 13px;
+   color: #475569;
+   margin: 0;
+}
+
+.awb-info-text-pending {
+   font-size: 13px;
+   color: #64748b;
+   font-style: italic;
+   margin-top: 10px;
+}
+
+.no-live-activities {
+   text-align: center;
+   padding: 40px 10px;
+   color: #64748b;
+}
+
+.no-live-activities i {
+   font-size: 44px;
+   color: #94a3b8;
+   margin-bottom: 12px;
+   display: block;
+}

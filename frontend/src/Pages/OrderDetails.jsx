@@ -4,7 +4,7 @@ import axios from "axios";
 import ExchangeModal from "../components/ExchangeModal";
 import { useUser } from "../context/UserContext";
 import "./OrderDetails.css";
-import Loader from "../components/Loader"; // ✅ NEW
+import Loader from "../components/Loader";
 
 const API_URL = process.env.REACT_APP_API_URL;
 
@@ -36,6 +36,11 @@ const OrderDetails = () => {
    const [deleteConfirm, setDeleteConfirm] = useState(null);
    const [isSubmitting, setIsSubmitting] = useState(false);
    const [notif, setNotif] = useState({ show: false, message: "", type: "success" });
+
+   // Live Shipment Tracking State
+   const [showLiveTracking, setShowLiveTracking] = useState(false);
+   const [liveTrackingData, setLiveTrackingData] = useState(null);
+   const [trackingLoading, setTrackingLoading] = useState(false);
 
    const fetchOrderDetails = async () => {
       try {
@@ -80,6 +85,107 @@ const OrderDetails = () => {
       }
    };
 
+   // Fetch Tracking Data from Shiprocket backend proxy
+   const handleOpenLiveTracking = async () => {
+      if (!order || !order.awb_code) return;
+      setShowLiveTracking(true);
+      setTrackingLoading(true);
+      try {
+         const token = localStorage.getItem("token");
+         const res = await axios.get(`${API_URL}/shiprocket/track/${order.awb_code}`, {
+            headers: { Authorization: `Bearer ${token}` }
+         });
+         if (res.data.success) {
+            setLiveTrackingData(res.data.tracking);
+         } else {
+            showNotification(res.data.message || "Tracking details are not synchronized yet.", "error");
+         }
+      } catch (err) {
+         console.error("Live tracking retrieval error:", err);
+         showNotification("Unable to connect with the delivery network. Try again later.", "error");
+      } finally {
+         setTrackingLoading(false);
+      }
+   };
+
+   // Handles browser-native sharing or fallback copying of AWB tracking code
+   const handleShareAWB = () => {
+      if (!liveTrackingData) return;
+      if (navigator.share) {
+         navigator.share({
+            title: `Track Parcel: ${liveTrackingData.awb_code}`,
+            text: `Track my JAYASTRA order shipped via ${liveTrackingData.courier_name} with AWB: ${liveTrackingData.awb_code}`,
+            url: `https://shiprocket.co/tracking/${liveTrackingData.awb_code}`
+         }).catch(err => console.log(err));
+      } else {
+         navigator.clipboard.writeText(liveTrackingData.awb_code);
+         showNotification("Tracking AWB code copied!");
+      }
+   };
+
+   // Safety helper parsing non-standard ISO formats
+   const parseShiprocketDate = (dateStr) => {
+      if (!dateStr) return new Date();
+      const cleanStr = dateStr.replace(' ', 'T');
+      const dt = new Date(cleanStr);
+      if (isNaN(dt.getTime())) {
+         const parts = dateStr.split(/[- :]/);
+         if (parts.length >= 6) {
+            return new Date(parts[0], parts[1] - 1, parts[2], parts[3], parts[4], parts[5]);
+         }
+      }
+      return dt;
+   };
+
+   // Appends placeholders for upcoming stages if they have not been met yet
+   const buildTimeline = () => {
+      if (!liveTrackingData || !liveTrackingData.activities) return [];
+
+      const activities = [...liveTrackingData.activities].sort(
+         (a, b) => parseShiprocketDate(a.date) - parseShiprocketDate(b.date)
+      );
+
+      const currentStatus = (liveTrackingData.current_status || "").toLowerCase();
+      const isDelivered = currentStatus.includes("delivered");
+      const isOutForDelivery = currentStatus.includes("out for delivery") || currentStatus.includes("out_for_delivery");
+
+      const timelineItems = activities.map((act, index) => {
+         const isLatest = index === activities.length - 1;
+         return {
+            ...act,
+            isPlaceholder: false,
+            isLatest: isLatest && !isDelivered,
+            isCompleted: !isLatest || isDelivered,
+         };
+      });
+
+      if (!isOutForDelivery && !isDelivered) {
+         timelineItems.push({
+            isPlaceholder: true,
+            isLatest: false,
+            isCompleted: false,
+            activity: "Out for Delivery",
+            status: "Upcoming",
+            location: null,
+            date: null
+         });
+      }
+
+      if (!isDelivered) {
+         timelineItems.push({
+            isPlaceholder: true,
+            isLatest: false,
+            isCompleted: false,
+            activity: "Delivered",
+            status: "Upcoming",
+            location: null,
+            date: null
+         });
+      }
+
+      return timelineItems;
+   };
+
    const submitReview = async (productId) => {
       const data = reviewFormData[productId];
       if (!data || !data.rating || !data.comment) {
@@ -111,7 +217,6 @@ const OrderDetails = () => {
             setUserReviews(prev => ({ ...prev, [productId]: res.data.review }));
             setActiveReviewItem(null); // Auto close
             showNotification("Review Submitted Successfully!");
-            // Clear data
             setReviewFormData(prev => {
                const updated = { ...prev };
                delete updated[productId];
@@ -181,11 +286,8 @@ const OrderDetails = () => {
 
       // Limit to 3 files
       const totalFiles = [...currentImages, ...files].slice(0, 3);
-
-      // Create preview URLs
       const newPreviewUrls = totalFiles.map(file => URL.createObjectURL(file));
 
-      // Revoke old URLs
       if (currentPreviews.length > 0) {
          currentPreviews.forEach(url => URL.revokeObjectURL(url));
       }
@@ -206,7 +308,6 @@ const OrderDetails = () => {
       const newUrls = [...(currentData.previewUrls || [])];
 
       URL.revokeObjectURL(newUrls[index]);
-
       newImages.splice(index, 1);
       newUrls.splice(index, 1);
 
@@ -222,8 +323,6 @@ const OrderDetails = () => {
 
    useEffect(() => {
       fetchOrderDetails();
-
-      // Polling to update automatically without refreshing
       const interval = setInterval(() => {
          fetchOrderDetails();
       }, 5000);
@@ -232,15 +331,123 @@ const OrderDetails = () => {
    }, [id]);
 
    if (loading && !order) {
-      return (
-         <Loader />
-      );
+      return <Loader />;
    }
 
    if (!order) {
       return (
          <div className="order-details-error">
             Order not found or you don't have permission to view it.
+         </div>
+      );
+   }
+
+   // Return dedicated live tracking view matching phone mockup screenshot
+   if (showLiveTracking) {
+      const timelineItems = buildTimeline();
+
+      return (
+         <div className="live-tracking-screen no-print">
+            <div className="live-tracking-header">
+               <button className="back-to-order-btn" onClick={() => setShowLiveTracking(false)}>
+                  <i className="bi bi-chevron-left"></i> SEE ALL UPDATES
+               </button>
+            </div>
+
+            <div className="live-tracking-body">
+               {trackingLoading ? (
+                  <div className="live-tracking-loader">
+                     <Loader />
+                     <p style={{ marginTop: "15px" }}>Loading direct package logs...</p>
+                  </div>
+               ) : liveTrackingData ? (
+                  <>
+                     <div className="courier-info-card">
+                        <div className="courier-details">
+                           <p className="courier-label">Courier: <span className="courier-value">{liveTrackingData.courier_name}</span></p>
+                           <p className="tracking-id-label">Tracking ID: <span className="tracking-value">{liveTrackingData.awb_code}</span></p>
+                        </div>
+                        <button className="share-awb-btn" onClick={handleShareAWB} title="Share updates">
+                           <i className="bi bi-share"></i>
+                        </button>
+                     </div>
+
+                     <div className="live-timeline-container">
+                        {timelineItems.length > 0 ? (
+                           timelineItems.map((item, index) => {
+                              let formattedDate = "";
+                              let formattedTime = "";
+
+                              if (item.date) {
+                                 const dt = parseShiprocketDate(item.date);
+                                 formattedDate = dt.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' });
+                                 formattedTime = dt.toLocaleTimeString('en-IN', { hour: 'numeric', minute: '2-digit', hour12: true });
+                              }
+
+                              let dotClass = "step-indicator-dot";
+                              let dotIcon = null;
+
+                              if (item.isCompleted) {
+                                 dotClass += " checked";
+                                 dotIcon = <i className="bi bi-check-lg"></i>;
+                              } else if (item.isLatest) {
+                                 dotClass += " current";
+                                 dotIcon = <i className="bi bi-truck"></i>;
+                              }
+
+                              return (
+                                 <div key={index} className="live-timeline-step">
+                                    <div className="step-left">
+                                       <span className="step-date">{formattedDate || "Planned"}</span>
+                                    </div>
+                                    <div className="step-center">
+                                       <div className={dotClass}>
+                                          {dotIcon}
+                                       </div>
+                                       {index < timelineItems.length - 1 && (
+                                          <div className={`step-indicator-line ${item.isCompleted ? 'active' : ''}`}></div>
+                                       )}
+                                    </div>
+                                    <div className="step-right">
+                                       {!item.isPlaceholder && (
+                                          <div className="activity-status-pill">{item.status || "In Transit"}</div>
+                                       )}
+                                       {formattedTime && <span className="step-time">{formattedTime}</span>}
+                                       <p className="step-description">{item.activity}</p>
+                                       {item.location && <p className="step-location"><i className="bi bi-geo-alt"></i> {item.location}</p>}
+                                    </div>
+                                 </div>
+                              );
+                           })
+                        ) : (
+                           <div className="no-live-activities">
+                              <i className="bi bi-box-seam"></i>
+                              <p>Order is registered. Tracking updates will show once picked up by our courier partner.</p>
+                           </div>
+                        )}
+                     </div>
+                  </>
+               ) : (
+                  <div className="tracking-error-container">
+                     <i className="bi bi-exclamation-triangle"></i>
+                     <p>Could not retrieve tracking details. Please try accessing the direct link instead.</p>
+                  </div>
+               )}
+            </div>
+
+            <div className="live-tracking-footer">
+               <a 
+                  href={`https://shiprocket.co/tracking/${order.awb_code}`} 
+                  target="_blank" 
+                  rel="noopener noreferrer" 
+                  className="btn-open-tracking-link"
+               >
+                  <i className="bi bi-box-arrow-up-right"></i> Open Tracking Link
+               </a>
+               <button className="btn-go-back" onClick={() => setShowLiveTracking(false)}>
+                  Go Back
+               </button>
+            </div>
          </div>
       );
    }
@@ -266,7 +473,6 @@ const OrderDetails = () => {
    const getExchangeStatus = () => {
       if (order.order_status !== "Delivered") return null;
 
-      // Assuming updated_at is the delivery timestamp when status is Delivered
       const deliveryDate = new Date(order.updated_at);
       const now = new Date();
       const diffTime = now - deliveryDate;
@@ -381,7 +587,6 @@ const OrderDetails = () => {
          </div>
 
          <div className="order-details-container no-print">
-            {/* TOP SECTION: ID & STATUS */}
             <div className="order-left-col">
                <div className="order-products-box">
                   <div className="order-id-meta">
@@ -448,6 +653,25 @@ const OrderDetails = () => {
 
                <div className="order-tracking-box">
                   <span className="tracking-title">Track your order</span>
+
+                  {order.awb_code ? (
+                     <div className="live-track-trigger-section">
+                        <p className="awb-info-text">
+                           Live tracking updates are active with AWB code: <strong>{order.awb_code}</strong>
+                        </p>
+                        <button 
+                           className="btn-track-live" 
+                           onClick={handleOpenLiveTracking}
+                        >
+                           <i className="bi bi-geo-alt-fill"></i> Live Tracking Location
+                        </button>
+                     </div>
+                  ) : (
+                     <p className="awb-info-text-pending">
+                        Live shipment tracking updates will show here once your parcel is dispatched.
+                     </p>
+                  )}
+
                   <div className="tracking-timeline">
                      <div className={`track-step ${currentStep >= 1 ? 'step-active' : ''}`}>
                         <div className="ts-icon"></div>
@@ -516,6 +740,16 @@ const OrderDetails = () => {
                   <button className="btn-invoice" onClick={handleDownloadInvoice}>
                      <i className="bi bi-download"></i> Download Invoice
                   </button>
+
+                  {order.awb_code && (
+                     <button 
+                        className="btn-invoice btn-track-package-trigger" 
+                        onClick={handleOpenLiveTracking}
+                        style={{ background: '#3b82f6', color: 'white', borderColor: '#3b82f6', marginTop: '10px' }}
+                     >
+                        <i className="bi bi-geo-alt-fill"></i> Track Live Location
+                     </button>
+                  )}
 
                   {order.order_status === "Delivered" && exchangeInfo && (
                      <div className="exchange-status-container">

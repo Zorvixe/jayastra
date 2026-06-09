@@ -25,7 +25,7 @@ const Sidebar = ({ isCollapsed, toggleSidebar }) => {
     { path: "/admin/users", icon: "bi bi-people", label: "Vendors / Users", roles: ["super_admin", "admin", "vendor"] },
     { path: "/admin/coupons", icon: "bi bi-ticket-perforated", label: "Coupons", roles: ["super_admin", "admin", "vendor"] },
     { path: "/admin/banners", icon: "bi bi-image", label: "Banners", roles: ["super_admin"] },
-    { path: "/admin/vendor-pickup", icon: "bi bi-building", label: "Shipping", roles: ["super_admin", "admin", "vendor"] },
+    // { path: "/admin/vendor-pickup", icon: "bi bi-building", label: "Shipping", roles: ["super_admin", "admin", "vendor"] },
     { path: "/admin/platform-fee", icon: "bi bi-percent", label: "Platform Fee", roles: ["super_admin"] },
     { path: "/admin/reports", icon: "bi bi-bar-chart", label: "Reports", roles: ["super_admin", "admin"] },
     { path: "/admin/whatsapp-settings", icon: "bi bi-chat-dots", label: "WhatsApp Settings", roles: ["super_admin"] },
