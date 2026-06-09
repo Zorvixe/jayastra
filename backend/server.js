@@ -5132,7 +5132,6 @@ app.get("/api/admin/payouts/earning-stats", verifyToken, verifyAdminVendorIndivi
   }
 });
 
-// ================= DASHBOARD STATS BY DATE =================
 app.get("/api/admin/dashboard/stats-by-date", verifyToken, verifyAnyAdmin, async (req, res) => {
   try {
     const { date } = req.query;
@@ -5148,6 +5147,15 @@ app.get("/api/admin/dashboard/stats-by-date", verifyToken, verifyAnyAdmin, async
     const startDateStr = startDate.toISOString();
     const endDateStr = endDate.toISOString();
 
+    // Helper function to build common params
+    const getBaseParams = () => {
+      let params = [startDateStr, endDateStr];
+      if (userRole !== 'super_admin') {
+        params.push(vendorId);
+      }
+      return params;
+    };
+
     // 1. Order Overview for the selected date
     let overviewQuery = `
       SELECT 
@@ -5156,26 +5164,12 @@ app.get("/api/admin/dashboard/stats-by-date", verifyToken, verifyAnyAdmin, async
         COUNT(CASE WHEN o.order_status = 'Delivered' THEN 1 END)::int as delivered,
         COUNT(CASE WHEN o.order_status = 'Cancelled' THEN 1 END)::int as cancelled
       FROM orders o
+      ${userRole !== 'super_admin' ? 'JOIN order_items oi ON o.id = oi.order_id' : ''}
       WHERE o.created_at BETWEEN $1 AND $2
+      ${userRole !== 'super_admin' ? 'AND oi.vendor_id = $3' : ''}
     `;
-    let overviewParams = [startDateStr, endDateStr];
-
-    // For vendors, filter orders containing their products
-    if (userRole !== 'super_admin') {
-      overviewQuery = `
-        SELECT 
-          COUNT(CASE WHEN o.order_status IN ('Placed', 'Pending', 'Processing') THEN 1 END)::int as pending,
-          COUNT(CASE WHEN o.order_status IN ('Shipped', 'On the Way', 'Out for Delivery') THEN 1 END)::int as on_the_way,
-          COUNT(CASE WHEN o.order_status = 'Delivered' THEN 1 END)::int as delivered,
-          COUNT(CASE WHEN o.order_status = 'Cancelled' THEN 1 END)::int as cancelled
-        FROM orders o
-        JOIN order_items oi ON o.id = oi.order_id
-        WHERE o.created_at BETWEEN $1 AND $2 AND oi.vendor_id = $3
-      `;
-      overviewParams.push(vendorId);
-    }
-
-    const overviewRes = await pool.query(overviewQuery, overviewParams);
+    
+    const overviewRes = await pool.query(overviewQuery, getBaseParams());
     const dbOverview = overviewRes.rows[0];
 
     const orderOverview = {
@@ -5187,8 +5181,8 @@ app.get("/api/admin/dashboard/stats-by-date", verifyToken, verifyAnyAdmin, async
 
     // 2. Pending Payment for the selected date
     let payoutQuery;
-    let payoutParams = [];
-
+    let payoutParams = getBaseParams();
+    
     if (userRole !== 'super_admin') {
       payoutQuery = `
         SELECT 
@@ -5196,9 +5190,8 @@ app.get("/api/admin/dashboard/stats-by-date", verifyToken, verifyAnyAdmin, async
           COALESCE(SUM(amount), 0.00)::float as total_amount,
           MAX(requested_at) as latest_date
         FROM payouts 
-        WHERE vendor_id = $1 AND status = 'Pending' AND requested_at BETWEEN $2 AND $3
+        WHERE vendor_id = $3 AND status = 'Pending' AND requested_at BETWEEN $1 AND $2
       `;
-      payoutParams = [vendorId, startDateStr, endDateStr];
     } else {
       payoutQuery = `
         SELECT 
@@ -5210,7 +5203,6 @@ app.get("/api/admin/dashboard/stats-by-date", verifyToken, verifyAnyAdmin, async
         JOIN users u ON p.vendor_id = u.id
         WHERE p.status = 'Pending' AND p.requested_at BETWEEN $1 AND $2
       `;
-      payoutParams = [startDateStr, endDateStr];
     }
 
     const payoutRes = await pool.query(payoutQuery, payoutParams);
@@ -5236,39 +5228,26 @@ app.get("/api/admin/dashboard/stats-by-date", verifyToken, verifyAnyAdmin, async
 
     // 3. Recent Orders for the selected date
     let recentQuery = `
-      SELECT o.id, o.customer_name, o.created_at, o.total_amount, o.order_status,
+      SELECT DISTINCT o.id, o.customer_name, o.created_at, o.total_amount, o.order_status,
         u.name as user_name
       FROM orders o
       LEFT JOIN users u ON o.user_id = u.id
+      ${userRole !== 'super_admin' ? 'JOIN order_items oi ON o.id = oi.order_id' : ''}
       WHERE o.created_at BETWEEN $1 AND $2
+      ${userRole !== 'super_admin' ? 'AND oi.vendor_id = $3' : ''}
       ORDER BY o.created_at DESC
       LIMIT 10
     `;
-    let recentParams = [startDateStr, endDateStr];
-
-    if (userRole !== 'super_admin') {
-      recentQuery = `
-        SELECT DISTINCT o.id, o.customer_name, o.created_at, o.total_amount, o.order_status,
-          u.name as user_name
-        FROM orders o
-        LEFT JOIN users u ON o.user_id = u.id
-        JOIN order_items oi ON o.id = oi.order_id
-        JOIN products p ON oi.product_id = p.id
-        WHERE o.created_at BETWEEN $1 AND $2 AND p.vendor_id = $3
-        ORDER BY o.created_at DESC
-        LIMIT 10
-      `;
-      recentParams.push(vendorId);
-    }
-
-    const recentRes = await pool.query(recentQuery, recentParams);
+    
+    const recentRes = await pool.query(recentQuery, getBaseParams());
     const recentOrders = recentRes.rows;
 
     // 4. Daily Sales for the selected date (last 7 days)
     const dailySalesQuery = `
       SELECT 
         TO_CHAR(o.created_at, 'Dy') as day,
-        COALESCE(SUM(${userRole !== 'super_admin' ? 'oi.vendor_earning' : 'o.total_amount'}), 0)::float as amount
+        COALESCE(SUM(${userRole !== 'super_admin' ? 'oi.vendor_earning' : 'o.total_amount'}), 0)::float as amount,
+        DATE_TRUNC('day', o.created_at) as date_order
       FROM orders o
       ${userRole !== 'super_admin' ? 'JOIN order_items oi ON o.id = oi.order_id' : ''}
       WHERE o.created_at >= (DATE($1) - INTERVAL '6 days')
@@ -5297,24 +5276,19 @@ app.get("/api/admin/dashboard/stats-by-date", verifyToken, verifyAnyAdmin, async
       ${userRole !== 'super_admin' ? 'AND oi.vendor_id = $3' : ''}
     `;
 
-    let statsParams = [startDateStr, endDateStr];
-    if (userRole !== 'super_admin') {
-      statsParams.push(vendorId);
-    }
+    const statsRes = await pool.query(statsQuery, getBaseParams());
 
-    const statsRes = await pool.query(statsQuery, statsParams);
-
-    // Get product count for the selected date
+    // 6. Product count for the selected date
     let productQuery = `
       SELECT COUNT(*)::int as total_products
       FROM products
       WHERE created_at BETWEEN $1 AND $2
       ${userRole !== 'super_admin' ? 'AND vendor_id = $3' : ''}
     `;
+    
+    const productRes = await pool.query(productQuery, getBaseParams());
 
-    const productRes = await pool.query(productQuery, productParams || [...statsParams]);
-
-    // Get user count (for super admin only)
+    // 7. User count (for super admin only)
     let userCount = 0;
     if (userRole === 'super_admin') {
       const userRes = await pool.query(
@@ -5324,15 +5298,15 @@ app.get("/api/admin/dashboard/stats-by-date", verifyToken, verifyAnyAdmin, async
       userCount = userRes.rows[0]?.total_users || 0;
     }
 
-    // Get stock notification count
+    // 8. Stock notification count
     let stockQuery = `
       SELECT COUNT(*)::int as stock_notification_count
       FROM stock_notifications
       WHERE created_at BETWEEN $1 AND $2
       ${userRole !== 'super_admin' ? 'AND vendor_id = $3' : ''}
     `;
-
-    const stockRes = await pool.query(stockQuery, statsParams);
+    
+    const stockRes = await pool.query(stockQuery, getBaseParams());
 
     const stats = {
       totalProducts: productRes.rows[0]?.total_products || 0,
@@ -5356,7 +5330,13 @@ app.get("/api/admin/dashboard/stats-by-date", verifyToken, verifyAnyAdmin, async
     res.status(500).json({
       success: false,
       message: error.message,
-      stats: {},
+      stats: {
+        totalProducts: 0,
+        totalOrders: 0,
+        totalUsers: 0,
+        totalRevenue: 0,
+        stockNotificationCount: 0
+      },
       orderOverview: { pending: 0, onTheWay: 0, delivered: 0, cancelled: 0 },
       pendingPayment: { count: 0, amount: 0, supplierName: "", issueDate: "" },
       recentOrders: [],
@@ -5364,8 +5344,6 @@ app.get("/api/admin/dashboard/stats-by-date", verifyToken, verifyAnyAdmin, async
     });
   }
 });
-// Add this to your existing routes in the backend file
-
 
 
 // ================= SHIPROCKET INTEGRATION (DATABASE DRIVEN) =================
@@ -6627,7 +6605,6 @@ app.get("/api/admin/orders/:id/awb-status", verifyToken, verifyAdminVendorIndivi
 });
 
 
-// ================= DELETE ORDER ENDPOINT =================
 app.delete("/api/admin/orders/:id", verifyToken, verifyAdminOrSuperAdmin, async (req, res) => {
   const client = await pool.connect();
   try {
@@ -6640,7 +6617,7 @@ app.delete("/api/admin/orders/:id", verifyToken, verifyAdminOrSuperAdmin, async 
     let orderCheck;
     if (userRole !== 'super_admin') {
       orderCheck = await client.query(
-        `SELECT DISTINCT o.id FROM orders o
+        `SELECT DISTINCT o.id, o.order_status FROM orders o
          JOIN order_items oi ON o.id = oi.order_id
          JOIN products p ON oi.product_id = p.id
          WHERE o.id = $1 AND p.vendor_id = $2`,
@@ -6648,7 +6625,7 @@ app.delete("/api/admin/orders/:id", verifyToken, verifyAdminOrSuperAdmin, async 
       );
     } else {
       orderCheck = await client.query(
-        "SELECT id FROM orders WHERE id = $1",
+        "SELECT id, order_status FROM orders WHERE id = $1",
         [orderId]
       );
     }
@@ -6661,18 +6638,7 @@ app.delete("/api/admin/orders/:id", verifyToken, verifyAdminOrSuperAdmin, async 
       });
     }
 
-    // Get order details before deleting (for logging/reference)
-    const orderDetails = await client.query(
-      "SELECT * FROM orders WHERE id = $1",
-      [orderId]
-    );
-
-    if (orderDetails.rows.length === 0) {
-      await client.query("ROLLBACK");
-      return res.status(404).json({ success: false, message: "Order not found" });
-    }
-
-    const order = orderDetails.rows[0];
+    const order = orderCheck.rows[0];
 
     // Check if order is already delivered - optionally restrict deletion
     if (order.order_status === 'Delivered') {
@@ -6682,6 +6648,22 @@ app.delete("/api/admin/orders/:id", verifyToken, verifyAdminOrSuperAdmin, async 
         message: "Cannot delete delivered orders. Please mark as returned or cancelled first."
       });
     }
+
+    // Handle wallet transactions first to avoid foreign key violation
+    await client.query(
+      `UPDATE wallet_transactions 
+       SET order_id = NULL, 
+           description = description || ' (Order #' || $1 || ' deleted)' 
+       WHERE order_id = $1`,
+      [orderId]
+    );
+
+    // Also delete pending wallet transactions
+    await client.query(
+      `DELETE FROM wallet_transactions 
+       WHERE order_id = $1 AND status = 'pending'`,
+      [orderId]
+    );
 
     // Restore stock quantities for products in this order
     const orderItems = await client.query(
@@ -6710,12 +6692,6 @@ app.delete("/api/admin/orders/:id", verifyToken, verifyAdminOrSuperAdmin, async 
       );
     }
 
-    // If there was a wallet transaction related to this order, update it
-    await client.query(
-      "UPDATE wallet_transactions SET status = 'cancelled', description = description || ' - Order Deleted' WHERE order_id = $1",
-      [orderId]
-    );
-
     // If vendor earnings were added for this order, reverse them
     if (order.order_status === 'Delivered') {
       const vendorEarnings = await client.query(
@@ -6735,7 +6711,7 @@ app.delete("/api/admin/orders/:id", verifyToken, verifyAdminOrSuperAdmin, async 
 
     await client.query("COMMIT");
 
-    // Log the deletion (optional)
+    // Log the deletion
     console.log(`✅ Order #${orderId} deleted by ${req.user.email || req.user.id} at ${new Date().toISOString()}`);
 
     res.json({
@@ -6755,7 +6731,6 @@ app.delete("/api/admin/orders/:id", verifyToken, verifyAdminOrSuperAdmin, async 
   }
 });
 
-// Bulk delete orders endpoint
 app.post("/api/admin/orders/bulk-delete", verifyToken, verifyAdminOrSuperAdmin, async (req, res) => {
   const client = await pool.connect();
   try {
@@ -6780,7 +6755,7 @@ app.post("/api/admin/orders/bulk-delete", verifyToken, verifyAdminOrSuperAdmin, 
         let orderCheck;
         if (req.user.role?.toLowerCase() !== 'super_admin') {
           orderCheck = await client.query(
-            `SELECT DISTINCT o.id FROM orders o
+            `SELECT DISTINCT o.id, o.order_status FROM orders o
              JOIN order_items oi ON o.id = oi.order_id
              JOIN products p ON oi.product_id = p.id
              WHERE o.id = $1 AND p.vendor_id = $2`,
@@ -6807,6 +6782,21 @@ app.post("/api/admin/orders/bulk-delete", verifyToken, verifyAdminOrSuperAdmin, 
           continue;
         }
 
+        // Handle wallet transactions
+        await client.query(
+          `UPDATE wallet_transactions 
+           SET order_id = NULL, 
+               description = description || ' (Order #' || $1 || ' deleted)' 
+           WHERE order_id = $1`,
+          [orderId]
+        );
+
+        await client.query(
+          `DELETE FROM wallet_transactions 
+           WHERE order_id = $1 AND status = 'pending'`,
+          [orderId]
+        );
+
         // Restore stock
         const orderItems = await client.query(
           "SELECT product_id, quantity FROM order_items WHERE order_id = $1",
@@ -6823,6 +6813,14 @@ app.post("/api/admin/orders/bulk-delete", verifyToken, verifyAdminOrSuperAdmin, 
         // Delete order items and order
         await client.query("DELETE FROM order_items WHERE order_id = $1", [orderId]);
         await client.query("DELETE FROM orders WHERE id = $1", [orderId]);
+
+        // Update coupon usage if applicable
+        if (order.coupon_id) {
+          await client.query(
+            "UPDATE coupons SET used_count = used_count - 1 WHERE id = $1 AND used_count > 0",
+            [order.coupon_id]
+          );
+        }
 
         deletedCount++;
       } catch (err) {
@@ -6852,7 +6850,6 @@ app.post("/api/admin/orders/bulk-delete", verifyToken, verifyAdminOrSuperAdmin, 
     client.release();
   }
 });
-// ================= SHIPROCKET WEBHOOK (SECURE VERSION) =================
 // ================= SHIPROCKET WEBHOOK (SECURE VERSION) =================
 
 
