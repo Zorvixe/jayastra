@@ -668,7 +668,7 @@ const OrderDetails = () => {
                      </div>
                   ) : (
                      <p className="awb-info-text-pending">
-                        Live shipment tracking updates will show here once your parcel is dispatched.
+                        Live shipment tracking updates will show here once your parcel is Shipped.
                      </p>
                   )}
 
