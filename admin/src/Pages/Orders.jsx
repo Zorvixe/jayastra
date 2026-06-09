@@ -576,7 +576,10 @@ const Orders = () => {
       }
     } catch (err) {
       console.error("Label download error:", err);
-      if (err.response?.status === 400) {
+      const backendMessage = err.response?.data?.message || err.response?.data?.error;
+      if (backendMessage) {
+        toast.error(backendMessage);
+      } else if (err.response?.status === 400) {
         toast.error("Label not available. Please wait for Shiprocket to process the shipment.");
       } else {
         toast.error(err.message || "Failed to download label");

@@ -6541,17 +6541,62 @@ app.post("/api/admin/orders/:id/label", verifyToken, verifyAdminVendorIndividual
     const orderId = req.params.id;
     const orderRes = await pool.query(`SELECT shiprocket_shipment_id FROM orders WHERE id = $1`, [orderId]);
     const shipmentId = orderRes.rows[0]?.shiprocket_shipment_id;
-    if (!shipmentId) return res.status(400).json({ success: false, message: "No shipment ID found" });
+    if (!shipmentId) {
+      return res.status(400).json({ success: false, message: "Order not pushed to Shiprocket yet. Please push the order first." });
+    }
 
     const token = await authenticateShiprocket();
+    const shipmentIdValue = parseInt(shipmentId, 10);
     const fetchRes = await fetch("https://apiv2.shiprocket.in/v1/external/courier/generate/label", {
-      method: "POST", headers: { "Content-Type": "application/json", "Authorization": `Bearer ${token}` }, body: JSON.stringify({ shipment_id: [shipmentId] })
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${token}`
+      },
+      body: JSON.stringify({ shipment_id: [shipmentIdValue] })
     });
-    const result = await fetchRes.json();
-    if (result.label_created) return res.json({ success: true, label_url: result.label_url });
-    else return res.status(400).json({ success: false, message: "Failed to fetch label" });
+
+    const responseText = await fetchRes.text();
+    let result;
+    try {
+      result = JSON.parse(responseText);
+    } catch (parseError) {
+      console.error("Failed to parse Shiprocket label response:", parseError.message);
+      return res.status(502).json({
+        success: false,
+        message: "Invalid response from Shiprocket label API.",
+        raw_response: responseText.substring(0, 500)
+      });
+    }
+
+    console.log("Shiprocket label generation response:", JSON.stringify(result, null, 2));
+
+    let labelUrl = null;
+    if (result.label_created) {
+      labelUrl = result.label_url || result.data?.label_url || (Array.isArray(result.data) && result.data[0]?.label_url);
+    } else {
+      labelUrl = result.label_url || result.data?.label_url || (Array.isArray(result.data) && result.data[0]?.label_url);
+    }
+
+    if (labelUrl) {
+      return res.json({ success: true, label_url: labelUrl, result });
+    }
+
+    const errorMessage = result.message || result.error || result.errors || "Failed to fetch label from Shiprocket.";
+    const messageString = typeof errorMessage === 'string'
+      ? errorMessage
+      : Array.isArray(errorMessage)
+        ? errorMessage.join(", ")
+        : JSON.stringify(errorMessage);
+
+    return res.status(400).json({
+      success: false,
+      message: messageString || "Label is not available yet. Please wait for Shiprocket to process the shipment.",
+      details: result
+    });
   } catch (error) {
-    res.status(500).json({ success: false, message: "Server error fetching label" });
+    console.error("Shiprocket label generation error:", error);
+    res.status(500).json({ success: false, message: error.message || "Server error fetching label" });
   }
 });
 
