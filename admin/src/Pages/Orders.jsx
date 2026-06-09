@@ -527,8 +527,8 @@ const Orders = () => {
   // Helper function to dynamically download files locally without popping open new windows
   const triggerDirectDownload = async (fileUrl, filename) => {
     try {
-      const response = await axios.post(`${API_URL}/admin/orders/proxy-download`, 
-        { url: fileUrl }, 
+      const response = await axios.post(`${API_URL}/admin/orders/proxy-download`,
+        { url: fileUrl },
         {
           headers: { Authorization: `Bearer ${token}` },
           responseType: 'blob' // Important: capture stream directly as Blob binary
@@ -556,7 +556,7 @@ const Orders = () => {
 
       // First check if order is ready for label
       const order = orders.find(o => o.id === orderId);
-      const shippedStatuses = ['Shipped', 'Out for Delivery', 'Delivered'];
+      const shippedStatuses = ['Placed', 'Processing', 'Shipped'];
 
       if (!shippedStatuses.includes(order?.order_status)) {
         toast.warning("⚠️ Shipping label is not available yet. Please wait until the order status changes to 'Shipped' or later.");
@@ -999,56 +999,85 @@ const Orders = () => {
             </div>
 
             <div className="modal-footer-admin">
-
-
               {/* Push to Shiprocket Button (Packed) */}
               {(() => {
                 const pushCheck = canPushToShiprocket(selectedOrder);
                 const isPushed = selectedOrder.shiprocket_order_id;
                 return (
-                  <button
-                    className="invoice-btn-admin push-btn"
-                    onClick={() => initiatePushToShiprocket(selectedOrder)}
-                    disabled={isPushed || pushLoading || !pushCheck.canPush}
-                    title={!pushCheck.canPush ? pushCheck.reason : (isPushed ? "Already Packed" : "Pack Order")}
-                  >
-                    {pushLoading && pendingPushOrder?.id === selectedOrder.id ? (
-                      <><div className="btn-spinner"></div>Packing...</>
-                    ) : (
-                      <><i className="bi bi-box-seam"></i>{isPushed ? "Packed" : "Pack Order"}</>
-                    )}
-                  </button>
+                  <div className="step-btn-wrapper">
+                    <div className="step-number">Step 1</div>
+                    <button
+                      className="invoice-btn-admin push-btn"
+                      onClick={() => initiatePushToShiprocket(selectedOrder)}
+                      disabled={isPushed || pushLoading || !pushCheck.canPush}
+                      title={!pushCheck.canPush ? pushCheck.reason : (isPushed ? "Already Packed" : "Pack Order")}
+                    >
+                      {pushLoading && pendingPushOrder?.id === selectedOrder.id ? (
+                        <><div className="btn-spinner"></div>Packing...</>
+                      ) : (
+                        <>
+                          <i className="bi bi-box-seam"></i>
+                          <div className="btn-text-labels">
+                            {isPushed ? "Packed" : "Pack Order"}
+                            <span className="btn-subtext">Prepare Shipment</span>
+                          </div>
+                        </>
+                      )}
+                    </button>
+                  </div>
                 );
               })()}
 
-              {/* SHIPPING LABEL BUTTON - For pasting on package */}
-              {selectedOrder.awb_code && (
-                <button
-                  className="invoice-btn-admin label-btn"
-                  onClick={() => downloadLabel(selectedOrder.id)}
-                  disabled={loading}
-                  style={{ background: '#10b981', color: 'white' }}
-                >
-                  <i className="bi bi-upc-scan"></i> Shipping Label
-                </button>
-              )}
-
               {/* SR INVOICE BUTTON - Tax invoice for records */}
               {selectedOrder.shiprocket_order_id && (
-                <button
-                  className="invoice-btn-admin shiprocket-invoice-btn"
-                  onClick={() => downloadShiprocketInvoice(selectedOrder.id)}
-                  disabled={loading}
-                  style={{ background: '#3b82f6', color: 'white' }}
-                >
-                  <i className="bi bi-receipt"></i> SR Invoice
-                </button>
+                <div className="step-btn-wrapper">
+                  <div className="step-number">Step 2</div>
+                  <button
+                    className="invoice-btn-admin shiprocket-invoice-btn"
+                    onClick={() => downloadShiprocketInvoice(selectedOrder.id)}
+                    disabled={loading}
+                  >
+                    <i className="bi bi-receipt"></i>
+                    <div className="btn-text-labels">
+                      SR Invoice
+                      <span className="btn-subtext">Inside Package</span>
+                    </div>
+
+                  </button>
+                </div>
+              )}
+
+              {/* SHIPPING LABEL BUTTON - For pasting on package */}
+              {selectedOrder.awb_code && (
+                <div className="step-btn-wrapper">
+                  <div className="step-number">Step 3</div>
+                  <button
+                    className="invoice-btn-admin label-btn"
+                    onClick={() => downloadLabel(selectedOrder.id)}
+                    disabled={loading}
+                  >
+                    <i className="bi bi-upc-scan"></i>
+                    <div className="btn-text-labels">
+                      Shipping Label
+                      <span className="btn-subtext">Outside Package</span>
+                    </div>
+
+                  </button>
+                </div>
               )}
 
               {/* Local PDF Invoice Download Button */}
-              <button className="invoice-btn-admin local-invoice-btn" onClick={() => downloadLocalInvoice(selectedOrder)} disabled={loading}>
-                <i className="bi bi-file-earmark-pdf"></i> Local Invoice
-              </button>
+              <div className="step-btn-wrapper">
+                <div className="step-number">Step 4</div>
+                <button className="invoice-btn-admin local-invoice-btn" onClick={() => downloadLocalInvoice(selectedOrder)} disabled={loading}>
+                  <i className="bi bi-file-earmark-pdf"></i>
+                  <div className="btn-text-labels">
+                    Local Invoice
+                    <span className="btn-subtext">Download Record</span>
+                  </div>
+
+                </button>
+              </div>
             </div>
           </div>
         </div>
