@@ -6539,60 +6539,98 @@ app.post("/api/admin/orders/:id/awb", verifyToken, verifyAdminVendorIndividualAc
 app.post("/api/admin/orders/:id/label", verifyToken, verifyAdminVendorIndividualAccess, async (req, res) => {
   try {
     const orderId = req.params.id;
-    const orderRes = await pool.query(`SELECT shiprocket_shipment_id FROM orders WHERE id = $1`, [orderId]);
+    const orderRes = await pool.query(`SELECT shiprocket_shipment_id, awb_code FROM orders WHERE id = $1`, [orderId]);
     const shipmentId = orderRes.rows[0]?.shiprocket_shipment_id;
+    const existingAwb = orderRes.rows[0]?.awb_code;
     if (!shipmentId) {
       return res.status(400).json({ success: false, message: "Order not pushed to Shiprocket yet. Please push the order first." });
     }
 
     const token = await authenticateShiprocket();
     const shipmentIdValue = parseInt(shipmentId, 10);
-    const fetchRes = await fetch("https://apiv2.shiprocket.in/v1/external/courier/generate/label", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Authorization": `Bearer ${token}`
-      },
-      body: JSON.stringify({ shipment_id: [shipmentIdValue] })
-    });
 
-    const responseText = await fetchRes.text();
-    let result;
-    try {
-      result = JSON.parse(responseText);
-    } catch (parseError) {
-      console.error("Failed to parse Shiprocket label response:", parseError.message);
-      return res.status(502).json({
-        success: false,
-        message: "Invalid response from Shiprocket label API.",
-        raw_response: responseText.substring(0, 500)
+    const parseShiprocketJson = async (response) => {
+      const text = await response.text();
+      try {
+        return JSON.parse(text);
+      } catch (parseError) {
+        console.error("Failed to parse Shiprocket label response:", parseError.message);
+        return { parseError: parseError.message, rawText: text };
+      }
+    };
+
+    const generateLabel = async () => {
+      const response = await fetch("https://apiv2.shiprocket.in/v1/external/courier/generate/label", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`
+        },
+        body: JSON.stringify({ shipment_id: [shipmentIdValue] })
       });
-    }
 
-    console.log("Shiprocket label generation response:", JSON.stringify(result, null, 2));
+      const result = await parseShiprocketJson(response);
+      console.log("Shiprocket generate label response:", JSON.stringify(result, null, 2));
+      return result;
+    };
 
-    let labelUrl = null;
-    if (result.label_created) {
-      labelUrl = result.label_url || result.data?.label_url || (Array.isArray(result.data) && result.data[0]?.label_url);
-    } else {
-      labelUrl = result.label_url || result.data?.label_url || (Array.isArray(result.data) && result.data[0]?.label_url);
+    const extractLabelUrl = (result) => {
+      return result.label_url || result.data?.label_url || (Array.isArray(result.data) && result.data[0]?.label_url) || (Array.isArray(result?.label_url) && result.label_url[0]);
+    };
+
+    const attachAwbToOrder = async (awbCode) => {
+      if (!awbCode || existingAwb) return;
+      await pool.query(`UPDATE orders SET awb_code = $1, updated_at = NOW() WHERE id = $2`, [awbCode, orderId]);
+      console.log(`✅ Persisted AWB ${awbCode} for order ${orderId}`);
+    };
+
+    let labelResult = await generateLabel();
+    let labelUrl = extractLabelUrl(labelResult);
+
+    if (!labelUrl && labelResult?.not_created && labelResult?.response && labelResult.response.toLowerCase().includes("no valid shipment ids")) {
+      console.log("Shiprocket label endpoint returned no valid shipment ids. Attempting AWB assignment before retrying label generation.");
+
+      const assignResponse = await fetch("https://apiv2.shiprocket.in/v1/external/courier/assign/awb", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`
+        },
+        body: JSON.stringify({ shipment_id: shipmentIdValue })
+      });
+
+      const assignResult = await parseShiprocketJson(assignResponse);
+      console.log("Shiprocket AWB assign response:", JSON.stringify(assignResult, null, 2));
+
+      const awbCode = assignResult.awb_code || assignResult.data?.awb_code || assignResult.data?.awb || assignResult.awb;
+      await attachAwbToOrder(awbCode);
+
+      // Retry label generation once after AWB assignment attempt
+      labelResult = await generateLabel();
+      labelUrl = extractLabelUrl(labelResult);
     }
 
     if (labelUrl) {
-      return res.json({ success: true, label_url: labelUrl, result });
+      return res.json({ success: true, label_url: labelUrl, result: labelResult });
     }
 
-    const errorMessage = result.message || result.error || result.errors || "Failed to fetch label from Shiprocket.";
+    const errorMessage = labelResult.message || labelResult.response || labelResult.error || labelResult.errors || "Failed to fetch label from Shiprocket.";
     const messageString = typeof errorMessage === 'string'
       ? errorMessage
       : Array.isArray(errorMessage)
         ? errorMessage.join(", ")
         : JSON.stringify(errorMessage);
 
+    let suggestion = "Please wait a few minutes and try again, or check the Shiprocket dashboard for the shipment status.";
+    if (labelResult?.not_created) {
+      suggestion = "The shipment may not be ready for label printing yet. Ensure the shipment is processed and AWB is assigned.";
+    }
+
     return res.status(400).json({
       success: false,
       message: messageString || "Label is not available yet. Please wait for Shiprocket to process the shipment.",
-      details: result
+      suggestion,
+      details: labelResult
     });
   } catch (error) {
     console.error("Shiprocket label generation error:", error);
