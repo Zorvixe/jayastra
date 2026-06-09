@@ -22,6 +22,8 @@ const Topbar = ({ toggleSidebar, isSidebarCollapsed }) => {
   const [adminEmail, setAdminEmail] = useState("");
   const [adminPhone, setAdminPhone] = useState("");
   const [storeName, setStoreName] = useState("");
+  const [storeActive, setStoreActive] = useState(true);
+  const [togglingStore, setTogglingStore] = useState(false);
   const [loadingProfile, setLoadingProfile] = useState(true);
 
   // State for wallet balance
@@ -82,6 +84,7 @@ const Topbar = ({ toggleSidebar, isSidebarCollapsed }) => {
         setAdminEmail(user.email || "");
         setAdminPhone(user.phone || "");
         setStoreName(user.store_name || "");
+        setStoreActive(typeof user.store_active === 'boolean' ? user.store_active : true);
       } catch (error) {
         console.error("Failed to fetch profile:", error);
         setAdminName(localStorage.getItem("admin_name") || "Admin");
@@ -254,6 +257,7 @@ const Topbar = ({ toggleSidebar, isSidebarCollapsed }) => {
 
   const showWalletBalance = userRole === 'vendor' || userRole === 'admin';
   const showPlatformRevenue = userRole === 'super_admin';
+  const showStoreToggle = userRole && userRole !== 'user';
 
   // Handle wallet card click for mobile
   const handleWalletClick = () => {
@@ -269,6 +273,26 @@ const Topbar = ({ toggleSidebar, isSidebarCollapsed }) => {
       fetchPlatformRevenue(true);
     } else {
       fetchWalletBalance(true);
+    }
+  };
+
+  const handleStoreToggle = async (e) => {
+    e.stopPropagation();
+    if (!token || !checkTokenAndRedirect()) return;
+
+    try {
+      setTogglingStore(true);
+      const res = await axios.put(
+        `${REACT_APP_API_URL}/user/profile/all`,
+        { store_active: !storeActive },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      const updated = res.data?.user?.store_active;
+      setStoreActive(typeof updated === 'boolean' ? updated : !storeActive);
+    } catch (error) {
+      console.error("Failed to toggle store status:", error);
+    } finally {
+      setTogglingStore(false);
     }
   };
 
@@ -437,6 +461,23 @@ const Topbar = ({ toggleSidebar, isSidebarCollapsed }) => {
                   <div className="dropdown-user-store-name">{storeName}</div>
 
                   <div className="dropdown-user-email">{adminEmail}</div>
+
+                  {showStoreToggle && (
+                    <div className="dropdown-store-toggle-row">
+                      <span>{storeActive ? 'Store On' : 'Store Off'}</span>
+                      <button
+                        type="button"
+                        className={`dropdown-store-switch ${storeActive ? 'active' : ''}`}
+                        onClick={handleStoreToggle}
+                        disabled={togglingStore}
+                        aria-pressed={storeActive}
+                        aria-label={storeActive ? 'Turn store off' : 'Turn store on'}
+                        title={storeActive ? 'Turn store off' : 'Turn store on'}
+                      >
+                        <span className="dropdown-store-switch-thumb"></span>
+                      </button>
+                    </div>
+                  )}
                 </div>
               </div>
 

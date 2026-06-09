@@ -516,6 +516,7 @@ const initDatabase = async () => {
       ADD COLUMN IF NOT EXISTS store_name VARCHAR(255),
       ADD COLUMN IF NOT EXISTS balance DECIMAL(10,2) DEFAULT 0,
       ADD COLUMN IF NOT EXISTS gst_number VARCHAR(50),
+      ADD COLUMN IF NOT EXISTS store_active BOOLEAN DEFAULT true,
       ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP;
     `);
     await pool.query(`
@@ -1849,7 +1850,7 @@ app.get("/api/user/profile", verifyToken, async (req, res) => {
       `SELECT
 id, first_name, last_name, email, phone, gender,
   address, city, state, pincode, balance,
-  store_name, gst_number,
+  store_name, gst_number, store_active,
   pickup_address_line1, pickup_address_line2,
   pickup_city, pickup_state, pickup_pincode,
   pickup_location_name
@@ -1948,6 +1949,7 @@ app.put("/api/user/profile/all", verifyToken, async (req, res) => {
       // Vendor fields
       store_name,
       gst_number,
+      store_active,
       pickup_address_line1,
       pickup_address_line2,
       pickup_city,
@@ -1977,6 +1979,7 @@ app.put("/api/user/profile/all", verifyToken, async (req, res) => {
     addField('pincode', pincode);
     addField('store_name', store_name);
     addField('gst_number', gst_number);
+    addField('store_active', store_active);
     addField('pickup_address_line1', pickup_address_line1);
     addField('pickup_address_line2', pickup_address_line2);
     addField('pickup_city', pickup_city);
@@ -2584,7 +2587,7 @@ store_name,
 // ================= USER MANAGEMENT =================
 app.get("/api/admin/users", verifyToken, verifySuperAdmin, async (req, res) => {
   try {
-    const users = await pool.query(`SELECT id, name, email, phone, role, status, created_at FROM users ORDER BY created_at DESC`);
+    const users = await pool.query(`SELECT id, name, email, phone, role, status, store_active, created_at FROM users ORDER BY created_at DESC`);
     res.json({ success: true, users: users.rows });
   } catch (err) {
     res.status(500).json({ message: "Failed to fetch users" });
@@ -3054,7 +3057,13 @@ app.post("/api/admin/subcategories", verifyToken, verifyAdminVendorIndividualAcc
 
 app.get("/api/subcategories", async (req, res) => {
   try {
-    const result = await pool.query(`SELECT s.*, c.name as category_name FROM sub_categories s LEFT JOIN categories c ON s.category_id = c.id ORDER BY s.created_at DESC`);
+    const result = await pool.query(
+      `SELECT s.*, c.name as category_name FROM sub_categories s
+       LEFT JOIN categories c ON s.category_id = c.id
+       LEFT JOIN users u ON s.vendor_id = u.id
+       WHERE s.is_active = true AND (s.vendor_id IS NULL OR u.store_active = true)
+       ORDER BY s.created_at DESC`
+    );
     res.json({ success: true, subcategories: result.rows });
   } catch (error) {
     res.status(500).json({ error: "Failed to fetch subcategories" });
@@ -3079,7 +3088,12 @@ app.get("/api/admin/subcategories", verifyToken, verifyAdminVendorIndividualAcce
 
 app.get("/api/categories/:id/subcategories", async (req, res) => {
   try {
-    const result = await pool.query(`SELECT * FROM sub_categories WHERE category_id = $1 AND is_active = true`, [req.params.id]);
+    const result = await pool.query(
+      `SELECT s.* FROM sub_categories s
+       LEFT JOIN users u ON s.vendor_id = u.id
+       WHERE s.category_id = $1 AND s.is_active = true AND (s.vendor_id IS NULL OR u.store_active = true)`,
+      [req.params.id]
+    );
     res.json({ success: true, subcategories: result.rows });
   } catch (error) {
     res.status(500).json({ error: "Failed to fetch subcategories" });
@@ -3228,7 +3242,7 @@ app.post(
 
 app.get("/api/products", async (req, res) => {
   try {
-    const result = await pool.query(`SELECT p.*, c.name AS category_name, s.name AS subcategory_name, (SELECT image_url FROM product_images WHERE product_id = p.id ORDER BY display_order ASC LIMIT 1) AS hover_image FROM products p LEFT JOIN categories c ON p.category_id = c.id LEFT JOIN sub_categories s ON p.sub_category_id = s.id WHERE p.is_active = true ORDER BY p.created_at DESC`);
+    const result = await pool.query(`SELECT p.*, c.name AS category_name, s.name AS subcategory_name, (SELECT image_url FROM product_images WHERE product_id = p.id ORDER BY display_order ASC LIMIT 1) AS hover_image FROM products p JOIN users u ON p.vendor_id = u.id LEFT JOIN categories c ON p.category_id = c.id LEFT JOIN sub_categories s ON p.sub_category_id = s.id WHERE p.is_active = true AND u.store_active = true ORDER BY p.created_at DESC`);
     res.json({ success: true, products: result.rows });
   } catch (error) {
     res.status(500).json({ error: "Failed to fetch products" });
@@ -3237,7 +3251,7 @@ app.get("/api/products", async (req, res) => {
 
 app.get("/api/product/by-code/:code", async (req, res) => {
   try {
-    const result = await pool.query(`SELECT p.*, c.name AS category_name, s.name AS subcategory_name FROM products p LEFT JOIN categories c ON p.category_id = c.id LEFT JOIN sub_categories s ON p.sub_category_id = s.id WHERE p.product_code = $1 AND p.is_active = true`, [req.params.code]);
+    const result = await pool.query(`SELECT p.*, c.name AS category_name, s.name AS subcategory_name FROM products p JOIN users u ON p.vendor_id = u.id LEFT JOIN categories c ON p.category_id = c.id LEFT JOIN sub_categories s ON p.sub_category_id = s.id WHERE p.product_code = $1 AND p.is_active = true AND u.store_active = true`, [req.params.code]);
     if (result.rows.length === 0) return res.status(404).json({ success: false, message: "Product not found" });
     const images = await pool.query(`SELECT image_url FROM product_images WHERE product_id = $1 ORDER BY display_order`, [result.rows[0].id]);
     res.json({ success: true, product: { ...result.rows[0], images: images.rows.map(r => r.image_url) } });
@@ -3253,15 +3267,15 @@ app.get("/api/product/:uuid", async (req, res) => {
     if (uuid) {
       const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(uuid);
       if (isUuid) {
-        const result = await pool.query(`SELECT p.*, c.name AS category_name, s.name AS subcategory_name FROM products p LEFT JOIN categories c ON p.category_id = c.id LEFT JOIN sub_categories s ON p.sub_category_id = s.id WHERE p.uuid = $1 AND p.is_active = true`, [uuid]);
+        const result = await pool.query(`SELECT p.*, c.name AS category_name, s.name AS subcategory_name FROM products p JOIN users u ON p.vendor_id = u.id LEFT JOIN categories c ON p.category_id = c.id LEFT JOIN sub_categories s ON p.sub_category_id = s.id WHERE p.uuid = $1 AND p.is_active = true AND u.store_active = true`, [uuid]);
         if (result.rows.length > 0) product = result.rows[0];
       } else if (!isNaN(uuid)) {
-        const result = await pool.query(`SELECT p.*, c.name AS category_name, s.name AS subcategory_name FROM products p LEFT JOIN categories c ON p.category_id = c.id LEFT JOIN sub_categories s ON p.sub_category_id = s.id WHERE p.id = $1 AND p.is_active = true`, [parseInt(uuid)]);
+        const result = await pool.query(`SELECT p.*, c.name AS category_name, s.name AS subcategory_name FROM products p JOIN users u ON p.vendor_id = u.id LEFT JOIN categories c ON p.category_id = c.id LEFT JOIN sub_categories s ON p.sub_category_id = s.id WHERE p.id = $1 AND p.is_active = true AND u.store_active = true`, [parseInt(uuid)]);
         if (result.rows.length > 0) product = result.rows[0];
       }
     }
     if (!product && product_code) {
-      const result = await pool.query(`SELECT p.*, c.name AS category_name, s.name AS subcategory_name FROM products p LEFT JOIN categories c ON p.category_id = c.id LEFT JOIN sub_categories s ON p.sub_category_id = s.id WHERE p.product_code = $1 AND p.is_active = true`, [product_code]);
+      const result = await pool.query(`SELECT p.*, c.name AS category_name, s.name AS subcategory_name FROM products p JOIN users u ON p.vendor_id = u.id LEFT JOIN categories c ON p.category_id = c.id LEFT JOIN sub_categories s ON p.sub_category_id = s.id WHERE p.product_code = $1 AND p.is_active = true AND u.store_active = true`, [product_code]);
       if (result.rows.length > 0) product = result.rows[0];
     }
     if (!product) return res.status(404).json({ success: false, message: "Product not found" });
@@ -3604,6 +3618,14 @@ app.post("/api/admin/products/:id/images", verifyToken, verifyAdminVendorIndivid
 
 app.get("/api/products/:id/images", async (req, res) => {
   try {
+    const productCheck = await pool.query(
+      `SELECT p.id FROM products p JOIN users u ON p.vendor_id = u.id WHERE p.id = $1 AND p.is_active = true AND u.store_active = true`,
+      [req.params.id]
+    );
+    if (productCheck.rows.length === 0) {
+      return res.status(404).json({ success: false, message: "Product not found" });
+    }
+
     const result = await pool.query(`SELECT * FROM product_images WHERE product_id = $1 ORDER BY display_order ASC`, [req.params.id]);
     res.json({ success: true, images: result.rows });
   } catch (error) {
@@ -3867,9 +3889,15 @@ app.post("/api/orders", verifyToken, async (req, res) => {
     // Insert order items
     for (let item of cartItems) {
       const prodRes = await client.query(
-        "SELECT vendor_id, price, platform_fee_percent FROM products WHERE id = $1",
+        `SELECT p.vendor_id, p.price, p.platform_fee_percent
+         FROM products p
+         JOIN users u ON p.vendor_id = u.id
+         WHERE p.id = $1 AND p.is_active = true AND u.store_active = true`,
         [item.product_id || item.id]
       );
+      if (prodRes.rows.length === 0) {
+        throw new Error("Product is not available");
+      }
       const vendor_id = prodRes.rows[0]?.vendor_id || null;
       const original_price = parseFloat(prodRes.rows[0]?.price || item.price);
       const platform_fee_percent = parseFloat(prodRes.rows[0]?.platform_fee_percent || 10);
@@ -4005,9 +4033,15 @@ app.post("/api/razorpay/verify", verifyToken, async (req, res) => {
 
     for (let item of cartItems) {
       const prodRes = await client.query(
-        "SELECT vendor_id, price, platform_fee_percent FROM products WHERE id = $1",
+        `SELECT p.vendor_id, p.price, p.platform_fee_percent
+         FROM products p
+         JOIN users u ON p.vendor_id = u.id
+         WHERE p.id = $1 AND p.is_active = true AND u.store_active = true`,
         [item.product_id || item.id]
       );
+      if (prodRes.rows.length === 0) {
+        throw new Error("Product is not available");
+      }
       const vendor_id = prodRes.rows[0]?.vendor_id || null;
       const original_price = parseFloat(prodRes.rows[0]?.price || item.price);
       const platform_fee_percent = parseFloat(prodRes.rows[0]?.platform_fee_percent || 10);
@@ -4328,7 +4362,9 @@ app.delete("/api/admin/coupons/:id", verifyToken, verifyAdminVendorIndividualAcc
 
 app.get("/api/coupons", async (req, res) => {
   try {
-    const result = await pool.query(`SELECT * FROM coupons WHERE is_active = true AND is_hidden = false AND(expiry_date IS NULL OR expiry_date > NOW())`);
+    const result = await pool.query(
+      `SELECT c.* FROM coupons c LEFT JOIN users u ON c.vendor_id = u.id WHERE c.is_active = true AND c.is_hidden = false AND (c.expiry_date IS NULL OR c.expiry_date > NOW()) AND (c.vendor_id IS NULL OR u.store_active = true)`
+    );
     res.json({ success: true, coupons: result.rows });
   } catch (error) { res.status(500).json({ success: false, message: error.message }); }
 });
@@ -4339,13 +4375,21 @@ app.post("/api/coupons/apply", verifyToken, async (req, res) => {
 
     console.log("Applying coupon:", { code, totalAmount, cartItemsCount: cartItems?.length });
 
-    // Get coupon from database
-    const result = await pool.query("SELECT * FROM coupons WHERE code ILIKE $1 AND is_active = true", [code]);
+    // Get coupon from database and ensure vendor store is active if applicable
+    const result = await pool.query(
+      `SELECT c.*, u.store_active FROM coupons c LEFT JOIN users u ON c.vendor_id = u.id WHERE c.code ILIKE $1 AND c.is_active = true AND c.is_hidden = false AND (c.vendor_id IS NULL OR u.store_active = true)`,
+      [code]
+    );
     if (result.rows.length === 0) {
       return res.status(400).json({ message: "Invalid coupon code" });
     }
 
     const coupon = result.rows[0];
+
+    // If the coupon belongs to a vendor, make sure their store is active
+    if (coupon.vendor_id && !coupon.store_active) {
+      return res.status(400).json({ message: "Coupon is not available" });
+    }
 
     // Check expiry
     if (coupon.expiry_date && new Date(coupon.expiry_date) < new Date()) {
@@ -4428,7 +4472,9 @@ app.post("/api/coupons/apply", verifyToken, async (req, res) => {
 app.post("/api/coupons/auto-apply", verifyToken, async (req, res) => {
   try {
     const { totalAmount } = req.body;
-    const result = await pool.query(`SELECT * FROM coupons WHERE is_active = true AND(expiry_date IS NULL OR expiry_date > NOW())`);
+    const result = await pool.query(
+      `SELECT c.* FROM coupons c LEFT JOIN users u ON c.vendor_id = u.id WHERE c.is_active = true AND c.is_hidden = false AND (c.expiry_date IS NULL OR c.expiry_date > NOW()) AND (c.vendor_id IS NULL OR u.store_active = true)`
+    );
     if (result.rows.length === 0) return res.json({ success: true, message: "No coupons available", discount: 0, finalAmount: totalAmount });
 
     let bestCoupon = null;
@@ -4709,7 +4755,9 @@ app.put("/api/admin/banner/:id", verifyToken, verifyAdminVendorIndividualAccess,
 
 app.get("/api/banners", async (req, res) => {
   try {
-    const result = await pool.query(`SELECT * FROM banners WHERE is_active = true ORDER BY position ASC`);
+    const result = await pool.query(
+      `SELECT b.* FROM banners b LEFT JOIN users u ON b.vendor_id = u.id WHERE b.is_active = true AND (b.vendor_id IS NULL OR u.store_active = true) ORDER BY b.position ASC`
+    );
     res.json({ banners: result.rows });
   } catch (err) {
     res.status(500).json({ message: "Fetch banners failed" });
@@ -4763,6 +4811,15 @@ app.post("/api/cart", verifyToken, async (req, res) => {
   try {
     const { product_id, quantity } = req.body;
     const userId = req.user.id;
+
+    const productCheck = await pool.query(
+      `SELECT p.id FROM products p JOIN users u ON p.vendor_id = u.id WHERE p.id = $1 AND p.is_active = true AND u.store_active = true`,
+      [product_id]
+    );
+    if (productCheck.rows.length === 0) {
+      return res.status(400).json({ message: "Product is not available" });
+    }
+
     const result = await pool.query(
       `INSERT INTO cart_items(user_id, product_id, quantity) VALUES($1, $2, $3) ON CONFLICT(user_id, product_id) DO UPDATE SET quantity = cart_items.quantity + EXCLUDED.quantity RETURNING * `,
       [userId, product_id, quantity || 1]
@@ -4778,8 +4835,9 @@ app.get("/api/cart", verifyToken, async (req, res) => {
     `SELECT c.*, p.name, p.price, p.old_price, p.main_image_url, p.uuid, p.product_code, cat.name as category_name, p.vendor_id
      FROM cart_items c
      JOIN products p ON c.product_id = p.id
+     JOIN users u ON p.vendor_id = u.id
      LEFT JOIN categories cat ON p.category_id = cat.id
-     WHERE c.user_id = $1`, [req.user.id]
+     WHERE c.user_id = $1 AND p.is_active = true AND u.store_active = true`, [req.user.id]
   );
   res.json({ cart: result.rows });
 });
@@ -4806,6 +4864,15 @@ app.post("/api/wishlist", verifyToken, async (req, res) => {
       await pool.query(`DELETE FROM wishlist WHERE user_id = $1 AND product_id = $2`, [userId, product_id]);
       return res.json({ message: "Removed from wishlist", type: "removed" });
     }
+
+    const productCheck = await pool.query(
+      `SELECT p.id FROM products p JOIN users u ON p.vendor_id = u.id WHERE p.id = $1 AND p.is_active = true AND u.store_active = true`,
+      [product_id]
+    );
+    if (productCheck.rows.length === 0) {
+      return res.status(400).json({ message: "Product is not available" });
+    }
+
     await pool.query(`INSERT INTO wishlist(user_id, product_id) VALUES($1, $2)`, [userId, product_id]);
     res.json({ message: "Added to wishlist", type: "added" });
   } catch (error) {
@@ -4819,8 +4886,9 @@ app.get("/api/wishlist", verifyToken, async (req, res) => {
     `SELECT w.*, p.name, p.price, p.main_image_url, p.uuid, p.product_code, cat.name as category_name
      FROM wishlist w
      JOIN products p ON w.product_id = p.id
+     JOIN users u ON p.vendor_id = u.id
      LEFT JOIN categories cat ON p.category_id = cat.id
-     WHERE w.user_id = $1`, [req.user.id]
+     WHERE w.user_id = $1 AND p.is_active = true AND u.store_active = true`, [req.user.id]
   );
   res.json({ wishlist: result.rows });
 });
@@ -5168,7 +5236,7 @@ app.get("/api/admin/dashboard/stats-by-date", verifyToken, verifyAnyAdmin, async
       WHERE o.created_at BETWEEN $1 AND $2
       ${userRole !== 'super_admin' ? 'AND oi.vendor_id = $3' : ''}
     `;
-    
+
     const overviewRes = await pool.query(overviewQuery, getBaseParams());
     const dbOverview = overviewRes.rows[0];
 
@@ -5182,7 +5250,7 @@ app.get("/api/admin/dashboard/stats-by-date", verifyToken, verifyAnyAdmin, async
     // 2. Pending Payment for the selected date
     let payoutQuery;
     let payoutParams = getBaseParams();
-    
+
     if (userRole !== 'super_admin') {
       payoutQuery = `
         SELECT 
@@ -5238,7 +5306,7 @@ app.get("/api/admin/dashboard/stats-by-date", verifyToken, verifyAnyAdmin, async
       ORDER BY o.created_at DESC
       LIMIT 10
     `;
-    
+
     const recentRes = await pool.query(recentQuery, getBaseParams());
     const recentOrders = recentRes.rows;
 
@@ -5285,7 +5353,7 @@ app.get("/api/admin/dashboard/stats-by-date", verifyToken, verifyAnyAdmin, async
       WHERE created_at BETWEEN $1 AND $2
       ${userRole !== 'super_admin' ? 'AND vendor_id = $3' : ''}
     `;
-    
+
     const productRes = await pool.query(productQuery, getBaseParams());
 
     // 7. User count (for super admin only)
@@ -5305,7 +5373,7 @@ app.get("/api/admin/dashboard/stats-by-date", verifyToken, verifyAnyAdmin, async
       WHERE created_at BETWEEN $1 AND $2
       ${userRole !== 'super_admin' ? 'AND vendor_id = $3' : ''}
     `;
-    
+
     const stockRes = await pool.query(stockQuery, getBaseParams());
 
     const stats = {
@@ -7260,7 +7328,7 @@ app.get("/api/products/search", async (req, res) => {
     if (!q || q.trim().length < 2) return res.json({ success: true, products: [] });
     const searchTerm = `%${q.trim()}%`;
     const result = await pool.query(
-      `SELECT id, uuid, name, product_code, main_image_url, price, old_price FROM products WHERE is_active = true AND (name ILIKE $1 OR product_code ILIKE $1) ORDER BY CASE WHEN product_code ILIKE $2 THEN 1 WHEN name ILIKE $2 THEN 2 ELSE 3 END, name ASC LIMIT 10`,
+      `SELECT p.id, p.uuid, p.name, p.product_code, p.main_image_url, p.price, p.old_price FROM products p JOIN users u ON p.vendor_id = u.id WHERE p.is_active = true AND u.store_active = true AND (p.name ILIKE $1 OR p.product_code ILIKE $1) ORDER BY CASE WHEN p.product_code ILIKE $2 THEN 1 WHEN p.name ILIKE $2 THEN 2 ELSE 3 END, p.name ASC LIMIT 10`,
       [searchTerm, `${q.trim()}%`]
     );
     res.json({ success: true, products: result.rows });
