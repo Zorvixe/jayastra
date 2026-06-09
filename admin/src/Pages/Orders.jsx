@@ -1051,21 +1051,23 @@ const Orders = () => {
               )}
 
               {/* SHIPPING LABEL BUTTON - For pasting on package */}
-              <div className="step-btn-wrapper">
-                <div className="step-number">Step 3</div>
-                <button
-                  className="invoice-btn-admin label-btn"
-                  onClick={() => downloadLabel(selectedOrder.id)}
-                  disabled={loading}
-                >
-                  <i className="bi bi-upc-scan"></i>
-                  <div className="btn-text-labels">
-                    Shipping Label
-                    <span className="btn-subtext">Outside Package</span>
-                  </div>
+              {selectedOrder.awb_code && (
+                <div className="step-btn-wrapper">
+                  <div className="step-number">Step 3</div>
+                  <button
+                    className="invoice-btn-admin label-btn"
+                    onClick={() => downloadLabel(selectedOrder.id)}
+                    disabled={loading}
+                  >
+                    <i className="bi bi-upc-scan"></i>
+                    <div className="btn-text-labels">
+                      Shipping Label
+                      <span className="btn-subtext">Outside Package</span>
+                    </div>
 
-                </button>
-              </div>
+                  </button>
+                </div>
+              )}
 
               {/* Local PDF Invoice Download Button */}
               <div className="step-btn-wrapper">

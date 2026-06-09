@@ -23,8 +23,10 @@ const MobileNav = ({ onFabClick, unreadCount = 0 }) => {
       setActiveTab("products");
     } else if (path.includes("/admin/orders")) {
       setActiveTab("orders");
-    } else if (path.includes("/admin/profile")) {
+    } else if (path.includes("/admin/profile") || path.includes("/admin/payouts")) {
       setActiveTab("account");
+    } else {
+      setActiveTab("");
     }
   }, [location]);
 
@@ -84,6 +86,7 @@ const MobileNav = ({ onFabClick, unreadCount = 0 }) => {
 
   // Check if we're on home tab to show initials instead of FAB
   const isHomeActive = activeTab === "home";
+  const isWalletPage = location.pathname.includes("/admin/payouts");
 
   const navItems = [
     {
@@ -142,9 +145,9 @@ const MobileNav = ({ onFabClick, unreadCount = 0 }) => {
                 <button
                   className="fab-button"
                   onClick={onFabClick}
-                  title={activeTab === "account" ? "Edit Profile" : "Add"}
+                  title={isWalletPage ? "Add" : activeTab === "account" ? "Edit Profile" : "Add"}
                 >
-                  <i className={activeTab === "account" ? "bi bi-pencil" : item.icon}></i>
+                  <i className={isWalletPage ? item.icon : activeTab === "account" ? "bi bi-pencil" : item.icon}></i>
                 </button>
               </div>
             );
