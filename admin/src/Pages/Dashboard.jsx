@@ -85,7 +85,7 @@ const Dashboard = () => {
       const token = localStorage.getItem("token");
       const role = userRole?.toLowerCase();
       
-      const res = await axios.get(`${API_URL}/api/admin/payouts`, {
+      const res = await axios.get(`${API_URL}/admin/payouts`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       
@@ -172,13 +172,13 @@ const Dashboard = () => {
       const token = localStorage.getItem("token");
 
       // Main dashboard data - includes stats, orderOverview, recentOrders, dailySales
-      const dashboardRes = await axios.get(`${API_URL}/api/admin/dashboard/stats-by-date`, {
+      const dashboardRes = await axios.get(`${API_URL}/admin/dashboard/stats-by-date`, {
         params: { date: date },
         headers: { Authorization: `Bearer ${token}` },
       });
 
       // Today's stats
-      const todayRes = await axios.get(`${API_URL}/api/admin/dashboard/today-stats`, {
+      const todayRes = await axios.get(`${API_URL}/admin/dashboard/today-stats`, {
         headers: { Authorization: `Bearer ${token}` },
       });
 
