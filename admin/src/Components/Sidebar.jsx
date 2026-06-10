@@ -50,27 +50,32 @@ const Sidebar = ({ isCollapsed, toggleSidebar }) => {
         )}
       </div>
       <ul className="sidebar-menu">
-        {menuItems.map((item) => (
-          <li
-            key={item.path}
-            className="sidebar-menu-item"
-            onMouseEnter={() => setHoveredItem(item.path)}
-            onMouseLeave={() => setHoveredItem(null)}
-          >
-            <NavLink to={item.path} className="sidebar-link" onClick={() => {
-              // On mobile, close sidebar after navigation
-              if (window.innerWidth <= 768 && !isCollapsed) {
-                toggleSidebar();
-              }
-            }}>
-              <i className={item.icon}></i>
-              {!isCollapsed && <span>{item.label}</span>}
-              {isCollapsed && hoveredItem === item.path && (
-                <div className="sidebar-tooltip">{item.label}</div>
-              )}
-            </NavLink>
-          </li>
-        ))}
+        {menuItems.map((item) => {
+          const displayLabel = item.path === "/admin/users" && userRole === "vendor"
+            ? "Users"
+            : item.label;
+          return (
+            <li
+              key={item.path}
+              className="sidebar-menu-item"
+              onMouseEnter={() => setHoveredItem(item.path)}
+              onMouseLeave={() => setHoveredItem(null)}
+            >
+              <NavLink to={item.path} className="sidebar-link" onClick={() => {
+                // On mobile, close sidebar after navigation
+                if (window.innerWidth <= 768 && !isCollapsed) {
+                  toggleSidebar();
+                }
+              }}>
+                <i className={item.icon}></i>
+                {!isCollapsed && <span>{displayLabel}</span>}
+                {isCollapsed && hoveredItem === item.path && (
+                  <div className="sidebar-tooltip">{displayLabel}</div>
+                )}
+              </NavLink>
+            </li>
+          );
+        })}
       </ul>
     </div>
   );

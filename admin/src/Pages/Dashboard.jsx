@@ -84,18 +84,18 @@ const Dashboard = () => {
     try {
       const token = localStorage.getItem("token");
       const role = userRole?.toLowerCase();
-      
+
       const res = await axios.get(`${API_URL}/admin/payouts`, {
         headers: { Authorization: `Bearer ${token}` }
       });
-      
+
       if (res.data.success) {
         const payouts = res.data.payouts || [];
-        
+
         if (role === 'vendor' || role === 'admin') {
           const pendingWithdrawals = payouts.filter(p => p.status === 'Pending');
           const totalPendingAmount = pendingWithdrawals.reduce((sum, p) => sum + (parseFloat(p.amount) || 0), 0);
-          
+
           if (pendingWithdrawals.length > 0) {
             const latest = pendingWithdrawals[0];
             setPendingPayment({
@@ -136,7 +136,7 @@ const Dashboard = () => {
         } else if (role === 'super_admin') {
           const pendingWithdrawals = payouts.filter(p => p.status === 'Pending');
           const totalPendingAmount = pendingWithdrawals.reduce((sum, p) => sum + (parseFloat(p.amount) || 0), 0);
-          
+
           if (pendingWithdrawals.length > 0) {
             const latest = pendingWithdrawals[0];
             setPendingPayment({
@@ -187,7 +187,7 @@ const Dashboard = () => {
         setOrderOverview(dashboardRes.data.orderOverview);
         setRecentOrders(dashboardRes.data.recentOrders);
         setDailySales(dashboardRes.data.dailySales);
-        
+
         // Update pending payment if returned from stats-by-date
         if (dashboardRes.data.pendingPayment) {
           setPendingPayment(prev => ({
@@ -206,7 +206,7 @@ const Dashboard = () => {
 
       // Fetch additional payment/withdrawal data
       await fetchPaymentData();
-      
+
     } catch (error) {
       console.error("Dashboard Data Fetch Error:", error);
     } finally {
@@ -499,6 +499,7 @@ const Dashboard = () => {
                 <tr>
                   <th>Order ID</th>
                   <th>Customer</th>
+                  <th>Pickup</th>
                   <th>Date</th>
                   <th>Amount</th>
                   <th>Status</th>
@@ -509,6 +510,7 @@ const Dashboard = () => {
                   <tr key={order.id}>
                     <td>#{order.id}</td>
                     <td>{order.user_name || order.customer_name || "Guest"}</td>
+                    <td>{order.pickup_location_name || "Not selected"}</td>
                     <td>{new Date(order.created_at).toLocaleDateString()}</td>
                     <td>₹{parseFloat(order.total_amount).toLocaleString()}</td>
                     <td>

@@ -768,6 +768,7 @@ const Orders = () => {
                 <th>Order ID</th>
                 <th>Date</th>
                 <th>Customer</th>
+                <th>Pickup</th>
                 <th>Products</th>
                 <th>P.Code</th>
                 <th>Total Amount</th>
@@ -779,7 +780,7 @@ const Orders = () => {
             <tbody>
               {initialLoading ? (
                 <tr>
-                  <td colSpan={bulkDeleteMode ? 10 : 9} style={{ textAlign: 'center', padding: '40px' }}>
+                  <td colSpan={bulkDeleteMode ? 11 : 10} style={{ textAlign: 'center', padding: '40px' }}>
                     <div className="cate-loader-overlay" style={{ position: 'relative', height: '100px' }}>
                       <div className="cate-loader-container">
                         <div className="cate-spinner"></div>
@@ -789,7 +790,7 @@ const Orders = () => {
                 </tr>
               ) : filteredOrders.length === 0 ? (
                 <tr>
-                  <td colSpan={bulkDeleteMode ? 10 : 9} style={{ textAlign: 'center', padding: '40px', color: '#64748b' }}>
+                  <td colSpan={bulkDeleteMode ? 11 : 10} style={{ textAlign: 'center', padding: '40px', color: '#64748b' }}>
                     <i className="bi bi-inbox" style={{ fontSize: '2rem', display: 'block', marginBottom: '10px' }}></i>
                     No orders found for {filterDate ? new Date(filterDate).toLocaleDateString() : "the selected period"}
                   </td>
@@ -814,6 +815,11 @@ const Orders = () => {
                         <strong>{order.customer_name}</strong>
                         <span>{order.phone}</span>
                       </div>
+                    </td>
+                    <td>
+                      <span className="pickup-chip">
+                        {order.pickup_location_name ? order.pickup_location_name : 'Not selected'}
+                      </span>
                     </td>
                     <td>
                       <div className="order-thumbs">
@@ -964,6 +970,15 @@ const Orders = () => {
                   {selectedOrder.city && <p><strong>City:</strong> {selectedOrder.city}</p>}
                   {selectedOrder.state && <p><strong>State:</strong> {selectedOrder.state}</p>}
                   {selectedOrder.pincode && <p><strong>Pincode:</strong> {selectedOrder.pincode}</p>}
+                </div>
+                <div className="pickup-details-box">
+                  <h5>Pickup Details</h5>
+                  <p><strong>Location:</strong> {selectedOrder.pickup_location_name || 'Not selected'}</p>
+                  {selectedOrder.pickup_address_line1 && <p><strong>Address:</strong> {selectedOrder.pickup_address_line1}</p>}
+                  {selectedOrder.pickup_address_line2 && <p><strong>Address 2:</strong> {selectedOrder.pickup_address_line2}</p>}
+                  {selectedOrder.pickup_city && <p><strong>City:</strong> {selectedOrder.pickup_city}</p>}
+                  {selectedOrder.pickup_state && <p><strong>State:</strong> {selectedOrder.pickup_state}</p>}
+                  {selectedOrder.pickup_pincode && <p><strong>Pincode:</strong> {selectedOrder.pickup_pincode}</p>}
                 </div>
                 <div className="order-summary-box">
                   <h5>Order Summary</h5>

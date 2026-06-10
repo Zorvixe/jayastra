@@ -766,7 +766,13 @@ const initDatabase = async () => {
                                 ADD COLUMN IF NOT EXISTS city VARCHAR(100),
                                   ADD COLUMN IF NOT EXISTS state VARCHAR(100),
                                     ADD COLUMN IF NOT EXISTS pincode VARCHAR(10),
-                                      ADD COLUMN IF NOT EXISTS country VARCHAR(50) DEFAULT 'India';
+                                      ADD COLUMN IF NOT EXISTS country VARCHAR(50) DEFAULT 'India',
+                                        ADD COLUMN IF NOT EXISTS pickup_address_line1 TEXT,
+                                          ADD COLUMN IF NOT EXISTS pickup_address_line2 TEXT,
+                                            ADD COLUMN IF NOT EXISTS pickup_city VARCHAR(100),
+                                              ADD COLUMN IF NOT EXISTS pickup_state VARCHAR(100),
+                                                ADD COLUMN IF NOT EXISTS pickup_pincode VARCHAR(10),
+                                                  ADD COLUMN IF NOT EXISTS pickup_location_name VARCHAR(255);
     `);
 
     // 11. order_items
@@ -3311,7 +3317,7 @@ app.get("/api/admin/products", verifyToken, verifyAdminVendorIndividualAccess, a
     const offset = (page - 1) * limit;
     const { search } = req.query;
 
-    let query = `SELECT p.*, c.name AS category_name FROM products p LEFT JOIN categories c ON p.category_id = c.id WHERE 1 = 1`;
+    let query = `SELECT p.*, c.name AS category_name, u.name AS vendor_name FROM products p LEFT JOIN categories c ON p.category_id = c.id LEFT JOIN users u ON p.vendor_id = u.id WHERE 1 = 1`;
     let countQuery = `SELECT COUNT(*) FROM products p WHERE 1 = 1`;
     let params = [];
     let paramIdx = 1;
@@ -5297,7 +5303,8 @@ app.get("/api/admin/dashboard/stats-by-date", verifyToken, verifyAnyAdmin, async
     // 3. Recent Orders for the selected date
     let recentQuery = `
       SELECT DISTINCT o.id, o.customer_name, o.created_at, o.total_amount, o.order_status,
-        u.name as user_name
+        u.name as user_name,
+        o.pickup_location_name
       FROM orders o
       LEFT JOIN users u ON o.user_id = u.id
       ${userRole !== 'super_admin' ? 'JOIN order_items oi ON o.id = oi.order_id' : ''}
@@ -5820,6 +5827,30 @@ app.post("/api/admin/orders/:id/shiprocket", verifyToken, verifyAdminVendorIndiv
       state: foundLocation.state,
       pincode: foundLocation.pin_code || foundLocation.pincode
     };
+
+    // Save the selected pickup location details on the order so the admin UI can show them later.
+    await pool.query(
+      `UPDATE orders SET
+         pickup_location_name = $1,
+         pickup_address_line1 = $2,
+         pickup_address_line2 = $3,
+         pickup_city = $4,
+         pickup_state = $5,
+         pickup_pincode = $6,
+         updated_at = NOW()
+       WHERE id = $7`,
+      [
+        selectedPickupLocation.name,
+        selectedPickupLocation.address,
+        selectedPickupLocation.address_2,
+        selectedPickupLocation.city,
+        selectedPickupLocation.state,
+        selectedPickupLocation.pincode,
+        orderId
+      ]
+    );
+
+    console.log("Selected pickup location saved to order:", selectedPickupLocation);
 
     console.log("Selected pickup location:", selectedPickupLocation);
 

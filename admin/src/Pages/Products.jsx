@@ -26,6 +26,7 @@ const Products = () => {
   const [previewImage, setPreviewImage] = useState(null);
   const [confirmDeleteId, setConfirmDeleteId] = useState(null);
   const [confirmBulkDelete, setConfirmBulkDelete] = useState(false);
+  const userRole = localStorage.getItem("userRole")?.toLowerCase();
 
   // Modal States
   const [showAddModal, setShowAddModal] = useState(false);
@@ -216,6 +217,7 @@ const Products = () => {
                       />
                     </th>
                     <th>Product</th>
+                    {userRole === 'super_admin' && <th>Owner</th>}
                     <th>Category</th>
                     <th>Price</th>
                     <th>Earnings</th>
@@ -260,6 +262,13 @@ const Products = () => {
                             <span className="product-name">{product.name}</span>
                           </div>
                         </td>
+                        {userRole === 'super_admin' && (
+                          <td>
+                            <span className="vendor-pill">
+                              {product.vendor_name || "Unknown Vendor"}
+                            </span>
+                          </td>
+                        )}
                         <td>
                           <span className="admin-category-pill">
                             {product.category_name || "Uncategorized"}
