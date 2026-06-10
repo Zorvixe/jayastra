@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef } from "react";
+import React, { useEffect, useState, useRef, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
 import { motion, AnimatePresence } from "framer-motion";
@@ -18,13 +18,14 @@ import ProductCard from "../components/ProductCard";
 import QuickViewModal from "../components/QuickViewModal";
 
 import { getProducts } from "../data/products";
+import { shuffleArray } from "../utils/shuffle";
 import Loader from "../components/Loader";
 import "../components/Loader.css";
 
 // Loading skeleton for New Arrivals
 const NewArrivalsSkeleton = () => {
   const [itemsPerSlide, setItemsPerSlide] = useState(3);
-  
+
   useEffect(() => {
     const handleResize = () => {
       if (window.innerWidth < 640) setItemsPerSlide(2);
@@ -82,7 +83,7 @@ const NewArrivalsSkeleton = () => {
   );
 };
 
-// Loading skeleton for Shop Products
+// Loading skeleton for Shop Products (limited to 2 rows = 8 items)
 const ShopProductsSkeleton = () => {
   return (
     <section className="py-5 shop-section">
@@ -144,7 +145,7 @@ const NewArrivals = React.memo(({ newArrivals = [], onQuickView, loading }) => {
   useEffect(() => {
     const handleResize = () => {
       // Show exactly 2 items on mobile, 3 on desktop
-      if (window.innerWidth <= 768) setItemsPerSlide(2); 
+      if (window.innerWidth <= 768) setItemsPerSlide(2);
       else setItemsPerSlide(3);
     };
     handleResize();
@@ -209,7 +210,7 @@ const NewArrivals = React.memo(({ newArrivals = [], onQuickView, loading }) => {
             <i className="bi bi-chevron-left"></i>
           </button>
 
-          <div 
+          <div
             className="arrival-viewport"
             ref={viewportRef}
             onScroll={handleScroll}
@@ -244,15 +245,15 @@ const NewArrivals = React.memo(({ newArrivals = [], onQuickView, loading }) => {
         {totalSlides > 1 && (
           <div className="arrival-indicators">
             {Array.from({ length: Math.min(newArrivals.length, 10) }).map((_, index) => {
-               // Limit dots for many products, or just show for available logical slides
-               if (index >= newArrivals.length - itemsPerSlide + 1) return null;
-               return (
+              // Limit dots for many products, or just show for available logical slides
+              if (index >= newArrivals.length - itemsPerSlide + 1) return null;
+              return (
                 <span
                   key={index}
                   className={index === currentSlide ? "active" : ""}
                   onClick={() => scrollToSlide(index)}
                 ></span>
-               );
+              );
             })}
           </div>
         )}
@@ -264,7 +265,7 @@ const NewArrivals = React.memo(({ newArrivals = [], onQuickView, loading }) => {
 /* ================= SHOP BY PRICE COMPONENT ================= */
 const ShopByPrice = React.memo(() => {
   const navigate = useNavigate();
-  
+
   const priceCategories = [
     { label: "Under", price: "499", min: 0, max: 499 },
     { label: "Under", price: "999", min: 0, max: 999 },
@@ -275,12 +276,12 @@ const ShopByPrice = React.memo(() => {
   return (
     <section className="shop-by-price-section">
       <div className="container">
-        <h2 className="section-title text-center mb-5" style={{color: 'var(--saree-maroon)'}}>Shop By Price</h2>
-        
+        <h2 className="section-title text-center mb-5" style={{ color: 'var(--saree-maroon)' }}>Shop By Price</h2>
+
         <div className="price-cards-container">
           {priceCategories.map((cat, index) => (
-            <div 
-              key={index} 
+            <div
+              key={index}
               className="price-card-wrapper"
               onClick={() => navigate(`/all-products?minPrice=${cat.min}&maxPrice=${cat.max}`)}
             >
@@ -330,7 +331,7 @@ const Home = () => {
       try {
         setNewArrivalsLoading(true);
         setShopProductsLoading(true);
-        
+
         const data = await getProducts();
 
         let productsArray = [];
@@ -398,7 +399,7 @@ const Home = () => {
   /* ================= COMPOSE SLIDES ================= */
   // Fallback slides in case DB has no active hero banners
   const defaultHeroSlides = [
-    { 
+    {
       image_url: banner_2,
       title: "NEW BEGINNINGS",
       subtitle: "FLAT 15% OFF ON ALL SAREES",
@@ -409,7 +410,7 @@ const Home = () => {
       align: "left",
       isDbBanner: false
     },
-    { 
+    {
       image_url: "/assets/banner_1.png",
       title: "LUXURY SILKS",
       subtitle: "TRADITION FOR GENERATIONS",
@@ -422,18 +423,18 @@ const Home = () => {
     }
   ];
 
-  const displaySlides = heroBanners.length > 0 
+  const displaySlides = heroBanners.length > 0
     ? heroBanners.map((b, index) => ({
-        image_url: getFullMediaUrl(b.image_url),
-        title: b.title || "",
-        subtitle: b.subtitle || "",
-        button_text: b.button_text || "Shop Now",
-        link: b.link || "/all-products",
-        tagline: b.subtitle || "",
-        description: b.description || "",
-        align: index % 2 === 0 ? "left" : "right",
-        isDbBanner: true
-      }))
+      image_url: getFullMediaUrl(b.image_url),
+      title: b.title || "",
+      subtitle: b.subtitle || "",
+      button_text: b.button_text || "Shop Now",
+      link: b.link || "/all-products",
+      tagline: b.subtitle || "",
+      description: b.description || "",
+      align: index % 2 === 0 ? "left" : "right",
+      isDbBanner: true
+    }))
     : defaultHeroSlides;
 
   const prevHeroSlide = (e) => {
@@ -456,12 +457,15 @@ const Home = () => {
   }, [displaySlides.length]);
 
   /* ================= SHOP ================= */
-  const shopProducts = (products || []).slice(0, 16);
+  // Limit to exactly 2 rows (on desktop: 2 rows of 4 = 8 items)
+  // On mobile: 2 rows of 2 = 4 items, but we'll show 8 and let the grid handle the rows
+  const shuffledProducts = useMemo(() => shuffleArray(products || []), [products]);
+  const shopProducts = shuffledProducts.slice(0, 8);
 
   /* ================= DRAG ================= */
   const handleMouseDown = (e) => {
     const slider = scrollRef.current;
-    if(!slider) return;
+    if (!slider) return;
     slider.isDown = true;
     slider.startX = e.pageX - slider.offsetLeft;
     slider.scrollLeftStart = slider.scrollLeft;
@@ -498,11 +502,10 @@ const Home = () => {
             return (
               <div
                 key={index}
-                className={`hero-slide ${
-                  index === currentSlide ? "active" : ""
-                }`}
+                className={`hero-slide ${index === currentSlide ? "active" : ""
+                  }`}
                 onClick={() => {
-                   navigate(slide.link || "/all-products");
+                  navigate(slide.link || "/all-products");
                 }}
                 style={{ cursor: "pointer" }}
               >
@@ -522,25 +525,25 @@ const Home = () => {
                     </h1>
                     {slide.subtitle && <h3 className="hero-subtitle">{slide.subtitle}</h3>}
                     {slide.description && <p className="hero-description">{slide.description}</p>}
-                    
+
                     <div className="hero-buttons">
-                      <button 
-                        className="btn-hero-primary" 
-                        onClick={(e) => { 
-                          e.stopPropagation(); 
-                          navigate(slide.link || "/all-products"); 
+                      <button
+                        className="btn-hero-primary"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          navigate(slide.link || "/all-products");
                         }}
                       >
                         {slide.button_text}
                         <span className="btn-icon"><i className="bi bi-arrow-right"></i></span>
                       </button>
-                      
+
                       {!slide.isDbBanner && (
-                        <button 
-                          className="btn-hero-secondary" 
-                          onClick={(e) => { 
-                            e.stopPropagation(); 
-                            navigate("/about"); 
+                        <button
+                          className="btn-hero-secondary"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            navigate("/about");
                           }}
                         >
                           Our Story
@@ -556,7 +559,7 @@ const Home = () => {
           <button className="hero-nav-arrow left" onClick={prevHeroSlide}>
             <i className="bi bi-arrow-left"></i>
           </button>
-          
+
           <button className="hero-nav-arrow right" onClick={nextHeroSlide}>
             <i className="bi bi-arrow-right"></i>
           </button>
@@ -575,20 +578,20 @@ const Home = () => {
         </div>
       </section>
 
-      {/* ADD THIS NEW COMPONENT HERE - Categories Section */}
+      {/* Categories Section */}
       <CategoriesScroll />
 
       {/* NEW ARRIVALS */}
-      <NewArrivals 
-        newArrivals={products} 
-        onQuickView={setSelectedProduct} 
+      <NewArrivals
+        newArrivals={shuffledProducts}
+        onQuickView={setSelectedProduct}
         loading={newArrivalsLoading}
       />
 
       {/* EXPLORE */}
       <ExploreCollection />
 
-      {/* SHOP */}
+      {/* SHOP NOW - LIMITED TO 2 ROWS ONLY */}
       {shopProductsLoading ? (
         <ShopProductsSkeleton />
       ) : (
@@ -635,7 +638,7 @@ const Home = () => {
           <div className="banner-content">
             <h1 className="banner-heading festive-text">Grand Launch Sale</h1>
             <p className="banner-price-tag">Launch Offer: <span>Flat 15% OFF</span></p>
-            <button 
+            <button
               className="btn-shop-now"
               onClick={() => navigate("/all-products")}
             >
@@ -645,9 +648,9 @@ const Home = () => {
         </div>
       </section>
 
-       <WorkWithUsMarquee />
+      <WorkWithUsMarquee />
 
-        <ServiceFeatures />
+      <ServiceFeatures />
 
       {/* 3D WEDDING COLLECTION SLIDER */}
       {mosaicLoading ? (
@@ -689,7 +692,7 @@ const WeddingVideoSlider = ({ banners }) => {
             {[-1, 0, 1].map((offset) => {
               const itemIndex = (index + offset + banners.length) % banners.length;
               const item = banners[itemIndex];
-              
+
               const isCenter = offset === 0;
               const isLeft = offset === -1;
               const isRight = offset === 1;
@@ -702,12 +705,12 @@ const WeddingVideoSlider = ({ banners }) => {
                   key={`${item.id}-${offset}`}
                   className={`slider-3d-card ${isCenter ? 'center' : ''}`}
                   initial={{ opacity: 0, scale: 0.8, x: offset * 300, rotateY: offset * 45, zIndex: 1 }}
-                  animate={{ 
-                    opacity: isCenter ? 1 : 0.6, 
-                    scale: isCenter ? 1.15 : 0.85, 
-                    x: offset * (window.innerWidth < 768 ? 95 : 450), 
+                  animate={{
+                    opacity: isCenter ? 1 : 0.6,
+                    scale: isCenter ? 1.15 : 0.85,
+                    x: offset * (window.innerWidth < 768 ? 95 : 450),
                     y: isCenter ? -10 : 15,
-                    rotateY: offset * -25, 
+                    rotateY: offset * -25,
                     zIndex: isCenter ? 20 : 10,
                     filter: isCenter ? "blur(0px) brightness(1.15)" : "blur(3px) brightness(0.6)"
                   }}
@@ -726,12 +729,12 @@ const WeddingVideoSlider = ({ banners }) => {
                   }}
                 >
                   {videoUrl && (
-                    <video 
+                    <video
                       src={videoUrl}
-                      muted 
-                      autoPlay 
-                      loop 
-                      playsInline 
+                      muted
+                      autoPlay
+                      loop
+                      playsInline
                       preload="auto"
                     />
                   )}

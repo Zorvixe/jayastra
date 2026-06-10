@@ -19,6 +19,14 @@ const getImageUrl = (imagePath) => {
   return `${baseUrl}${cleanPath}`;
 };
 
+const createSlug = (name) => {
+  if (!name) return "product";
+  return name
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-|-$/g, "");
+};
+
 import "./Navbar.css";
 
 const Navbar = () => {
@@ -158,7 +166,9 @@ const Navbar = () => {
     setMenuOpen(false);
     setShowMobileSearch(false);
     if (product.uuid) {
-      navigate(`/product/${product.uuid}`);
+      const slug = createSlug(product.name);
+
+      navigate(`/product/${product.uuid}/${slug}?product_code=${product.product_code}`);
     } else if (product.product_code) {
       navigate(`/product/${product.uuid}?product_code=${product.product_code}`);
     }
@@ -228,7 +238,7 @@ const Navbar = () => {
 
   // Check if mobile view
   const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
-  
+
   useEffect(() => {
     const handleResize = () => {
       setIsMobile(window.innerWidth <= 768);
