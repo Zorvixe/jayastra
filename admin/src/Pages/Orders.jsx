@@ -391,6 +391,8 @@ const Orders = () => {
   const [filterDate, setFilterDate] = useState(new Date().toISOString().split('T')[0]);
 
   const token = localStorage.getItem("token");
+  const userRole = localStorage.getItem("userRole");
+  const isSuperAdmin = userRole === "super_admin";
 
   const fetchOrders = async (isSilent = false) => {
     try {
@@ -715,6 +717,12 @@ const Orders = () => {
   };
 
   const deleteOrder = async (orderId) => {
+    if (!isSuperAdmin) {
+      toast.warn("Only Super Admin can delete orders");
+      setDeleteConfirmOrder(null);
+      return;
+    }
+
     try {
       setLoading(true);
       const res = await axios.delete(`${API_URL}/admin/orders/${orderId}`, {
@@ -737,6 +745,13 @@ const Orders = () => {
   };
 
   const bulkDeleteOrders = async () => {
+    if (!isSuperAdmin) {
+      toast.warn("Only Super Admin can bulk delete orders");
+      setBulkDeleteMode(false);
+      setSelectedOrders([]);
+      return;
+    }
+
     if (selectedOrders.length === 0) {
       toast.warning("No orders selected");
       return;
@@ -763,6 +778,8 @@ const Orders = () => {
   };
 
   const toggleOrderSelection = (orderId) => {
+    if (!isSuperAdmin) return;
+
     if (selectedOrders.includes(orderId)) {
       setSelectedOrders(selectedOrders.filter(id => id !== orderId));
     } else {
@@ -771,15 +788,20 @@ const Orders = () => {
   };
 
   const selectAllOrders = () => {
-    if (selectedOrders.length === filteredOrders.length) {
+    if (!isSuperAdmin) return;
+
+    const deletableOrders = filteredOrders.filter(order => order.order_status !== 'Delivered');
+
+    if (selectedOrders.length === deletableOrders.length) {
       setSelectedOrders([]);
     } else {
-      const deletableOrders = filteredOrders
-        .filter(order => order.order_status !== 'Delivered')
-        .map(order => order.id);
-      setSelectedOrders(deletableOrders);
+      setSelectedOrders(deletableOrders.map(order => order.id));
     }
   };
+
+  const deletableFilteredOrders = filteredOrders.filter(order => order.order_status !== 'Delivered');
+  const allDeletableOrdersSelected = deletableFilteredOrders.length > 0 && selectedOrders.length === deletableFilteredOrders.length;
+  const tableColumnCount = 9 + (isSuperAdmin ? 1 : 0);
 
   return (
     <div className="orders-container">
@@ -817,7 +839,7 @@ const Orders = () => {
           <table className="orders-table-new">
             <thead>
               <tr>
-                {bulkDeleteMode && <th style={{ width: '40px' }}><input type="checkbox" checked={selectedOrders.length === filteredOrders.filter(o => o.order_status !== 'Delivered').length && filteredOrders.length > 0} onChange={selectAllOrders} /></th>}
+                {isSuperAdmin && bulkDeleteMode && <th style={{ width: '40px' }}><input type="checkbox" checked={allDeletableOrdersSelected} onChange={selectAllOrders} disabled={deletableFilteredOrders.length === 0} /></th>}
                 <th>Order ID</th>
                 <th>Date</th>
                 <th>Customer</th>
@@ -825,15 +847,15 @@ const Orders = () => {
                 <th>Products</th>
                 <th>P.Code</th>
                 <th>Total Amount</th>
-                <th>Status</th>
-                <th>Action</th>
-                {!bulkDeleteMode && <th>Delete</th>}
+                <th>Status</th> 
+               {isSuperAdmin && <th>Action</th>}
+                {isSuperAdmin && !bulkDeleteMode && <th>Delete</th>}
               </tr>
             </thead>
             <tbody>
               {initialLoading ? (
                 <tr>
-                  <td colSpan={bulkDeleteMode ? 11 : 10} style={{ textAlign: 'center', padding: '40px' }}>
+                  <td colSpan={tableColumnCount} style={{ textAlign: 'center', padding: '40px' }}>
                     <div className="cate-loader-overlay" style={{ position: 'relative', height: '100px' }}>
                       <div className="cate-loader-container">
                         <div className="cate-spinner"></div>
@@ -843,7 +865,7 @@ const Orders = () => {
                 </tr>
               ) : filteredOrders.length === 0 ? (
                 <tr>
-                  <td colSpan={bulkDeleteMode ? 11 : 10} style={{ textAlign: 'center', padding: '40px', color: '#64748b' }}>
+                  <td colSpan={tableColumnCount} style={{ textAlign: 'center', padding: '40px', color: '#64748b' }}>
                     <i className="bi bi-inbox" style={{ fontSize: '2rem', display: 'block', marginBottom: '10px' }}></i>
                     No orders found for {filterDate ? new Date(filterDate).toLocaleDateString() : "the selected period"}
                   </td>
@@ -851,7 +873,7 @@ const Orders = () => {
               ) : (
                 filteredOrders.map(order => (
                   <tr key={order.id}>
-                    {bulkDeleteMode && (
+                    {isSuperAdmin && bulkDeleteMode && (
                       <td>
                         <input
                           type="checkbox"
@@ -926,7 +948,7 @@ const Orders = () => {
                         Details
                       </button>
                     </td>
-                    {!bulkDeleteMode && (
+                    {isSuperAdmin && !bulkDeleteMode && (
                       <td>
                         <button
                           className="delete-order-btn"
@@ -944,37 +966,39 @@ const Orders = () => {
             </tbody>
           </table>
         </div>
-        <div className="orders-table-toolbar">
-          {!bulkDeleteMode ? (
-            <button
-              className="bulk-delete-mode-btn"
-              onClick={() => setBulkDeleteMode(true)}
-              disabled={initialLoading || filteredOrders.length === 0}
-            >
-              <i className="bi bi-trash3"></i> Bulk Delete
-            </button>
-          ) : (
-            <div className="bulk-delete-controls">
-              <button className="select-all-btn" onClick={selectAllOrders}>
-                <i className={`bi ${selectedOrders.length === filteredOrders.filter(o => o.order_status !== 'Delivered').length ? 'bi-check-square-fill' : 'bi-square'}`}></i>
-                {selectedOrders.length === filteredOrders.filter(o => o.order_status !== 'Delivered').length ? 'Deselect All' : 'Select All'}
+        {isSuperAdmin && (
+          <div className="orders-table-toolbar">
+            {!bulkDeleteMode ? (
+              <button
+                className="bulk-delete-mode-btn"
+                onClick={() => setBulkDeleteMode(true)}
+                disabled={initialLoading || filteredOrders.length === 0}
+              >
+                <i className="bi bi-trash3"></i> Bulk Delete
               </button>
-              <span className="selected-count">{selectedOrders.length} selected</span>
-              <button className="execute-bulk-delete-btn" onClick={bulkDeleteOrders} disabled={selectedOrders.length === 0 || bulkDeleting}>
-                {bulkDeleting ? (
-                  <><div className="btn-spinner-small"></div>Deleting...</>
-                ) : (
-                  <><i className="bi bi-trash3"></i> Delete Selected</>
-                )}
-              </button>
-              <button className="cancel-bulk-mode-btn" onClick={() => { setBulkDeleteMode(false); setSelectedOrders([]); }}>Cancel</button>
-            </div>
-          )}
-        </div>
+            ) : (
+              <div className="bulk-delete-controls">
+                <button className="select-all-btn" onClick={selectAllOrders} disabled={deletableFilteredOrders.length === 0}>
+                  <i className={`bi ${allDeletableOrdersSelected ? 'bi-check-square-fill' : 'bi-square'}`}></i>
+                  {allDeletableOrdersSelected ? 'Deselect All' : 'Select All'}
+                </button>
+                <span className="selected-count">{selectedOrders.length} selected</span>
+                <button className="execute-bulk-delete-btn" onClick={bulkDeleteOrders} disabled={selectedOrders.length === 0 || bulkDeleting}>
+                  {bulkDeleting ? (
+                    <><div className="btn-spinner-small"></div>Deleting...</>
+                  ) : (
+                    <><i className="bi bi-trash3"></i> Delete Selected</>
+                  )}
+                </button>
+                <button className="cancel-bulk-mode-btn" onClick={() => { setBulkDeleteMode(false); setSelectedOrders([]); }}>Cancel</button>
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Delete Confirmation Modal */}
-      {deleteConfirmOrder && (
+      {isSuperAdmin && deleteConfirmOrder && (
         <div className="custom-confirm-overlay" onClick={() => setDeleteConfirmOrder(null)}>
           <div className="custom-confirm-box" onClick={(e) => e.stopPropagation()}>
             <div className="confirm-icon delete-icon"><i className="bi bi-trash-fill"></i></div>
