@@ -510,7 +510,7 @@ const Dashboard = () => {
                   <tr key={order.id}>
                     <td>#{order.id}</td>
                     <td>{order.user_name || order.customer_name || "Guest"}</td>
-                    <td>{order.pickup_location_name || "Not selected"}</td>
+                    <td>{order.pickup_schedule_display || (order.shiprocket_order_id ? "Pickup pending" : "Not selected")}</td>
                     <td>{new Date(order.created_at).toLocaleDateString()}</td>
                     <td>₹{parseFloat(order.total_amount).toLocaleString()}</td>
                     <td>

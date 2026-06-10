@@ -244,6 +244,20 @@ const PickupLocationSelector = ({ isOpen, onClose, onConfirm, orderId, isLoading
     return String(locId) === String(selectedPickupLocation);
   });
 
+  const getSelectedPickupSchedule = (location) => {
+    if (!location || typeof location !== 'object') return null;
+    const date = location.pickup_date || location.pickup_scheduled_date || location.pickup_date_time || location.schedule_date || location.shipment_pickup_date;
+    const timeSlot = location.pickup_slot || location.pickup_time || location.pickup_time_slot || location.pickup_scheduled_time || location.schedule_time || location.shipment_pickup_time;
+    if (!date && !timeSlot) return null;
+    return {
+      date: date || null,
+      timeSlot: timeSlot || null,
+      display: date && timeSlot ? `${date} ${timeSlot}` : date || timeSlot
+    };
+  };
+
+  const selectedPickupSchedule = getSelectedPickupSchedule(selectedLocationDetails);
+
   if (!isOpen) return null;
 
   return (
@@ -270,10 +284,12 @@ const PickupLocationSelector = ({ isOpen, onClose, onConfirm, orderId, isLoading
                   {selectedLocationDetails.city}, {selectedLocationDetails.state} - {selectedLocationDetails.pincode}
                 </span>
               </div>
-              <div className="selected-location-contact">
-                <i className="bi bi-telephone"></i>
-                <span>Phone: {selectedLocationDetails.phone || 'N/A'} | Email: {selectedLocationDetails.email || 'N/A'}</span>
-              </div>
+              {selectedPickupSchedule && (
+                <div className="selected-location-schedule">
+                  <i className="bi bi-clock-history"></i>
+                  <span><strong>Pickup Schedule:</strong> {selectedPickupSchedule.display}</span>
+                </div>
+              )}
             </div>
           </div>
         )}
@@ -363,6 +379,9 @@ const Orders = () => {
   const [showPickupSelector, setShowPickupSelector] = useState(false);
   const [pendingPushOrder, setPendingPushOrder] = useState(null);
   const [checkingAwb, setCheckingAwb] = useState(false);
+  const [selectedOrderPickupSchedule, setSelectedOrderPickupSchedule] = useState(null);
+  const [loadingPickupSchedule, setLoadingPickupSchedule] = useState(false);
+  const [pickupScheduleError, setPickupScheduleError] = useState(null);
 
   const [deleteConfirmOrder, setDeleteConfirmOrder] = useState(null);
   const [bulkDeleteMode, setBulkDeleteMode] = useState(false);
@@ -400,6 +419,40 @@ const Orders = () => {
     }, 10000);
     return () => clearInterval(interval);
   }, []);
+
+  useEffect(() => {
+    const loadPickupSchedule = async () => {
+      if (!selectedOrder || (!selectedOrder.shiprocket_order_id && !selectedOrder.shiprocket_shipment_id)) {
+        setSelectedOrderPickupSchedule(null);
+        setPickupScheduleError(null);
+        return;
+      }
+
+      try {
+        setLoadingPickupSchedule(true);
+        setPickupScheduleError(null);
+
+        const res = await axios.get(`${API_URL}/admin/orders/${selectedOrder.id}/shiprocket-pickup`, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+
+        if (res.data.success) {
+          setSelectedOrderPickupSchedule(res.data.schedule || null);
+        } else {
+          setSelectedOrderPickupSchedule(null);
+          setPickupScheduleError(res.data.message || 'Unable to load pickup schedule');
+        }
+      } catch (err) {
+        console.error('Pickup schedule fetch error:', err);
+        setSelectedOrderPickupSchedule(null);
+        setPickupScheduleError(err.response?.data?.message || 'Failed to load pickup schedule');
+      } finally {
+        setLoadingPickupSchedule(false);
+      }
+    };
+
+    loadPickupSchedule();
+  }, [selectedOrder]);
 
   const filteredOrders = orders.filter(order => {
     if (!filterDate) return true;
@@ -818,7 +871,7 @@ const Orders = () => {
                     </td>
                     <td>
                       <span className="pickup-chip">
-                        {order.pickup_location_name ? order.pickup_location_name : 'Not selected'}
+                        {order.pickup_schedule_display ? order.pickup_schedule_display : (order.shiprocket_order_id ? 'Pickup pending' : 'Not selected')}
                       </span>
                     </td>
                     <td>
@@ -971,15 +1024,7 @@ const Orders = () => {
                   {selectedOrder.state && <p><strong>State:</strong> {selectedOrder.state}</p>}
                   {selectedOrder.pincode && <p><strong>Pincode:</strong> {selectedOrder.pincode}</p>}
                 </div>
-                <div className="pickup-details-box">
-                  <h5>Pickup Details</h5>
-                  <p><strong>Location:</strong> {selectedOrder.pickup_location_name || 'Not selected'}</p>
-                  {selectedOrder.pickup_address_line1 && <p><strong>Address:</strong> {selectedOrder.pickup_address_line1}</p>}
-                  {selectedOrder.pickup_address_line2 && <p><strong>Address 2:</strong> {selectedOrder.pickup_address_line2}</p>}
-                  {selectedOrder.pickup_city && <p><strong>City:</strong> {selectedOrder.pickup_city}</p>}
-                  {selectedOrder.pickup_state && <p><strong>State:</strong> {selectedOrder.pickup_state}</p>}
-                  {selectedOrder.pickup_pincode && <p><strong>Pincode:</strong> {selectedOrder.pickup_pincode}</p>}
-                </div>
+
                 <div className="order-summary-box">
                   <h5>Order Summary</h5>
                   <p><strong>Method:</strong> {selectedOrder.payment_method}</p>
@@ -989,6 +1034,34 @@ const Orders = () => {
                   {selectedOrder.awb_code && <p><strong>AWB:</strong> {selectedOrder.awb_code}</p>}
                   {selectedOrder.shiprocket_order_id && <p><strong>SR Order ID:</strong> {selectedOrder.shiprocket_order_id}</p>}
                 </div>
+              </div>
+
+              <div className="pickup-details-box cust-details-box">
+                <h5>Pickup Schedule</h5>
+                <p><strong>Pickup Location:</strong> <p className="address-display">
+                  {selectedOrder.pickup_address_line1 && <span>{selectedOrder.pickup_address_line1} </span>}
+                  {selectedOrder.pickup_address_line2 && <span>{selectedOrder.pickup_address_line2} </span>}
+                  {selectedOrder.pickup_city && <span>{selectedOrder.pickup_city} </span>}
+                  {selectedOrder.pickup_state && <span>{selectedOrder.pickup_state} </span>}
+                  {selectedOrder.pickup_pincode && <span>{selectedOrder.pickup_pincode} </span>}
+                </p></p>
+
+
+                {loadingPickupSchedule && selectedOrder.shiprocket_order_id ? (
+                  <p>Loading pickup date and time from Shiprocket...</p>
+                ) : selectedOrderPickupSchedule ? (
+                  <>
+                    {selectedOrderPickupSchedule.display && <p><strong>Pickup:</strong> {selectedOrderPickupSchedule.display}</p>}
+                    {!selectedOrderPickupSchedule.display && selectedOrderPickupSchedule.date && <p><strong>Date:</strong> {selectedOrderPickupSchedule.date}</p>}
+                    {!selectedOrderPickupSchedule.display && selectedOrderPickupSchedule.time && <p><strong>Time:</strong> {selectedOrderPickupSchedule.time}</p>}
+                  </>
+                ) : selectedOrder.shiprocket_order_id ? (
+                  <p><strong>Pickup Slots:</strong> Shipping is in Processing.</p>
+                ) : (
+                  <p><strong>Pickup:</strong> Not selected</p>
+                )}
+
+                {pickupScheduleError && <p className="error-text">{pickupScheduleError}</p>}
               </div>
 
               <div className="items-list-admin">

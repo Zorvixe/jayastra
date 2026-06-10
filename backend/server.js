@@ -772,7 +772,10 @@ const initDatabase = async () => {
                                             ADD COLUMN IF NOT EXISTS pickup_city VARCHAR(100),
                                               ADD COLUMN IF NOT EXISTS pickup_state VARCHAR(100),
                                                 ADD COLUMN IF NOT EXISTS pickup_pincode VARCHAR(10),
-                                                  ADD COLUMN IF NOT EXISTS pickup_location_name VARCHAR(255);
+                                                  ADD COLUMN IF NOT EXISTS pickup_location_name VARCHAR(255),
+                                                    ADD COLUMN IF NOT EXISTS pickup_schedule_date VARCHAR(50),
+                                                      ADD COLUMN IF NOT EXISTS pickup_schedule_time VARCHAR(100),
+                                                        ADD COLUMN IF NOT EXISTS pickup_schedule_display VARCHAR(255);
     `);
 
     // 11. order_items
@@ -3729,6 +3732,114 @@ app.get("/api/admin/orders", verifyToken, verifyAdminVendorIndividualAccess, asy
   }
 });
 
+// Helper to extract pickup schedule from Shiprocket order/shipment data
+const parseShiprocketPickupSchedule = (data) => {
+  if (!data || typeof data !== 'object') return null;
+
+  const candidates = [];
+  if (Array.isArray(data.data?.shipments)) {
+    candidates.push(...data.data.shipments);
+  }
+  if (data.data?.shipment) candidates.push(data.data.shipment);
+  if (data.shipment) candidates.push(data.shipment);
+  if (data.data && typeof data.data === 'object') candidates.push(data.data);
+  candidates.push(data);
+
+  for (const candidate of candidates) {
+    if (!candidate || typeof candidate !== 'object') continue;
+
+    const pickupDate = candidate.pickup_date || candidate.pickup_scheduled_date || candidate.pickup_date_time || candidate.schedule_date || candidate.shipment_pickup_date;
+    const pickupTime = candidate.pickup_time || candidate.pickup_slot || candidate.pickup_time_slot || candidate.pickup_scheduled_time || candidate.schedule_time || candidate.shipment_pickup_time;
+    const pickupDateTime = candidate.pickup_date_time || candidate.pickup_datetime || candidate.pickup_date_time_slot || candidate.pickup_date || candidate.pickup_time;
+
+    if (pickupDate || pickupTime || pickupDateTime) {
+      const display = pickupDateTime || (pickupDate && pickupTime ? `${pickupDate} ${pickupTime}` : pickupDate || pickupTime);
+      return {
+        date: pickupDate || null,
+        time: pickupTime || null,
+        dateTime: pickupDateTime || null,
+        display: display || null,
+        raw: candidate
+      };
+    }
+  }
+
+  return null;
+};
+
+app.get("/api/admin/orders/:id/shiprocket-pickup", verifyToken, verifyAdminVendorIndividualAccess, async (req, res) => {
+  try {
+    const orderId = req.params.id;
+    const orderResult = await pool.query(`SELECT shiprocket_order_id, shiprocket_shipment_id FROM orders WHERE id = $1`, [orderId]);
+    if (orderResult.rows.length === 0) {
+      return res.status(404).json({ success: false, message: "Order not found" });
+    }
+
+    const order = orderResult.rows[0];
+    if (!order.shiprocket_order_id && !order.shiprocket_shipment_id) {
+      return res.status(200).json({ success: true, schedule: null, message: "Order has not been pushed to Shiprocket yet." });
+    }
+
+    const token = await authenticateShiprocket();
+    let shiprocketData = null;
+    let schedule = null;
+
+    if (order.shiprocket_order_id) {
+      const orderResponse = await fetch(`https://apiv2.shiprocket.in/v1/external/orders/show/${encodeURIComponent(order.shiprocket_order_id)}`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      const text = await orderResponse.text();
+      try {
+        shiprocketData = JSON.parse(text);
+      } catch (parseError) {
+        console.error('Failed to parse Shiprocket order details response:', parseError.message, text);
+        shiprocketData = null;
+      }
+
+      schedule = parseShiprocketPickupSchedule(shiprocketData);
+    }
+
+    if (!schedule && order.shiprocket_shipment_id) {
+      const shipmentResponse = await fetch(`https://apiv2.shiprocket.in/v1/external/shipments/${encodeURIComponent(order.shiprocket_shipment_id)}`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      const text = await shipmentResponse.text();
+      try {
+        shiprocketData = JSON.parse(text);
+      } catch (parseError) {
+        console.error('Failed to parse Shiprocket shipment details response:', parseError.message, text);
+        shiprocketData = null;
+      }
+
+      schedule = parseShiprocketPickupSchedule(shiprocketData);
+    }
+
+    if (schedule) {
+      await pool.query(
+        `UPDATE orders
+         SET pickup_schedule_display = $1,
+             pickup_schedule_date = $2,
+             pickup_schedule_time = $3
+         WHERE id = $4`,
+        [schedule.display || null, schedule.date || schedule.dateTime || null, schedule.time || null, orderId]
+      );
+    }
+
+    return res.json({ success: true, schedule });
+  } catch (error) {
+    console.error('Shiprocket pickup schedule fetch error:', error);
+    res.status(500).json({ success: false, message: error.message || 'Failed to fetch Shiprocket pickup schedule' });
+  }
+});
+
 // ================= ORDER STATUS UPDATE - ADD TO VENDOR BALANCE =================
 
 app.put("/api/admin/orders/:id/status", verifyToken, verifyAdminVendorIndividualAccess, async (req, res) => {
@@ -5304,7 +5415,8 @@ app.get("/api/admin/dashboard/stats-by-date", verifyToken, verifyAnyAdmin, async
     let recentQuery = `
       SELECT DISTINCT o.id, o.customer_name, o.created_at, o.total_amount, o.order_status,
         u.name as user_name,
-        o.pickup_location_name
+        o.pickup_schedule_display,
+        o.shiprocket_order_id
       FROM orders o
       LEFT JOIN users u ON o.user_id = u.id
       ${userRole !== 'super_admin' ? 'JOIN order_items oi ON o.id = oi.order_id' : ''}
@@ -5967,6 +6079,25 @@ app.post("/api/admin/orders/:id/shiprocket", verifyToken, verifyAdminVendorIndiv
       const srOrderId = result.order_id ? result.order_id.toString() : null;
       const srShipmentId = result.shipment_id ? result.shipment_id.toString() : null;
 
+      // Save pickup schedule to local order if available
+      const saveOrderPickupSchedule = async (schedule) => {
+        if (!schedule) return;
+        const display = schedule.display || (schedule.date && schedule.time ? `${schedule.date} ${schedule.time}` : schedule.date || schedule.time);
+        await pool.query(
+          `UPDATE orders
+           SET pickup_schedule_display = $1,
+               pickup_schedule_date = $2,
+               pickup_schedule_time = $3
+           WHERE id = $4`,
+          [display || null, schedule.date || schedule.dateTime || null, schedule.time || null, orderId]
+        );
+      };
+
+      const srPickupSchedule = parseShiprocketPickupSchedule(result);
+      if (srPickupSchedule) {
+        await saveOrderPickupSchedule(srPickupSchedule);
+      }
+
       // Update local order with Shiprocket IDs
       await pool.query(
         `UPDATE orders 
@@ -6025,6 +6156,11 @@ app.post("/api/admin/orders/:id/shiprocket", verifyToken, verifyAdminVendorIndiv
             const shipmentData = await shipmentRes.json();
             console.log("Shipment details:", JSON.stringify(shipmentData, null, 2));
 
+            const shipmentSchedule = parseShiprocketPickupSchedule(shipmentData);
+            if (shipmentSchedule) {
+              await saveOrderPickupSchedule(shipmentSchedule);
+            }
+
             if (shipmentData.data) {
               awbCode = shipmentData.data.awb_code || shipmentData.data.awb;
             }
@@ -6057,6 +6193,10 @@ app.post("/api/admin/orders/:id/shiprocket", verifyToken, verifyAdminVendorIndiv
             });
 
             const retryShipmentData = await retryShipmentRes.json();
+            const retryShipmentSchedule = parseShiprocketPickupSchedule(retryShipmentData);
+            if (retryShipmentSchedule) {
+              await saveOrderPickupSchedule(retryShipmentSchedule);
+            }
             if (retryShipmentData.data && retryShipmentData.data.awb_code) {
               awbCode = retryShipmentData.data.awb_code;
               await pool.query(
