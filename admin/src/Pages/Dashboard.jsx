@@ -14,6 +14,9 @@ import {
 import { Line } from "react-chartjs-2";
 import "./Dashboard.css";
 
+import noOrdersImg from "../assets/no_orders.png";
+import dashBoardBanner from "../assets/dash_banner_long.png";
+
 ChartJS.register(
   CategoryScale,
   LinearScale,
@@ -286,6 +289,11 @@ const Dashboard = () => {
 
   return (
     <div className="dash-container">
+
+      <div className="dash-banner">
+        <img src={dashBoardBanner} alt="Dashboard Banner" />
+      </div>
+
       <div className="dash-date-filter-bar">
         <div className="dash-today-date" onClick={handleTodayClick} style={{ cursor: 'pointer' }}>
           <div className="dash-today-label">Today</div>
@@ -492,44 +500,80 @@ const Dashboard = () => {
         </div>
 
         <div className="dash-table">
-          <h5 className="dahs-table-headings">Recent Orders <span className="dahs-table-headspan">({formatDisplayDate(new Date(selectedDate))})</span></h5>
+          <h5 className="dahs-table-headings">
+            Recent Orders{" "}
+            <span className="dahs-table-headspan">
+              ({formatDisplayDate(new Date(selectedDate))})
+            </span>
+          </h5>
+
           <div className="dash-table-responsive">
             <table className="dash-orders-table">
-              <thead>
-                <tr>
-                  <th>Order ID</th>
-                  <th>Customer</th>
-                  <th>Pickup</th>
-                  <th>Date</th>
-                  <th>Amount</th>
-                  <th>Status</th>
-                </tr>
-              </thead>
-              <tbody>
-                {recentOrders.map((order) => (
-                  <tr key={order.id}>
-                    <td>#{order.id}</td>
-                    <td>{order.user_name || order.customer_name || "Guest"}</td>
-                    <td>{order.pickup_schedule_display || (order.shiprocket_order_id ? "Pickup pending" : "Not selected")}</td>
-                    <td>{new Date(order.created_at).toLocaleDateString()}</td>
-                    <td>₹{parseFloat(order.total_amount).toLocaleString()}</td>
-                    <td>
-                      <span
-                        className={`dash-status dash-status-${(order.order_status || 'Pending').toLowerCase()}`}
-                      >
-                        {order.order_status || 'Pending'}
-                      </span>
-                    </td>
-                  </tr>
-                ))}
-                {recentOrders.length === 0 && (
+              {recentOrders.length === 0 ? (
+                <tbody>
                   <tr>
-                    <td colSpan="5" className="dash-text-center">
-                      No orders for this date
+                    <td colSpan="6">
+                      <div style={{ textAlign: "center", padding: "40px" }}>
+                        <img
+                          src={noOrdersImg}
+                          alt="No orders"
+                          className="no-orders-image"
+                        />
+                        <p style={{ color: "#666", marginTop: "10px" }}>
+                          No orders.
+                        </p>
+                      </div>
                     </td>
                   </tr>
-                )}
-              </tbody>
+                </tbody>
+              ) : (
+                <>
+                  <thead>
+                    <tr>
+                      <th>Order ID</th>
+                      <th>Customer</th>
+                      <th>Pickup</th>
+                      <th>Date</th>
+                      <th>Amount</th>
+                      <th>Status</th>
+                    </tr>
+                  </thead>
+
+                  <tbody>
+                    {recentOrders.map((order) => (
+                      <tr key={order.id}>
+                        <td>#{order.id}</td>
+                        <td>
+                          {order.user_name ||
+                            order.customer_name ||
+                            "Guest"}
+                        </td>
+                        <td>
+                          {order.pickup_schedule_display ||
+                            (order.shiprocket_order_id
+                              ? "Pickup pending"
+                              : "Not selected")}
+                        </td>
+                        <td>
+                          {new Date(order.created_at).toLocaleDateString()}
+                        </td>
+                        <td>
+                          ₹{parseFloat(order.total_amount).toLocaleString()}
+                        </td>
+                        <td>
+                          <span
+                            className={`dash-status dash-status-${(
+                              order.order_status || "Pending"
+                            ).toLowerCase()}`}
+                          >
+                            {order.order_status || "Pending"}
+                          </span>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </>
+              )}
             </table>
           </div>
         </div>

@@ -6,6 +6,8 @@ import { toast } from "react-toastify";
 import AddProduct from "./AddProduct";
 import EditProduct from "./EditProduct";
 
+import noItemImg from "../assets/no_items.png";
+
 const API_URL = process.env.REACT_APP_API_URL;
 
 const getImageUrl = (imagePath) => {
@@ -198,6 +200,13 @@ const Products = () => {
           <div className="dash-loader-overlay">
             <div className="dash-loader-container">
               <div className="dash-spinner"></div>
+            </div>
+          </div>
+        ) : filteredProducts.length === 0 ? (
+          <div className="no-products-state">
+            <img src={noItemImg} alt="No products" className="no-products-image" />
+            <div className="no-products-message">
+              <h3>No products found</h3>
             </div>
           </div>
         ) : (
