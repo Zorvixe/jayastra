@@ -1,11 +1,8 @@
-// Dashboard Banner Management Component (add inside Settings component)
+import React, { useState, useEffect } from "react";
+import axios from '../../utils/axiosConfig';
+import { toast } from "react-toastify";
 
-import React, { useState, useEffect } from 'react';
-import axios from 'axios';
-import { toast } from 'react-toastify';
-
-import "./DashBanner.css"
-
+const API_URL = process.env.REACT_APP_API_URL;
 
 const DashBanner = () => {
   const [banner, setBanner] = useState({
@@ -15,6 +12,7 @@ const DashBanner = () => {
   });
   const [uploading, setUploading] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [loading, setLoading] = useState(true);
   const userRole = localStorage.getItem("userRole");
 
   useEffect(() => {
@@ -23,17 +21,26 @@ const DashBanner = () => {
 
   const fetchBanner = async () => {
     try {
+      setLoading(true);
       const token = localStorage.getItem("token");
       const response = await axios.get(`${API_URL}/admin/settings/dashboard-banner`, {
         headers: { Authorization: `Bearer ${token}` }
       });
-      
+
       if (response.data.success) {
-        setBanner(response.data.banner);
+        const bannerData = response.data.banner;
+        
+        // Prepend backend host if it's a relative path
+        if (bannerData.url && bannerData.url.startsWith("/uploads")) {
+          const backendBase = API_URL ? API_URL.replace(/\/api$/, '') : '';
+          bannerData.url = `${backendBase}${bannerData.url}`;
+        }
+        setBanner(bannerData);
       }
     } catch (error) {
       console.error("Failed to fetch banner:", error);
-      toast.error("Failed to load banner settings");
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -41,13 +48,11 @@ const DashBanner = () => {
     const file = e.target.files[0];
     if (!file) return;
 
-    // Validate file type
     if (!file.type.startsWith('image/')) {
       toast.error("Please upload an image file");
       return;
     }
 
-    // Validate file size (max 5MB)
     if (file.size > 5 * 1024 * 1024) {
       toast.error("Image size should be less than 5MB");
       return;
@@ -60,14 +65,22 @@ const DashBanner = () => {
     try {
       const token = localStorage.getItem("token");
       const response = await axios.post(`${API_URL}/admin/settings/dashboard-banner/upload`, formData, {
-        headers: { 
+        headers: {
           Authorization: `Bearer ${token}`,
           'Content-Type': 'multipart/form-data'
         }
       });
-      
+
       if (response.data.success) {
-        setBanner(prev => ({ ...prev, url: response.data.url }));
+        let uploadedUrl = response.data.url;
+        
+        // Format relative path for state/preview
+        if (uploadedUrl && uploadedUrl.startsWith("/uploads")) {
+          const backendBase = API_URL ? API_URL.replace(/\/api$/, '') : '';
+          uploadedUrl = `${backendBase}${uploadedUrl}`;
+        }
+        
+        setBanner(prev => ({ ...prev, url: uploadedUrl }));
         toast.success("Banner uploaded successfully");
       } else {
         toast.error(response.data.message || "Upload failed");
@@ -84,10 +97,20 @@ const DashBanner = () => {
     setSaving(true);
     try {
       const token = localStorage.getItem("token");
-      const response = await axios.put(`${API_URL}/admin/settings/dashboard-banner`, banner, {
+      
+      // Before sending to backend, strip the base URL if present to keep stored relative path clean
+      const cleanBanner = { ...banner };
+      if (cleanBanner.url && API_URL) {
+        const backendBase = API_URL.replace(/\/api$/, '');
+        if (cleanBanner.url.startsWith(backendBase)) {
+          cleanBanner.url = cleanBanner.url.replace(backendBase, '');
+        }
+      }
+
+      const response = await axios.put(`${API_URL}/admin/settings/dashboard-banner`, cleanBanner, {
         headers: { Authorization: `Bearer ${token}` }
       });
-      
+
       if (response.data.success) {
         toast.success("Banner settings saved successfully");
       } else {
@@ -103,13 +126,13 @@ const DashBanner = () => {
 
   const handleRemove = async () => {
     if (!window.confirm("Are you sure you want to remove the dashboard banner?")) return;
-    
+
     try {
       const token = localStorage.getItem("token");
       const response = await axios.delete(`${API_URL}/admin/settings/dashboard-banner`, {
         headers: { Authorization: `Bearer ${token}` }
       });
-      
+
       if (response.data.success) {
         setBanner({ url: '', alt: 'Dashboard Banner', link: '' });
         toast.success("Banner removed successfully");
@@ -122,9 +145,21 @@ const DashBanner = () => {
     }
   };
 
-  // Only show for Super Admin
   if (userRole !== 'super_admin') {
     return null;
+  }
+
+  if (loading) {
+    return (
+      <div className="settings-section">
+        <h5 className="settings-section-title">
+          <i className="bi bi-image"></i> Dashboard Banner
+        </h5>
+        <div style={{ textAlign: 'center', padding: '40px' }}>
+          <div className="settings-spinner"></div>
+        </div>
+      </div>
+    );
   }
 
   return (
@@ -132,37 +167,44 @@ const DashBanner = () => {
       <h5 className="settings-section-title">
         <i className="bi bi-image"></i> Dashboard Banner
       </h5>
-      
+
       <div className="dashboard-banner-preview" style={{ marginBottom: '20px' }}>
         <label className="settings-label">Current Banner Preview</label>
-        <div className="banner-preview-container" style={{ 
-          border: '1px solid #e0e0e0', 
+        <div className="banner-preview-container" style={{
+          border: '1px solid #e0e0e0',
           borderRadius: '8px',
           padding: '10px',
           background: '#f9f9f9',
           textAlign: 'center'
         }}>
           {banner.url ? (
-            <img 
-              src={banner.url} 
-              alt={banner.alt} 
-              style={{ 
-                maxWidth: '100%', 
-                maxHeight: '200px', 
+            <img
+              src={banner.url}
+              alt={banner.alt}
+              style={{
+                maxWidth: '100%',
+                maxHeight: '200px',
                 objectFit: 'contain',
                 borderRadius: '4px'
-              }} 
+              }}
+              onError={(e) => {
+                e.target.onerror = null;
+                e.target.src = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="200" height="100" viewBox="0 0 200 100"%3E%3Crect width="200" height="100" fill="%23f0f0f0"/%3E%3Ctext x="50%25" y="50%25" dominant-baseline="middle" text-anchor="middle" fill="%23999"%3EImage not found%3C/text%3E%3C/svg%3E';
+              }}
             />
           ) : (
-            <div style={{ 
-              padding: '60px 20px', 
-              color: '#999', 
+            <div style={{
+              padding: '60px 20px',
+              color: '#999',
               textAlign: 'center',
               border: '2px dashed #ddd',
               borderRadius: '8px'
             }}>
               <i className="bi bi-image" style={{ fontSize: '48px' }}></i>
               <p>No banner uploaded</p>
+              <p style={{ fontSize: '12px', marginTop: '10px' }}>
+                Upload a banner to customize your dashboard header
+              </p>
             </div>
           )}
         </div>
@@ -181,7 +223,11 @@ const DashBanner = () => {
         <small className="settings-help-text">
           Recommended size: 1200 x 300 pixels. Max size: 5MB. Supported formats: JPG, PNG, WEBP, GIF
         </small>
-        {uploading && <div style={{ marginTop: '10px', color: '#666' }}>Uploading...</div>}
+        {uploading && (
+          <div style={{ marginTop: '10px', color: '#666' }}>
+            <i className="bi bi-arrow-repeat spin"></i> Uploading...
+          </div>
+        )}
       </div>
 
       <div className="settings-form-group">
@@ -210,25 +256,35 @@ const DashBanner = () => {
         </small>
       </div>
 
-      <div className="settings-form-actions" style={{ gap: '10px', display: 'flex' }}>
-        <button 
-          className="settings-save-btn" 
+      <div className="settings-form-actions" style={{ gap: '10px'}}>
+        <button
+          className="settings-save-btn"
           onClick={handleSave}
           disabled={saving}
         >
           <i className="bi bi-check-circle"></i> {saving ? "Saving..." : "Save Banner"}
         </button>
-        
+
         {banner.url && (
-          <button 
-            className="settings-reset-btn" 
+          <button
+            className="settings-reset-btn"
             onClick={handleRemove}
-            style={{ background: '#ef4444' }}
           >
             <i className="bi bi-trash"></i> Remove Banner
           </button>
         )}
       </div>
+
+      <style jsx="true">{`
+        @keyframes spin {
+          from { transform: rotate(0deg); }
+          to { transform: rotate(360deg); }
+        }
+        .spin {
+          animation: spin 1s linear infinite;
+          display: inline-block;
+        }
+      `}</style>
     </div>
   );
 };

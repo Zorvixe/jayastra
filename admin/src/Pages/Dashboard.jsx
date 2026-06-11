@@ -88,7 +88,6 @@ const Dashboard = () => {
     }
     fetchDashboardBanner();
   }, [selectedDate]);
-
   // Add this function to fetch dashboard banner
   const fetchDashboardBanner = async () => {
     try {
@@ -98,7 +97,18 @@ const Dashboard = () => {
       });
 
       if (response.data.success && response.data.banner.url) {
-        setDashboardBanner(response.data.banner);
+        let bannerUrl = String(response.data.banner.url || "").trim();
+
+        // Resolve relative paths from the backend server
+        if (bannerUrl.startsWith("/uploads")) {
+          const backendBase = API_URL ? API_URL.replace(/\/api$/, '') : '';
+          bannerUrl = `${backendBase}${bannerUrl}`;
+        }
+
+        setDashboardBanner({
+          ...response.data.banner,
+          url: bannerUrl,
+        });
       } else {
         // Fallback to default banner
         setDashboardBanner({
@@ -117,7 +127,6 @@ const Dashboard = () => {
       });
     }
   };
-
 
 
   // Fetch withdrawal/payment data

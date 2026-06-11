@@ -194,11 +194,12 @@
   background: #fee2e2;
   color: #dc2626;
   border: 1px solid #fecaca;
-  padding: 10px 20px;
   border-radius: 8px;
   font-weight: 600;
   cursor: pointer;
   transition: all 0.3s;
+  padding: 5px 10px;
+
 }
 
 .settings-reset-btn:hover {
@@ -258,19 +259,19 @@
   .settings-container {
     padding: 15px;
   }
-  
+
   .settings-section {
     padding: 15px;
   }
-  
+
   .settings-save-btn {
     padding: 10px 20px;
   }
-  
+
   .settings-title {
     font-size: 1.3rem;
   }
-  
+
   .settings-section-title {
     font-size: 1rem;
   }
@@ -288,44 +289,44 @@
   .settings-container {
     background: #1f2937;
   }
-  
+
   .settings-title {
     color: #f3f4f6;
     border-bottom-color: #374151;
   }
-  
+
   .settings-section {
     background: #374151;
     border-color: #4b5563;
   }
-  
+
   .settings-section-title {
     color: #f3f4f6;
   }
-  
+
   .settings-label {
     color: #e5e7eb;
   }
-  
+
   .settings-input {
     background: #4b5563;
     border-color: #6b7280;
     color: #f3f4f6;
   }
-  
+
   .settings-input:focus {
     border-color: #8E2139;
   }
-  
+
   .settings-help-text {
     color: #9ca3af;
   }
-  
+
   .settings-danger-zone {
     background: #374151;
     border-top-color: #dc2626;
   }
-  
+
   .settings-danger-text {
     color: #9ca3af;
   }
@@ -336,9 +337,11 @@
   0% {
     transform: scale(1);
   }
+
   50% {
     transform: scale(1.02);
   }
+
   100% {
     transform: scale(1);
   }
@@ -385,4 +388,13 @@
 
 .settings-container::-webkit-scrollbar-thumb:hover {
   background: #555;
+}
+
+@media (max-width:480px) {
+  .settings-form-actions {
+    display: flex !important;
+    flex-direction: row !important;
+    justify-content: center !important;
+    align-items: center !important;
+  }
 }
