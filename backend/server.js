@@ -9450,7 +9450,7 @@ app.post("/api/admin/orders/proxy-download", verifyToken, verifyAdminVendorIndiv
 // ================= DASHBOARD BANNER MANAGEMENT (SUPER ADMIN ONLY) =================
 
 // Get dashboard banner settings
-app.get("/api/admin/settings/dashboard-banner", verifyToken, verifySuperAdmin, async (req, res) => {
+app.get("/api/admin/settings/dashboard-banner", verifyToken, async (req, res) => {
   try {
     const result = await pool.query(
       "SELECT key, value FROM settings WHERE key IN ('dashboard_banner_url', 'dashboard_banner_alt', 'dashboard_banner_link')"
@@ -9516,34 +9516,30 @@ app.put("/api/admin/settings/dashboard-banner", verifyToken, verifySuperAdmin, a
 });
 
 // Upload dashboard banner image - Only Super Admin
-app.post("/api/admin/settings/dashboard-banner/upload",
-  verifyToken,
-  verifySuperAdmin,
-  uploadBannerMedia.single("image"),
-  async (req, res) => {
-    try {
-      if (!req.file) {
-        return res.status(400).json({ success: false, message: "No image file provided" });
-      }
-
-      const imageUrl = `/uploads/banners/${req.file.filename}`;
-
-      // Save to settings
-      await pool.query(
-        "INSERT INTO settings (key, value) VALUES ('dashboard_banner_url', $1) ON CONFLICT (key) DO UPDATE SET value = $1, updated_at = CURRENT_TIMESTAMP",
-        [imageUrl]
-      );
-
-      res.json({
-        success: true,
-        url: imageUrl,
-        message: "Banner uploaded successfully"
-      });
-    } catch (error) {
-      console.error("Error uploading dashboard banner:", error);
-      res.status(500).json({ success: false, message: error.message });
+app.post("/api/admin/settings/dashboard-banner/upload", verifyToken, verifySuperAdmin, uploadBannerMedia.single("image"), async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ success: false, message: "No image file provided" });
     }
-  });
+
+    const imageUrl = `/uploads/banners/${req.file.filename}`;
+
+    // Save to settings
+    await pool.query(
+      "INSERT INTO settings (key, value) VALUES ('dashboard_banner_url', $1) ON CONFLICT (key) DO UPDATE SET value = $1, updated_at = CURRENT_TIMESTAMP",
+      [imageUrl]
+    );
+
+    res.json({
+      success: true,
+      url: imageUrl,
+      message: "Banner uploaded successfully"
+    });
+  } catch (error) {
+    console.error("Error uploading dashboard banner:", error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
 
 // Delete dashboard banner - Only Super Admin
 app.delete("/api/admin/settings/dashboard-banner", verifyToken, verifySuperAdmin, async (req, res) => {
