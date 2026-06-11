@@ -52,6 +52,12 @@ const Dashboard = () => {
     requestId: null
   });
 
+  const [dashboardBanner, setDashboardBanner] = useState({
+    url: '',
+    alt: 'Dashboard Banner',
+    link: ''
+  });
+
   const userRole = localStorage.getItem("userRole");
   const [recentOrders, setRecentOrders] = useState([]);
   const [dailySales, setDailySales] = useState([]);
@@ -80,7 +86,39 @@ const Dashboard = () => {
     if (selectedDate) {
       fetchDashboardData(selectedDate);
     }
+    fetchDashboardBanner();
   }, [selectedDate]);
+
+  // Add this function to fetch dashboard banner
+  const fetchDashboardBanner = async () => {
+    try {
+      const token = localStorage.getItem("token");
+      const response = await axios.get(`${API_URL}/admin/settings/dashboard-banner`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+
+      if (response.data.success && response.data.banner.url) {
+        setDashboardBanner(response.data.banner);
+      } else {
+        // Fallback to default banner
+        setDashboardBanner({
+          url: dashBoardBanner,
+          alt: 'Dashboard Banner',
+          link: ''
+        });
+      }
+    } catch (error) {
+      console.error("Failed to fetch dashboard banner:", error);
+      // Fallback to default banner
+      setDashboardBanner({
+        url: dashBoardBanner,
+        alt: 'Dashboard Banner',
+        link: ''
+      });
+    }
+  };
+
+
 
   // Fetch withdrawal/payment data
   const fetchPaymentData = async () => {
@@ -291,8 +329,15 @@ const Dashboard = () => {
     <div className="dash-container">
 
       <div className="dash-banner">
-        <img src={dashBoardBanner} alt="Dashboard Banner" />
+        {dashboardBanner.link ? (
+          <a href={dashboardBanner.link} target="_blank" rel="noopener noreferrer">
+            <img src={dashboardBanner.url} alt={dashboardBanner.alt} />
+          </a>
+        ) : (
+          <img src={dashboardBanner.url} alt={dashboardBanner.alt} />
+        )}
       </div>
+
 
       <div className="dash-date-filter-bar">
         <div className="dash-today-date" onClick={handleTodayClick} style={{ cursor: 'pointer' }}>

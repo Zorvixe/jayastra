@@ -1042,6 +1042,17 @@ const initDatabase = async () => {
       ON CONFLICT(key) DO NOTHING
       `);
 
+
+    // Add dashboard banner settings
+    await pool.query(`
+      INSERT INTO settings(key, value)
+      VALUES
+        ('dashboard_banner_url', ''),
+        ('dashboard_banner_alt', 'Dashboard Banner'),
+        ('dashboard_banner_link', '')
+      ON CONFLICT(key) DO NOTHING
+    `);
+
     const defaultSettings = [
       { key: 'online_payment_discount', value: '0' },
       { key: 'cod_fee', value: '0' }
@@ -9434,6 +9445,136 @@ app.post("/api/admin/orders/proxy-download", verifyToken, verifyAdminVendorIndiv
     res.status(500).json({ success: false, message: "Server was unable to retrieve and download the requested file." });
   }
 });
+
+
+// ================= DASHBOARD BANNER MANAGEMENT (SUPER ADMIN ONLY) =================
+
+// Get dashboard banner settings
+app.get("/api/admin/settings/dashboard-banner", verifyToken, verifySuperAdmin, async (req, res) => {
+  try {
+    const result = await pool.query(
+      "SELECT key, value FROM settings WHERE key IN ('dashboard_banner_url', 'dashboard_banner_alt', 'dashboard_banner_link')"
+    );
+
+    const banner = {
+      url: '',
+      alt: 'Dashboard Banner',
+      link: ''
+    };
+
+    result.rows.forEach(row => {
+      if (row.key === 'dashboard_banner_url') banner.url = row.value;
+      if (row.key === 'dashboard_banner_alt') banner.alt = row.value;
+      if (row.key === 'dashboard_banner_link') banner.link = row.value;
+    });
+
+    res.json({ success: true, banner });
+  } catch (error) {
+    console.error("Error fetching dashboard banner:", error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// Update dashboard banner - Only Super Admin
+app.put("/api/admin/settings/dashboard-banner", verifyToken, verifySuperAdmin, async (req, res) => {
+  try {
+    const { url, alt, link } = req.body;
+
+    const updates = [];
+
+    if (url !== undefined) {
+      updates.push(pool.query(
+        "INSERT INTO settings (key, value) VALUES ('dashboard_banner_url', $1) ON CONFLICT (key) DO UPDATE SET value = $1, updated_at = CURRENT_TIMESTAMP",
+        [url]
+      ));
+    }
+
+    if (alt !== undefined) {
+      updates.push(pool.query(
+        "INSERT INTO settings (key, value) VALUES ('dashboard_banner_alt', $1) ON CONFLICT (key) DO UPDATE SET value = $1, updated_at = CURRENT_TIMESTAMP",
+        [alt]
+      ));
+    }
+
+    if (link !== undefined) {
+      updates.push(pool.query(
+        "INSERT INTO settings (key, value) VALUES ('dashboard_banner_link', $1) ON CONFLICT (key) DO UPDATE SET value = $1, updated_at = CURRENT_TIMESTAMP",
+        [link]
+      ));
+    }
+
+    await Promise.all(updates);
+
+    res.json({
+      success: true,
+      message: "Dashboard banner updated successfully"
+    });
+  } catch (error) {
+    console.error("Error updating dashboard banner:", error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// Upload dashboard banner image - Only Super Admin
+app.post("/api/admin/settings/dashboard-banner/upload",
+  verifyToken,
+  verifySuperAdmin,
+  uploadBannerMedia.single("image"),
+  async (req, res) => {
+    try {
+      if (!req.file) {
+        return res.status(400).json({ success: false, message: "No image file provided" });
+      }
+
+      const imageUrl = `/uploads/banners/${req.file.filename}`;
+
+      // Save to settings
+      await pool.query(
+        "INSERT INTO settings (key, value) VALUES ('dashboard_banner_url', $1) ON CONFLICT (key) DO UPDATE SET value = $1, updated_at = CURRENT_TIMESTAMP",
+        [imageUrl]
+      );
+
+      res.json({
+        success: true,
+        url: imageUrl,
+        message: "Banner uploaded successfully"
+      });
+    } catch (error) {
+      console.error("Error uploading dashboard banner:", error);
+      res.status(500).json({ success: false, message: error.message });
+    }
+  });
+
+// Delete dashboard banner - Only Super Admin
+app.delete("/api/admin/settings/dashboard-banner", verifyToken, verifySuperAdmin, async (req, res) => {
+  try {
+    // Get current banner URL to delete the file
+    const result = await pool.query(
+      "SELECT value FROM settings WHERE key = 'dashboard_banner_url'"
+    );
+
+    if (result.rows.length > 0 && result.rows[0].value) {
+      const imagePath = path.join(UPLOAD_BASE_PATH, result.rows[0].value.replace('/uploads/', ''));
+      if (fs.existsSync(imagePath)) {
+        fs.unlinkSync(imagePath);
+      }
+    }
+
+    // Clear the settings
+    await pool.query(
+      "UPDATE settings SET value = '' WHERE key IN ('dashboard_banner_url', 'dashboard_banner_alt', 'dashboard_banner_link')"
+    );
+
+    res.json({
+      success: true,
+      message: "Dashboard banner removed successfully"
+    });
+  } catch (error) {
+    console.error("Error deleting dashboard banner:", error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
 
 app.get("/", (req, res) => res.send("Jayastra API is running 🚀"));
 

@@ -2,8 +2,6 @@
 
 /* Base Container */
 .notion-settings {
-  margin: 0 auto;
-  padding: 32px 24px;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Inter', system-ui, sans-serif;
 }
 
@@ -373,9 +371,6 @@
 
 /* Responsive Design */
 @media (max-width: 640px) {
-  .notion-settings {
-    padding: 20px 16px;
-  }
 
   .notion-header {
     margin-bottom: 24px;
@@ -450,115 +445,6 @@
   }
 }
 
-/* Tablet Responsive */
-@media (min-width: 641px) and (max-width: 1024px) {
-  .notion-settings {
-    padding: 24px;
-  }
-}
-
-/* Dark Mode Support */
-@media (prefers-color-scheme: dark) {
-  .notion-settings {
-    background: #1a1a1a;
-  }
-
-  .notion-title,
-  .notion-card-title,
-  .notion-label {
-    color: #e5e5e5;
-  }
-
-  .notion-description,
-  .notion-card-subtitle,
-  .notion-hint {
-    color: #a0a0a0;
-  }
-
-  .notion-card {
-    background: #2a2a2a;
-    border-color: #3a3a3a;
-  }
-
-  .notion-card:hover {
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
-  }
-
-  .notion-header-icon,
-  .notion-card-icon {
-    background: #3a3a3a;
-  }
-
-  .notion-input,
-  .notion-select,
-  .notion-code-block {
-    background: #333333;
-    border-color: #444444;
-    color: #e5e5e5;
-  }
-
-  .notion-input:focus,
-  .notion-select:focus {
-    border-color: #8E2139;
-    box-shadow: 0 0 0 3px rgba(142, 33, 57, 0.15);
-  }
-
-  .notion-input::placeholder {
-    color: #888888;
-  }
-
-  .notion-button-secondary {
-    background: #333333;
-    border-color: #444444;
-    color: #e5e5e5;
-  }
-
-  .notion-button-secondary:hover:not(:disabled) {
-    background: #3a3a3a;
-    border-color: #8E2139;
-  }
-
-  .notion-refresh-btn {
-    background: #333333;
-    border-color: #444444;
-    color: #a0a0a0;
-  }
-
-  .notion-refresh-btn:hover:not(:disabled) {
-    background: #3a3a3a;
-  }
-
-  .notion-code-block {
-    background: #333333;
-  }
-
-  .notion-copy-btn {
-    background: #2a2a2a;
-    border-color: #444444;
-    color: #a0a0a0;
-  }
-
-  .notion-copy-btn:hover {
-    background: #3a3a3a;
-  }
-
-  .notion-warning {
-    background: #332200;
-    color: #ffb347;
-  }
-
-  .notion-warning svg {
-    color: #ffb347;
-  }
-
-  .notion-input-toggle:hover {
-    background: #3a3a3a;
-  }
-
-  .notion-footer {
-    border-top-color: #3a3a3a;
-  }
-}
 
 /* Focus visible for accessibility */
 .notion-input:focus-visible,

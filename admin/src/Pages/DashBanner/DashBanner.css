@@ -1,0 +1,18 @@
+/* Dashboard Banner Settings */
+.dashboard-banner-preview {
+  margin-bottom: 20px;
+}
+
+.banner-preview-container {
+  background: #f9f9f9;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.banner-preview-container img {
+  transition: transform 0.3s ease;
+}
+
+.banner-preview-container img:hover {
+  transform: scale(1.02);
+}

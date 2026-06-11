@@ -3,6 +3,9 @@ import React, { useState, useEffect } from "react";
 import axios from 'axios';
 import { toast } from 'react-toastify';
 import SettingshipRocket from "./ShiprocketSettings/ShiprocketSettings";
+
+import DashBanner from "./DashBanner/DashBanner"
+
 import "./Settings.css";
 
 const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
@@ -67,7 +70,7 @@ const Settings = () => {
     setSaving(true);
     try {
       const token = localStorage.getItem("token");
-      
+
       // Validate Razorpay keys if provided
       if (settings.razorpay_key_id && settings.razorpay_key_secret) {
         if (settings.razorpay_key_id.length < 10) {
@@ -81,7 +84,7 @@ const Settings = () => {
           return;
         }
       }
-      
+
       await axios.put(`${API_URL}/settings`, {
         settings: {
           contactEmail: settings.contactEmail,
@@ -97,12 +100,12 @@ const Settings = () => {
       }, {
         headers: { Authorization: `Bearer ${token}` }
       });
-      
+
       toast.success("Settings Updated Successfully!");
-      
+
       // Reload settings to confirm
       await fetchSettings();
-      
+
     } catch (err) {
       console.error("Save error:", err);
       toast.error("Update failed: " + (err.response?.data?.error || err.message));
@@ -140,6 +143,9 @@ const Settings = () => {
   return (
     <div className="settings-container">
       <h4 className="settings-title">Settings & Configuration</h4>
+
+      <DashBanner />
+
 
       <form onSubmit={handleSave} className="settings-form">
 
