@@ -34,6 +34,8 @@ import AddCategoryModal from "./Pages/AddCategoryModal";
 
 import NotFound from "./Pages/NotFound/NotFound";
 
+import "./App.css"
+
 // Protected Route Component
 const ProtectedRoute = ({ children }) => {
   const token = localStorage.getItem("token");

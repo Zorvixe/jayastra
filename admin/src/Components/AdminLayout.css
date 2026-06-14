@@ -1,14 +1,3 @@
-/* Base reset */
-* {
-  box-sizing: border-box;
-}
-
-html, body {
-  margin: 0;
-  padding: 0;
-  width: 100%;
-  background: #f8f9fa; /* Prevents white flashes while loading */
-}
 
 .admin-layout {
   display: flex;
@@ -16,6 +5,7 @@ html, body {
   background: #f8f9fa;
   width: 100%;
   position: relative;
+
 }
 
 .admin-main {
@@ -27,6 +17,7 @@ html, body {
   width: calc(100% - 250px);
   min-height: 100vh;
   /* IMPORTANT: Removed overflow-x: hidden to stop clipping dropdowns */
+  
 }
 
 .admin-main.collapsed {
