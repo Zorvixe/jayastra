@@ -1096,12 +1096,12 @@ Timestamp: ${new Date().toLocaleString()}
                             >
                                 <i className="bi bi-shop"></i> Vendor Details
                             </button>
-                            <button
+                            {/* <button
                                 className={`prof-tab-btn ${activeTab === 'pickup' ? 'prof-active' : ''}`}
                                 onClick={() => setActiveTab('pickup')}
                             >
                                 <i className="bi bi-geo-alt"></i> Pickup Addresses
-                            </button>
+                            </button> */}
                         </>
                     )}
                 </div>
@@ -1608,7 +1608,7 @@ Timestamp: ${new Date().toLocaleString()}
                     )}
 
                     {/* Pickup Addresses Tab */}
-                    {activeTab === 'pickup' && isVendor && (
+                    {/* {activeTab === 'pickup' && isVendor && (
                         <div className="prof-pickup-section">
                             <div className="prof-section-header">
                                 <h3><i className="bi bi-geo-alt"></i> Pickup Locations</h3>
@@ -1685,12 +1685,12 @@ Timestamp: ${new Date().toLocaleString()}
                                 </div>
                             )}
                         </div>
-                    )}
+                    )} */}
                 </div>
             </div>
 
             {/* Address Modal */}
-            {showAddressModal && (
+            {/* {showAddressModal && (
                 <div className={`prof-modal-overlay ${isMobile ? 'prof-mobile-sheet-overlay' : ''}`} onClick={() => setShowAddressModal(false)}>
                     <div className={`prof-modal-content ${isMobile ? 'prof-mobile-sheet-content' : ''}`} onClick={(e) => e.stopPropagation()}>
                         {isMobile && <div className="prof-sheet-handle"></div>}
@@ -1792,7 +1792,7 @@ Timestamp: ${new Date().toLocaleString()}
                         </div>
                     </div>
                 </div>
-            )}
+            )} */}
         </div>
     );
 };
