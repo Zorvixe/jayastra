@@ -51,115 +51,115 @@ const TransactionDetailsModal = ({ transaction, onClose }) => {
   const statusInfo = getStatusBadge(transaction.status);
 
   return (
-    <div className="invoice-modal-overlay" onClick={onClose}>
-      <div className="invoice-modal-container" style={{ maxWidth: '550px' }} onClick={(e) => e.stopPropagation()}>
-        <div className="invoice-modal-header">
+    <div className="payouts-invoice-modal-overlay" onClick={onClose}>
+      <div className="payouts-invoice-modal-container"  onClick={(e) => e.stopPropagation()}>
+        <div className="payouts-invoice-modal-header">
           <h3>
             <i className={`bi ${getTransactionIcon(transaction.transaction_type, transaction.status)}`}
               style={{ color: getTransactionColor(transaction.transaction_type, transaction.status) }}></i>
             Transaction Details
           </h3>
-          <div className="invoice-modal-actions">
-            <button className="btn-close-modal" onClick={onClose}>
+          <div className="payouts-invoice-modal-actions">
+            <button className="payouts-btn-close-modal" onClick={onClose}>
               <i className="bi bi-x-lg"></i>
             </button>
           </div>
         </div>
 
-        <div className="invoice-modal-content" style={{ padding: '20px' }}>
-          <div className="transaction-details-card">
-            <div className={`transaction-status-banner ${transaction.status}`}>
+        <div className="payouts-invoice-modal-content">
+          <div className="payouts-transaction-details-card">
+            <div className={`payouts-transaction-status-banner ${transaction.status}`}>
               <i className={`bi ${statusInfo.icon}`}></i>
               <span>{statusInfo.text}</span>
             </div>
 
-            <div className="transaction-amount-section">
-              <div className="amount-label">
+            <div className="payouts-transaction-amount-section">
+              <div className="payouts-amount-label">
                 {transaction.transaction_type === 'credit' ? 'Amount Credited' : 'Amount Debited'}
               </div>
-              <div className={`amount-value ${transaction.transaction_type}`}>
+              <div className={`payouts-amount-value ${transaction.transaction_type}`}>
                 {transaction.transaction_type === 'credit' ? '+' : '-'} {formatCurrency(transaction.amount)}
               </div>
             </div>
 
-            <div className="transaction-description">
+            <div className="payouts-transaction-description">
               <i className="bi bi-info-circle-fill"></i>
               <span>{transaction.description}</span>
             </div>
 
             {(transaction.original_amount || transaction.platform_fee > 0 || transaction.coupon_discount_applied > 0) && (
-              <div className="transaction-breakdown">
+              <div className="payouts-transaction-breakdown">
                 <h4>Breakdown Details</h4>
-                <div className="breakdown-row">
+                <div className="payouts-breakdown-row">
                   <span>Original Amount:</span>
                   <span>{formatCurrency(transaction.original_amount)}</span>
                 </div>
                 {transaction.platform_fee > 0 && (
-                  <div className="breakdown-row text-danger">
+                  <div className="payouts-breakdown-row text-danger">
                     <span>Platform Fee ({((transaction.platform_fee / transaction.original_amount) * 100).toFixed(0)}%):</span>
                     <span>-{formatCurrency(transaction.platform_fee)}</span>
                   </div>
                 )}
                 {transaction.coupon_discount_applied > 0 && (
-                  <div className="breakdown-row text-warning">
+                  <div className="payouts-breakdown-row text-warning">
                     <span>Coupon Discount:</span>
                     <span>-{formatCurrency(transaction.coupon_discount_applied)}</span>
                   </div>
                 )}
-                <div className="breakdown-divider"></div>
-                <div className="breakdown-row total">
+                <div className="payouts-breakdown-divider"></div>
+                <div className="payouts-breakdown-row total">
                   <span>Final Amount:</span>
                   <span>{formatCurrency(transaction.amount)}</span>
                 </div>
               </div>
             )}
 
-            <div className="transaction-info-grid">
-              <div className="info-item">
-                <span className="info-label">Transaction ID:</span>
-                <span className="info-value">TXN-{String(transaction.id).padStart(8, '0')}</span>
+            <div className="payouts-transaction-info-grid">
+              <div className="payouts-info-item">
+                <span className="payouts-info-label">Transaction ID:</span>
+                <span className="payouts-info-value">TXN-{String(transaction.id).padStart(8, '0')}</span>
               </div>
-              <div className="info-item">
-                <span className="info-label">Date & Time:</span>
-                <span className="info-value">{formatDate(transaction.created_at)}</span>
+              <div className="payouts-info-item">
+                <span className="payouts-info-label">Date & Time:</span>
+                <span className="payouts-info-value">{formatDate(transaction.created_at)}</span>
               </div>
               {transaction.order_id && (
-                <div className="info-item">
-                  <span className="info-label">Order ID:</span>
-                  <span className="info-value">#{transaction.order_id}</span>
+                <div className="payouts-info-item">
+                  <span className="payouts-info-label">Order ID:</span>
+                  <span className="payouts-info-value">#{transaction.order_id}</span>
                 </div>
               )}
               {transaction.payout_id && (
-                <div className="info-item">
-                  <span className="info-label">Payout ID:</span>
-                  <span className="info-value">PYT-{String(transaction.payout_id).padStart(6, '0')}</span>
+                <div className="payouts-info-item">
+                  <span className="payouts-info-label">Payout ID:</span>
+                  <span className="payouts-info-value">PYT-{String(transaction.payout_id).padStart(6, '0')}</span>
                 </div>
               )}
-              <div className="info-item">
-                <span className="info-label">Transaction Type:</span>
-                <span className="info-value" style={{ textTransform: 'capitalize' }}>
+              <div className="payouts-info-item">
+                <span className="payouts-info-label">Transaction Type:</span>
+                <span className="payouts-info-value" style={{ textTransform: 'capitalize' }}>
                   {transaction.transaction_type}
                 </span>
               </div>
             </div>
 
             {transaction.vendor_name && (
-              <div className="vendor-info-section">
+              <div className="payouts-vendor-info-section">
                 <h4>Vendor Information</h4>
-                <div className="info-item">
-                  <span className="info-label">Vendor Name:</span>
-                  <span className="info-value">{transaction.vendor_name}</span>
+                <div className="payout-info-model-details"> <div className="payouts-info-item">
+                  <span className="payouts-info-label">Vendor Name:</span>
+                  <span className="payouts-info-value">{transaction.vendor_name}</span>
                 </div>
-                {transaction.store_name && (
-                  <div className="info-item">
-                    <span className="info-label">Store Name:</span>
-                    <span className="info-value">{transaction.store_name}</span>
-                  </div>
-                )}
+                  {transaction.store_name && (
+                    <div className="payouts-info-item">
+                      <span className="payouts-info-label">Store Name:</span>
+                      <span className="payouts-info-value">{transaction.store_name}</span>
+                    </div>
+                  )}</div>
               </div>
             )}
 
-            <div className="transaction-footer">
+            <div className="payouts-transaction-footer">
               <i className="bi bi-receipt"></i>
               <span>This is a record of your wallet transaction. For any discrepancies, please contact support.</span>
             </div>
@@ -175,26 +175,26 @@ const ConfirmModal = ({ isOpen, onClose, onConfirm, title, message, confirmText 
   if (!isOpen) return null;
 
   return (
-    <div className="modal-overlay" onClick={onClose}>
-      <div className="modal-container" onClick={(e) => e.stopPropagation()}>
-        <div className="modal-header">
+    <div className="payouts-modal-overlay" onClick={onClose}>
+      <div className="payouts-modal-container" onClick={(e) => e.stopPropagation()}>
+        <div className="payouts-modal-header">
           <h3>{title}</h3>
-          <button className="modal-close" onClick={onClose}>✕</button>
+          <button className="payouts-modal-close" onClick={onClose}>✕</button>
         </div>
-        <div className="modal-body">
+        <div className="payouts-modal-body">
           <p style={{ marginBottom: '20px', lineHeight: '1.5' }}>{message}</p>
-          <div className="warning-note" style={{ marginTop: '0' }}>
+          <div className="payouts-warning-note" style={{ marginTop: '0' }}>
             <i className="bi bi-exclamation-triangle-fill"></i>
             <span>This action cannot be undone.</span>
           </div>
         </div>
-        <div className="modal-footer">
-          <button type="button" className="btn-cancel" onClick={onClose}>
+        <div className="payouts-modal-footer">
+          <button type="button" className="payouts-btn-cancel" onClick={onClose}>
             {cancelText}
           </button>
           <button
             type="button"
-            className={`btn-${confirmVariant === 'danger' ? 'danger' : 'submit-payout'}`}
+            className={`payouts-btn-${confirmVariant === 'danger' ? 'danger' : 'submit-payout'}`}
             onClick={onConfirm}
           >
             {confirmText}
@@ -225,14 +225,14 @@ const RejectModal = ({ isOpen, onClose, onConfirm, payoutId }) => {
   };
 
   return (
-    <div className="modal-overlay" onClick={onClose}>
-      <div className="modal-container" onClick={(e) => e.stopPropagation()}>
-        <div className="modal-header">
+    <div className="payouts-modal-overlay" onClick={onClose}>
+      <div className="payouts-modal-container" onClick={(e) => e.stopPropagation()}>
+        <div className="payouts-modal-header">
           <h3>Reject Withdrawal Request</h3>
-          <button className="modal-close" onClick={onClose}>✕</button>
+          <button className="payouts-modal-close" onClick={onClose}>✕</button>
         </div>
-        <div className="modal-body">
-          <div className="form-group">
+        <div className="payouts-modal-body">
+          <div className="payouts-form-group">
             <label>Reason for Rejection *</label>
             <textarea
               value={reason}
@@ -242,19 +242,19 @@ const RejectModal = ({ isOpen, onClose, onConfirm, payoutId }) => {
               required
             ></textarea>
           </div>
-          <div className="warning-note" style={{ marginTop: '0' }}>
+          <div className="payouts-warning-note" style={{ marginTop: '0' }}>
             <i className="bi bi-exclamation-triangle-fill"></i>
             <span>The amount will be credited back to the vendor's wallet.</span>
           </div>
         </div>
-        <div className="modal-footer">
-          <button type="button" className="btn-cancel" onClick={onClose}>
+        <div className="payouts-modal-footer">
+          <button type="button" className="payouts-btn-cancel" onClick={onClose}>
             Cancel
           </button>
-          <button type="button" className="btn-danger" onClick={handleSubmit} disabled={submitting}>
+          <button type="button" className="payouts-btn-danger" onClick={handleSubmit} disabled={submitting}>
             {submitting ? (
               <>
-                <span className="btn-spinner"></span> Processing...
+                <span className="payouts-btn-spinner"></span> Processing...
               </>
             ) : (
               "Confirm Rejection"
@@ -271,26 +271,26 @@ const DeleteBankModal = ({ isOpen, onClose, onConfirm, accountId }) => {
   if (!isOpen) return null;
 
   return (
-    <div className="modal-overlay" onClick={onClose}>
-      <div className="modal-container" onClick={(e) => e.stopPropagation()}>
-        <div className="modal-header">
+    <div className="payouts-modal-overlay" onClick={onClose}>
+      <div className="payouts-modal-container" onClick={(e) => e.stopPropagation()}>
+        <div className="payouts-modal-header">
           <h3>Delete Bank Account</h3>
-          <button className="modal-close" onClick={onClose}>✕</button>
+          <button className="payouts-modal-close" onClick={onClose}>✕</button>
         </div>
-        <div className="modal-body">
+        <div className="payouts-modal-body">
           <p style={{ marginBottom: '20px', lineHeight: '1.5' }}>
             Are you sure you want to delete this saved bank account?
           </p>
-          <div className="warning-note" style={{ marginTop: '0' }}>
+          <div className="payouts-warning-note" style={{ marginTop: '0' }}>
             <i className="bi bi-exclamation-triangle-fill"></i>
             <span>This action cannot be undone.</span>
           </div>
         </div>
-        <div className="modal-footer">
-          <button type="button" className="btn-cancel" onClick={onClose}>
+        <div className="payouts-modal-footer">
+          <button type="button" className="payouts-btn-cancel" onClick={onClose}>
             Cancel
           </button>
-          <button type="button" className="btn-danger" onClick={() => onConfirm(accountId)}>
+          <button type="button" className="payouts-btn-danger" onClick={() => onConfirm(accountId)}>
             Delete
           </button>
         </div>
@@ -394,9 +394,9 @@ const Payouts = () => {
         toast.info("Withdrawals are only available for vendors");
       }
     };
-    
+
     window.addEventListener("openWithdrawModal", handleOpenWithdrawModal);
-    
+
     return () => {
       window.removeEventListener("openWithdrawModal", handleOpenWithdrawModal);
     };
@@ -953,19 +953,19 @@ const Payouts = () => {
 
   if (loading && isInitialLoad) {
     return (
-      <div className="payments-layout">
-        <div className="payments-sidebar">
-          <ul className="payments-nav">
+      <div className="payouts-layout">
+        <div className="payouts-sidebar">
+          <ul className="payouts-nav">
             <li><i className="bi bi-calculator-fill"></i> Settlement</li>
             <li><i className="bi bi-wallet2"></i> Wallet</li>
             <li><i className="bi bi-receipt"></i> Billing</li>
           </ul>
         </div>
-        <div className="payments-content">
-          <div className="loading-skeleton">
-            <div className="skeleton-banner"></div>
-            <div className="skeleton-stats"></div>
-            <div className="skeleton-table"></div>
+        <div className="payouts-content">
+          <div className="payouts-loading-skeleton">
+            <div className="payouts-skeleton-banner"></div>
+            <div className="payouts-skeleton-stats"></div>
+            <div className="payouts-skeleton-table"></div>
           </div>
         </div>
       </div>
@@ -973,15 +973,15 @@ const Payouts = () => {
   }
 
   return (
-    <div className="payments-layout">
+    <div className="payouts-layout">
       {requesting && (
-        <div className="dash-loader-overlay">
-          <div className="dash-spinner"></div>
+        <div className="payouts-dash-loader-overlay">
+          <div className="payouts-dash-spinner"></div>
         </div>
       )}
 
-      <div className="payments-sidebar">
-        <ul className="payments-nav">
+      <div className="payouts-sidebar">
+        <ul className="payouts-nav">
           <li className={activeMenu === "settlement" ? "active" : ""} onClick={() => setActiveMenu("settlement")}>
             <i className="bi bi-calculator-fill"></i>
             Settlement
@@ -997,24 +997,24 @@ const Payouts = () => {
         </ul>
       </div>
 
-      <div className="payments-content">
-        <div className="info-banner">
-          <div className="info-text">
+      <div className="payouts-content">
+        <div className="payouts-info-banner">
+          <div className="payouts-info-text">
             <i className="bi bi-info-circle-fill"></i>
             {userRole === "super_admin"
               ? "Manage vendor settlements, track wallet balances, and handle billing"
               : "Withdrawals your way! Request payouts."}
           </div>
           {(userRole === "vendor" || userRole === "admin") && balance > 0 && (
-            <button className="btn-resume-onboard" onClick={() => setShowWithdrawModal(true)}>
+            <button className="payouts-btn-resume-onboard" onClick={() => setShowWithdrawModal(true)}>
               <i className="bi bi-plus-circle"></i> Withdraw Funds
             </button>
           )}
         </div>
 
         {userRole === "super_admin" && vendors.length > 0 && (
-          <div className="super-admin-filter-bar">
-            <div className="filter-group">
+          <div className="payouts-super-admin-filter-bar">
+            <div className="payouts-filter-group">
               <label>Filter by Vendor:</label>
               <select value={selectedVendor} onChange={(e) => setSelectedVendor(e.target.value)}>
                 <option value="">All Vendors ({vendors.length})</option>
@@ -1024,37 +1024,37 @@ const Payouts = () => {
               </select>
             </div>
             {selectedVendor && (
-              <button className="clear-filter-btn" onClick={() => setSelectedVendor("")}>
+              <button className="payouts-clear-filter-btn" onClick={() => setSelectedVendor("")}>
                 <i className="bi bi-x-circle"></i> Clear
               </button>
             )}
-            <div className="filter-group">
+            <div className="payouts-filter-group">
               <label>From:</label>
               <input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} />
             </div>
-            <div className="filter-group">
+            <div className="payouts-filter-group">
               <label>To:</label>
               <input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} />
             </div>
-            <button className="btn-reset-filters" onClick={() => { setDateFrom(""); setDateTo(""); setSearchTerm(""); }}>
+            <button className="payouts-btn-reset-filters" onClick={() => { setDateFrom(""); setDateTo(""); setSearchTerm(""); }}>
               <i className="bi bi-arrow-repeat"></i> Reset
             </button>
           </div>
         )}
 
         {activeMenu === "wallet" && (
-          <div className="view-container">
-            <div className="view-header">
+          <div className="payouts-view-container">
+            <div className="payouts-view-header">
               <div>
-                <h2 className="view-title">Wallet Transactions</h2>
-                <span className="view-subtitle">Track all your credits and debits</span>
+                <h2 className="payouts-view-title">Wallet Transactions</h2>
+                <span className="payouts-view-subtitle">Track all your credits and debits</span>
               </div>
-              <div className="filter-controls">
-                <div className="date-range-display">
+              <div className="payouts-filter-controls">
+                {/* <div className="payouts-date-range-display">
                   <span>{dateFrom || "Start"} → {dateTo || "End"}</span>
                   <i className="bi bi-calendar"></i>
-                </div>
-                <div className="search-box">
+                </div> */}
+                <div className="payouts-search-box">
                   <input
                     type="text"
                     placeholder="Transaction ID..."
@@ -1066,61 +1066,61 @@ const Payouts = () => {
               </div>
             </div>
 
-            <div className="stats-equation-row">
-              <div className="tabs-column">
-                <div className="tab-group-container">
-                  <span className="tab-group-label">All Transactions</span>
-                  <div className={`stat-tab ${walletTab === 'all' ? 'active' : ''}`} onClick={() => setWalletTab('all')}>
+            <div className="payouts-stats-equation-row">
+              <div className="payouts-tabs-column">
+                <div className="payouts-tab-group-container">
+                  <span className="payouts-tab-group-label">All Transactions</span>
+                  <div className={`payouts-stat-tab ${walletTab === 'all' ? 'active' : ''}`} onClick={() => setWalletTab('all')}>
                     All <span>{walletTransactions.length}</span>
                   </div>
                 </div>
-                <div className="tab-group-container">
-                  <span className="tab-group-label">Transaction Type</span>
-                  <div className="sub-tabs-flex">
-                    <div className={`stat-tab ${walletTab === 'credit' ? 'active' : ''}`} onClick={() => setWalletTab('credit')}>
+                <div className="payouts-tab-group-container">
+                  <span className="payouts-tab-group-label">Transaction Type</span>
+                  <div className="payouts-sub-tabs-flex">
+                    <div className={`payouts-stat-tab ${walletTab === 'credit' ? 'active' : ''}`} onClick={() => setWalletTab('credit')}>
                       Credit <span>{formatCurrency(walletTotals.totalCredit)}</span>
                     </div>
-                    <div className={`stat-tab ${walletTab === 'debit' ? 'active' : ''}`} onClick={() => setWalletTab('debit')}>
+                    <div className={`payouts-stat-tab ${walletTab === 'debit' ? 'active' : ''}`} onClick={() => setWalletTab('debit')}>
                       Debit <span>{formatCurrency(walletTotals.totalDebitAll)}</span>
                     </div>
                   </div>
                 </div>
               </div>
 
-              <div className="equation-column">
-                <div className="eq-box">
-                  <span className="eq-label">Total Balance</span>
-                  <span className="eq-value">{formatCurrency(currentBalance)}</span>
+              <div className="payouts-equation-column">
+                <div className="payouts-eq-box">
+                  <span className="payouts-eq-label">Total Balance</span>
+                  <span className="payouts-eq-value">{formatCurrency(currentBalance)}</span>
                 </div>
-                <span className="eq-symbol">=</span>
-                <div className="eq-box">
-                  <span className="eq-label">Total Credit</span>
-                  <span className="eq-value" style={{ color: '#15803d' }}>{formatCurrency(walletTotals.totalCredit)}</span>
+                <span className="payouts-eq-symbol">=</span>
+                <div className="payouts-eq-box">
+                  <span className="payouts-eq-label">Total Credit</span>
+                  <span className="payouts-eq-value" style={{ color: '#15803d' }}>{formatCurrency(walletTotals.totalCredit)}</span>
                 </div>
-                <span className="eq-symbol">-</span>
-                <div className="eq-box">
-                  <span className="eq-label">Total Debit (Paid)</span>
-                  <span className="eq-value" style={{ color: '#dc2626' }}>{formatCurrency(walletTotals.totalDebitPaid)}</span>
+                <span className="payouts-eq-symbol">-</span>
+                <div className="payouts-eq-box">
+                  <span className="payouts-eq-label">Total Debit (Paid)</span>
+                  <span className="payouts-eq-value" style={{ color: '#dc2626' }}>{formatCurrency(walletTotals.totalDebitPaid)}</span>
                 </div>
               </div>
             </div>
 
-            <div className="table-toolbar">
+            <div className="payouts-table-toolbar">
               <h3>
                 {walletTab === 'all' ? 'All Transactions' :
                   walletTab === 'credit' ? 'Credit Transactions' : 'Debit Transactions'}
               </h3>
-              <div className="toolbar-actions">
-                <i className="bi bi-download action-icon" onClick={handleDownloadSettlementReport}></i>
-                <i className="bi bi-arrow-clockwise action-icon" onClick={() => { fetchData(); fetchEarningStats(); fetchWalletTransactions(); }}></i>
-                <button className="btn-clear-filters" onClick={() => { setDateFrom(""); setDateTo(""); setSearchTerm(""); setWalletTab("all"); }}>
+              <div className="payouts-toolbar-actions">
+                <i className="bi bi-download payouts-action-icon" onClick={handleDownloadSettlementReport}></i>
+                <i className="bi bi-arrow-clockwise payouts-action-icon" onClick={() => { fetchData(); fetchEarningStats(); fetchWalletTransactions(); }}></i>
+                <button className="payouts-btn-clear-filters" onClick={() => { setDateFrom(""); setDateTo(""); setSearchTerm(""); setWalletTab("all"); }}>
                   Clear
                 </button>
               </div>
             </div>
 
-            <div className="ekart-table-wrapper">
-              <table className="ekart-table">
+            <div className="payouts-ekart-table-wrapper">
+              <table className="payouts-ekart-table">
                 <thead>
                   <tr>
                     <th><input type="checkbox" /></th>
@@ -1136,9 +1136,9 @@ const Payouts = () => {
                 </thead>
                 <tbody>
                   {walletTransactions.length === 0 ? (
-                    <tr className="empty-row">
+                    <tr className="payouts-empty-row">
                       <td colSpan="9">
-                        <div className="empty-state">
+                        <div className="payouts-empty-state">
                           <i className="bi bi-inbox"></i>
                           <p>No transactions found</p>
                         </div>
@@ -1146,26 +1146,26 @@ const Payouts = () => {
                     </tr>
                   ) : (
                     walletTransactions.map(t => (
-                      <tr key={t.id} className="transaction-row clickable" onClick={() => handleTransactionClick(t)} style={{ cursor: 'pointer' }}>
+                      <tr key={t.id} className="payouts-transaction-row clickable" onClick={() => handleTransactionClick(t)} style={{ cursor: 'pointer' }}>
                         <td><input type="checkbox" onClick={(e) => e.stopPropagation()} /></td>
                         <td>{formatDate(t.date)}</td>
-                        <td className="text-blue">{t.transaction_id}</td>
+                        <td className="payouts-text-blue">{t.transaction_id}</td>
                         <td>{t.charge_type}</td>
                         <td>
-                          <span className={`type-badge ${t.type}`}>
+                          <span className={`payouts-type-badge ${t.type}`}>
                             {t.type === 'credit' ? 'Credit' : 'Debit'}
                           </span>
                         </td>
-                        <td className={`amount-cell ${t.type}`}>{formatCurrency(t.amount)}</td>
+                        <td className={`payouts-amount-cell ${t.type}`}>{formatCurrency(t.amount)}</td>
                         <td>
-                          <span className={`status-dot ${t.status?.toLowerCase() || 'pending'}`}></span>
+                          <span className={`payouts-status-dot ${t.status?.toLowerCase() || 'pending'}`}></span>
                           {t.status === 'completed' ? 'Completed' : t.status === 'pending' ? 'Pending' : t.status === 'cancelled' ? 'Cancelled' : t.status || 'Pending'}
                         </td>
-                        <td className="desc-text">{t.description}</td>
+                        <td className="payouts-desc-text">{t.description}</td>
                         {userRole === "super_admin" && (
                           <td>
                             {t.status === 'Pending' && t.payout_id && (
-                              <button className="table-btn-approve" onClick={(e) => { e.stopPropagation(); setSelectedPayoutId(t.payout_id); setShowApproveModal(true); }}>
+                              <button className="payouts-table-btn-approve" onClick={(e) => { e.stopPropagation(); setSelectedPayoutId(t.payout_id); setShowApproveModal(true); }}>
                                 Approve
                               </button>
                             )}
@@ -1181,15 +1181,15 @@ const Payouts = () => {
         )}
 
         {activeMenu === "settlement" && (
-          <div className="view-container">
-            <div className="view-header">
-              <h2 className="view-title">Settlement Dashboard</h2>
-              <div className="filter-controls">
-                <div className="date-range-display">
+          <div className="payouts-view-container">
+            <div className="payouts-view-header">
+              <h2 className="payouts-view-title">Settlement Dashboard</h2>
+              <div className="payouts-filter-controls">
+                {/* <div className="payouts-date-range-display">
                   <span>{dateFrom || "Start"} → {dateTo || "End"}</span>
                   <i className="bi bi-calendar"></i>
-                </div>
-                <div className="search-box">
+                </div> */}
+                <div className="payouts-search-box">
                   <input
                     type="text"
                     placeholder="Settlement ID"
@@ -1201,66 +1201,66 @@ const Payouts = () => {
               </div>
             </div>
 
-            <div className="stats-equation-row">
-              <div className="tabs-column">
-                <div className="tab-group-container">
-                  <span className="tab-group-label">Settlement Status</span>
-                  <div className="sub-tabs-flex">
-                    <div className={`stat-tab ${settlementTab === 'all' ? 'active' : ''}`} onClick={() => setSettlementTab('all')}>
+            <div className="payouts-stats-equation-row">
+              <div className="payouts-tabs-column">
+                <div className="payouts-tab-group-container">
+                  <span className="payouts-tab-group-label">Settlement Status</span>
+                  <div className="payouts-sub-tabs-flex">
+                    <div className={`payouts-stat-tab ${settlementTab === 'all' ? 'active' : ''}`} onClick={() => setSettlementTab('all')}>
                       All <span>{counts.all}</span>
                     </div>
-                    <div className={`stat-tab ${settlementTab === 'pending' ? 'active' : ''}`} onClick={() => setSettlementTab('pending')}>
+                    <div className={`payouts-stat-tab ${settlementTab === 'pending' ? 'active' : ''}`} onClick={() => setSettlementTab('pending')}>
                       Pending <span>{counts.pending}</span>
                     </div>
-                    <div className={`stat-tab ${settlementTab === 'paid' ? 'active' : ''}`} onClick={() => setSettlementTab('paid')}>
+                    <div className={`payouts-stat-tab ${settlementTab === 'paid' ? 'active' : ''}`} onClick={() => setSettlementTab('paid')}>
                       Completed <span>{counts.paid}</span>
                     </div>
-                    <div className={`stat-tab ${settlementTab === 'rejected' ? 'active' : ''}`} onClick={() => setSettlementTab('rejected')}>
+                    <div className={`payouts-stat-tab ${settlementTab === 'rejected' ? 'active' : ''}`} onClick={() => setSettlementTab('rejected')}>
                       Rejected <span>{counts.rejected}</span>
                     </div>
-                    <div className={`stat-tab ${settlementTab === 'cancelled' ? 'active' : ''}`} onClick={() => setSettlementTab('cancelled')}>
+                    <div className={`payouts-stat-tab ${settlementTab === 'cancelled' ? 'active' : ''}`} onClick={() => setSettlementTab('cancelled')}>
                       Cancelled <span>{counts.cancelled}</span>
                     </div>
                   </div>
                 </div>
               </div>
 
-              <div className="equation-column no-math">
-                <div className="eq-box">
-                  <span className="eq-label">Pending Settlement</span>
-                  <span className="eq-value">{formatCurrency(currentSummary?.total_pending || 0)}</span>
+              <div className="payouts-equation-column no-math">
+                <div className="payouts-eq-box">
+                  <span className="payouts-eq-label">Pending Settlement</span>
+                  <span className="payouts-eq-value">{formatCurrency(currentSummary?.total_pending || 0)}</span>
                 </div>
-                <div className="eq-box">
-                  <span className="eq-label">Completed Settlement</span>
-                  <span className="eq-value">{formatCurrency(currentSummary?.total_paid || 0)}</span>
+                <div className="payouts-eq-box">
+                  <span className="payouts-eq-label">Completed Settlement</span>
+                  <span className="payouts-eq-value">{formatCurrency(currentSummary?.total_paid || 0)}</span>
                 </div>
-                <div className="eq-box">
-                  <span className="eq-label">Total Requested</span>
-                  <span className="eq-value">{formatCurrency(currentSummary?.total_requested || 0)}</span>
+                <div className="payouts-eq-box">
+                  <span className="payouts-eq-label">Total Requested</span>
+                  <span className="payouts-eq-value">{formatCurrency(currentSummary?.total_requested || 0)}</span>
                 </div>
               </div>
             </div>
 
-            <div className="table-toolbar">
+            <div className="payouts-table-toolbar">
               <h3>
                 {settlementTab === 'all' ? 'Settlements' :
                   settlementTab === 'paid' ? 'Completed Settlements' :
                     settlementTab === 'pending' ? 'Pending Settlements' :
                       settlementTab === 'rejected' ? 'Rejected Requests' : 'Cancelled Requests'}
               </h3>
-              <div className="toolbar-actions">
-                <button className="btn-blue-outline" onClick={handleDownloadSettlementReport}>
+              <div className="payouts-toolbar-actions">
+                <button className="payouts-btn-blue-outline" onClick={handleDownloadSettlementReport}>
                   <i className="bi bi-download"></i> Report
                 </button>
-                <i className="bi bi-arrow-clockwise action-icon" onClick={() => { fetchData(); fetchSummary(); }}></i>
-                <button className="btn-clear-filters" onClick={() => { setDateFrom(""); setDateTo(""); setSearchTerm(""); setSettlementTab("all"); }}>
+                <i className="bi bi-arrow-clockwise payouts-action-icon" onClick={() => { fetchData(); fetchSummary(); }}></i>
+                <button className="payouts-btn-clear-filters" onClick={() => { setDateFrom(""); setDateTo(""); setSearchTerm(""); setSettlementTab("all"); }}>
                   Clear
                 </button>
               </div>
             </div>
 
-            <div className="ekart-table-wrapper">
-              <table className="ekart-table">
+            <div className="payouts-ekart-table-wrapper">
+              <table className="payouts-ekart-table">
                 <thead>
                   <tr>
                     <th><input type="checkbox" /></th>
@@ -1281,26 +1281,26 @@ const Payouts = () => {
                 </thead>
                 <tbody>
                   {displayPayouts.length === 0 ? (
-                    <tr className="empty-row">
+                    <tr className="payouts-empty-row">
                       <td colSpan="12">
-                        <div className="empty-state">
+                        <div className="payouts-empty-state">
                           <i className="bi bi-inbox"></i>
                           <p>No settlements found</p>
                         </div>
-                       </td>
+                      </td>
                     </tr>
                   ) : (
                     displayPayouts.map(p => (
                       <tr key={p.id}>
                         <td><input type="checkbox" /></td>
-                        <td className="text-blue">STL-{String(p.id).padStart(6, '0')}</td>
+                        <td className="payouts-text-blue">STL-{String(p.id).padStart(6, '0')}</td>
                         {userRole === "super_admin" && <td>{p.store_name || p.vendor_name || p.email}</td>}
                         <td>Withdrawal</td>
                         <td>{formatCurrency(p.amount)}</td>
                         <td>{p.status === 'Paid' ? formatCurrency(p.amount) : '-'}</td>
                         <td>{formatDateTime(p.requested_at)}</td>
                         <td>{p.processed_at ? formatDateTime(p.processed_at) : (p.updated_at ? formatDateTime(p.updated_at) : '-')}</td>
-                        <td className="desc-text">
+                        <td className="payouts-desc-text">
                           {p.bank_details
                             ? p.bank_details.length > 40
                               ? p.bank_details.substring(0, 40) + '...'
@@ -1308,7 +1308,7 @@ const Payouts = () => {
                             : 'No bank details'}
                         </td>
                         <td>
-                          <span className={`status-badge ${p.status.toLowerCase()}`}>
+                          <span className={`payouts-status-badge ${p.status.toLowerCase()}`}>
                             {p.status === 'Rejected' && <i className="bi bi-x-circle-fill"></i>}
                             {p.status === 'Cancelled' && <i className="bi bi-ban-fill"></i>}
                             {p.status === 'Pending' && <i className="bi bi-hourglass-split"></i>}
@@ -1316,14 +1316,14 @@ const Payouts = () => {
                             {p.status}
                           </span>
                         </td>
-                        <td className="desc-text">{p.rejection_reason || p.cancellation_reason || '-'}</td>
+                        <td className="payouts-desc-text">{p.rejection_reason || p.cancellation_reason || '-'}</td>
                         {userRole === "super_admin" && (settlementTab === "pending" || settlementTab === "all") && p.status === 'Pending' && (
                           <td>
-                            <div className="action-buttons">
-                              <button className="table-btn-approve" onClick={() => { setSelectedPayoutId(p.id); setShowApproveModal(true); }}>
+                            <div className="payouts-action-buttons">
+                              <button className="payouts-table-btn-approve" onClick={() => { setSelectedPayoutId(p.id); setShowApproveModal(true); }}>
                                 <i className="bi bi-check-lg"></i> Approve
                               </button>
-                              <button className="table-btn-reject" onClick={() => { setSelectedPayoutId(p.id); setShowRejectModal(true); }}>
+                              <button className="payouts-table-btn-reject" onClick={() => { setSelectedPayoutId(p.id); setShowRejectModal(true); }}>
                                 <i className="bi bi-x-lg"></i> Reject
                               </button>
                             </div>
@@ -1331,7 +1331,7 @@ const Payouts = () => {
                         )}
                         {(userRole === "vendor" || userRole === "admin") && settlementTab === "pending" && p.status === 'Pending' && (
                           <td>
-                            <button className="table-btn-cancel" onClick={() => {
+                            <button className="payouts-table-btn-cancel" onClick={() => {
                               setSelectedPayoutForCancel(p);
                               setShowCancelModal(true);
                             }}>
@@ -1342,7 +1342,7 @@ const Payouts = () => {
                         {(settlementTab === "paid" || settlementTab === "all") && p.status === 'Paid' && (
                           <td>
                             <button
-                              className="btn-view-invoice"
+                              className="payouts-btn-view-invoice"
                               onClick={() => handleViewInvoice(p)}
                             >
                               <i className="bi bi-receipt"></i> Invoice
@@ -1359,15 +1359,15 @@ const Payouts = () => {
         )}
 
         {activeMenu === "billing" && (
-          <div className="view-container">
-            <div className="view-header">
-              <h2 className="view-title">Invoices & Billing</h2>
-              <div className="filter-controls">
-                <div className="date-range-display">
+          <div className="payouts-view-container">
+            <div className="payouts-view-header">
+              <h2 className="payouts-view-title">Invoices & Billing</h2>
+              <div className="payouts-filter-controls">
+                {/* <div className="payouts-date-range-display">
                   <span>{dateFrom || "Start"} → {dateTo || "End"}</span>
                   <i className="bi bi-calendar"></i>
-                </div>
-                <div className="search-box">
+                </div> */}
+                <div className="payouts-search-box">
                   <input
                     type="text"
                     placeholder="Invoice number"
@@ -1379,39 +1379,39 @@ const Payouts = () => {
               </div>
             </div>
 
-            <div className="stats-equation-row">
-              <div className="tabs-column">
-                <div className="tab-group-container">
-                  <span className="tab-group-label">Total Invoices</span>
-                  <div className="stat-tab active">
+            <div className="payouts-stats-equation-row">
+              <div className="payouts-tabs-column">
+                <div className="payouts-tab-group-container">
+                  <span className="payouts-tab-group-label">Total Invoices</span>
+                  <div className="payouts-stat-tab active">
                     Total <span>{invoices.length}</span>
                   </div>
                 </div>
               </div>
-              <div className="equation-column no-math">
-                <div className="eq-box">
-                  <span className="eq-label">Total Billed Amount</span>
-                  <span className="eq-value">{formatCurrency(invoices.reduce((sum, inv) => sum + (inv.amount || 0), 0))}</span>
+              <div className="payouts-equation-column no-math">
+                <div className="payouts-eq-box">
+                  <span className="payouts-eq-label">Total Billed Amount</span>
+                  <span className="payouts-eq-value">{formatCurrency(invoices.reduce((sum, inv) => sum + (inv.amount || 0), 0))}</span>
                 </div>
-                <div className="eq-box">
-                  <span className="eq-label">Paid Amount</span>
-                  <span className="eq-value">{formatCurrency(invoices.reduce((sum, inv) => sum + (inv.amount || 0), 0))}</span>
+                <div className="payouts-eq-box">
+                  <span className="payouts-eq-label">Paid Amount</span>
+                  <span className="payouts-eq-value">{formatCurrency(invoices.reduce((sum, inv) => sum + (inv.amount || 0), 0))}</span>
                 </div>
               </div>
             </div>
 
-            <div className="table-toolbar">
+            <div className="payouts-table-toolbar">
               <h3>Invoice History</h3>
-              <div className="toolbar-actions">
-                <i className="bi bi-arrow-clockwise action-icon" onClick={fetchInvoices}></i>
-                <button className="btn-clear-filters" onClick={() => { setDateFrom(""); setDateTo(""); setSearchTerm(""); }}>
+              <div className="payouts-toolbar-actions">
+                <i className="bi bi-arrow-clockwise payouts-action-icon" onClick={fetchInvoices}></i>
+                <button className="payouts-btn-clear-filters" onClick={() => { setDateFrom(""); setDateTo(""); setSearchTerm(""); }}>
                   Clear
                 </button>
               </div>
             </div>
 
-            <div className="ekart-table-wrapper">
-              <table className="ekart-table">
+            <div className="payouts-ekart-table-wrapper">
+              <table className="payouts-ekart-table">
                 <thead>
                   <tr>
                     <th><input type="checkbox" /></th>
@@ -1425,12 +1425,12 @@ const Payouts = () => {
                 </thead>
                 <tbody>
                   {invoices.length === 0 ? (
-                    <tr className="empty-row">
+                    <tr className="payouts-empty-row">
                       <td colSpan="7">
-                        <div className="empty-state">
+                        <div className="payouts-empty-state">
                           <i className="bi bi-inbox"></i>
                           <p>No invoices found</p>
-                          <span className="empty-subtext">Invoices will appear here once settlements are completed</span>
+                          <span className="payouts-empty-subtext">Invoices will appear here once settlements are completed</span>
                         </div>
                       </td>
                     </tr>
@@ -1438,17 +1438,17 @@ const Payouts = () => {
                     invoices.map(inv => (
                       <tr key={inv.id}>
                         <td><input type="checkbox" /></td>
-                        <td className="text-blue">INV-{String(inv.id).padStart(6, '0')}</td>
+                        <td className="payouts-text-blue">INV-{String(inv.id).padStart(6, '0')}</td>
                         <td>{formatDate(inv.processed_at || inv.created_at)}</td>
                         <td>{formatCurrency(inv.amount)}</td>
                         <td>
-                          <span className={`status-dot paid`}></span>
+                          <span className={`payouts-status-dot paid`}></span>
                           Paid
                         </td>
-                        <td className="desc-text">{inv.description || 'Withdrawal Settlement Invoice'}</td>
+                        <td className="payouts-desc-text">{inv.description || 'Withdrawal Settlement Invoice'}</td>
                         <td>
                           <button
-                            className="btn-view-invoice"
+                            className="payouts-btn-view-invoice"
                             onClick={() => handleViewInvoice(inv)}
                           >
                             <i className="bi bi-receipt"></i> View Invoice
@@ -1466,43 +1466,43 @@ const Payouts = () => {
 
       {/* Withdraw Modal */}
       {showWithdrawModal && (
-        <div className="withdraw-modal-overlay" onClick={() => setShowWithdrawModal(false)}>
-          <div className="withdraw-modal-large" onClick={(e) => e.stopPropagation()}>
-            <div className="modal-header-large">
+        <div className="payouts-withdraw-modal-overlay" onClick={() => setShowWithdrawModal(false)}>
+          <div className="payouts-withdraw-modal-large" onClick={(e) => e.stopPropagation()}>
+            <div className="payouts-modal-header-large">
               <h3>Request Withdrawal</h3>
-              <button className="modal-close-large" onClick={() => setShowWithdrawModal(false)}>
+              <button className="payouts-modal-close-large" onClick={() => setShowWithdrawModal(false)}>
                 <i className="bi bi-x-lg"></i>
               </button>
             </div>
 
-            <div className="modal-body-split">
-              <div className="modal-left-balance">
-                <div className="balance-card-large">
-                  <div className="balance-icon">
+            <div className="payouts-modal-body-split">
+              <div className="payouts-modal-left-balance">
+                <div className="payouts-balance-card-large">
+                  <div className="payouts-balance-icon">
                     <i className="bi bi-wallet2"></i>
                   </div>
-                  <div className="balance-amount-large">
+                  <div className="payouts-balance-amount-large">
                     <span>Available Balance</span>
                     <h2>{formatCurrency(balance)}</h2>
                   </div>
                 </div>
 
-                <div className="withdrawal-info">
-                  <div className="info-item">
+                <div className="payouts-withdrawal-info">
+                  <div className="payouts-info-item">
                     <i className="bi bi-clock-history"></i>
                     <div>
                       <strong>Processing Time</strong>
                       <p>2-3 business days</p>
                     </div>
                   </div>
-                  <div className="info-item">
+                  <div className="payouts-info-item">
                     <i className="bi bi-shield-check"></i>
                     <div>
                       <strong>Secure Transaction</strong>
                       <p>128-bit encrypted</p>
                     </div>
                   </div>
-                  <div className="info-item">
+                  <div className="payouts-info-item">
                     <i className="bi bi-graph-up"></i>
                     <div>
                       <strong>Minimum Withdrawal</strong>
@@ -1512,21 +1512,21 @@ const Payouts = () => {
                 </div>
               </div>
 
-              <div className="modal-right-form">
-                <form onSubmit={handleRequestPayout} className="withdraw-form-scrollable">
+              <div className="payouts-modal-right-form">
+                <form onSubmit={handleRequestPayout} className="payouts-withdraw-form-scrollable">
                   {savedBankAccounts.length > 0 && (
-                    <div className="form-section">
-                      <label className="form-label">
+                    <div className="payouts-form-section">
+                      <label className="payouts-form-label">
                         <i className="bi bi-bank"></i> Saved Bank Accounts
                       </label>
-                      <div className="saved-accounts-list-scrollable">
+                      <div className="payouts-saved-accounts-list-scrollable">
                         {savedBankAccounts.map((account, index) => (
                           <div
                             key={account.id}
-                            className={`saved-account-card ${selectedBankAccount === account.id ? 'selected' : ''}`}
+                            className={`payouts-saved-account-card ${selectedBankAccount === account.id ? 'selected' : ''}`}
                             onClick={() => handleBankAccountSelect(account)}
                           >
-                            <div className="account-radio">
+                            <div className="payouts-account-radio">
                               <input
                                 type="radio"
                                 name="savedAccount"
@@ -1534,21 +1534,21 @@ const Payouts = () => {
                                 onChange={() => handleBankAccountSelect(account)}
                               />
                             </div>
-                            <div className="account-details">
-                              <div className="account-bank-name">
+                            <div className="payouts-account-details">
+                              <div className="payouts-account-bank-name">
                                 <i className="bi bi-bank"></i>
                                 <strong>Account {index + 1}</strong>
                               </div>
-                              <div className="account-info">
+                              <div className="payouts-account-info">
                                 {formatBankDetailsShort(account.bank_details)}
                               </div>
-                              <div className="account-full-details">
+                              <div className="payouts-account-full-details">
                                 {account.bank_details.substring(0, 80)}...
                               </div>
                             </div>
                             <button
                               type="button"
-                              className="delete-account-btn"
+                              className="payouts-delete-account-btn"
                               onClick={(e) => {
                                 e.stopPropagation();
                                 setAccountToDelete(account.id);
@@ -1561,10 +1561,10 @@ const Payouts = () => {
                           </div>
                         ))}
                         <div
-                          className={`saved-account-card new-account-card ${selectedBankAccount === 'new' ? 'selected' : ''}`}
+                          className={`payouts-saved-account-card payouts-new-account-card ${selectedBankAccount === 'new' ? 'selected' : ''}`}
                           onClick={() => handleBankAccountSelect({ id: 'new', bank_details: '' })}
                         >
-                          <div className="account-radio">
+                          <div className="payouts-account-radio">
                             <input
                               type="radio"
                               name="savedAccount"
@@ -1572,7 +1572,7 @@ const Payouts = () => {
                               onChange={() => handleBankAccountSelect({ id: 'new', bank_details: '' })}
                             />
                           </div>
-                          <div className="account-details">
+                          <div className="payouts-account-details">
                             <i className="bi bi-plus-circle"></i>
                             <span>Use New Bank Account</span>
                           </div>
@@ -1581,12 +1581,12 @@ const Payouts = () => {
                     </div>
                   )}
 
-                  <div className="form-section">
-                    <label className="form-label">
+                  <div className="payouts-form-section">
+                    <label className="payouts-form-label">
                       <i className="bi bi-currency-rupee"></i> Amount to Withdraw
                     </label>
-                    <div className="amount-input-wrapper-large">
-                      <span className="currency-symbol-large">₹</span>
+                    <div className="payouts-amount-input-wrapper-large">
+                      <span className="payouts-currency-symbol-large">₹</span>
                       <input
                         type="number"
                         value={amount}
@@ -1598,42 +1598,42 @@ const Payouts = () => {
                         placeholder="Enter amount"
                       />
                     </div>
-                    <div className="quick-amount-buttons">
+                    <div className="payouts-quick-amount-buttons">
                       <button type="button" onClick={() => setAmount(Math.min(1000, balance))}>₹1,000</button>
                       <button type="button" onClick={() => setAmount(Math.min(5000, balance))}>₹5,000</button>
                       <button type="button" onClick={() => setAmount(Math.min(10000, balance))}>₹10,000</button>
                       <button type="button" onClick={() => setAmount(Math.min(25000, balance))}>₹25,000</button>
                       <button type="button" onClick={() => setAmount(balance)}>Full Balance</button>
                     </div>
-                    <small className="field-hint">Minimum withdrawal: ₹100 | Maximum: {formatCurrency(balance)}</small>
+                    <small className="payouts-field-hint">Minimum withdrawal: ₹100 | Maximum: {formatCurrency(balance)}</small>
                   </div>
 
-                  <div className="form-section">
-                    <label className="form-label">
+                  <div className="payouts-form-section">
+                    <label className="payouts-form-label">
                       <i className="bi bi-credit-card"></i> Bank Account / UPI Details
                     </label>
                     <textarea
-                      className="withdrawl-textarea"
+                      className="payouts-withdrawl-textarea"
                       value={bankDetails}
                       onChange={e => setBankDetails(e.target.value)}
                       required
                       placeholder="Enter Account Holder Name | Account Number | IFSC Code | Bank Name | UPI ID"
                       rows="4"
                     ></textarea>
-                    <small className="field-hint">
+                    <small className="payouts-field-hint">
                       <i className="bi bi-info-circle"></i>
                       This account will be saved for faster future withdrawals
                     </small>
                   </div>
 
-                  <div className="form-footer">
-                    <button type="button" className="btn-cancel-large" onClick={() => setShowWithdrawModal(false)}>
+                  <div className="payouts-form-footer">
+                    <button type="button" className="payouts-btn-cancel-large" onClick={() => setShowWithdrawModal(false)}>
                       Cancel
                     </button>
-                    <button type="submit" className="btn-submit-large" disabled={requesting || balance <= 0 || !bankDetails.trim()}>
+                    <button type="submit" className="payouts-btn-submit-large" disabled={requesting || balance <= 0 || !bankDetails.trim()}>
                       {requesting ? (
                         <>
-                          <span className="btn-spinner"></span> Processing...
+                          <span className="payouts-btn-spinner"></span> Processing...
                         </>
                       ) : (
                         <>
@@ -1651,26 +1651,26 @@ const Payouts = () => {
 
       {/* Cancel Request Modal */}
       {showCancelModal && selectedPayoutForCancel && (
-        <div className="modal-overlay" onClick={() => { setShowCancelModal(false); setCancellationReason(""); }}>
-          <div className="modal-container" onClick={(e) => e.stopPropagation()}>
-            <div className="modal-header">
+        <div className="payouts-modal-overlay" onClick={() => { setShowCancelModal(false); setCancellationReason(""); }}>
+          <div className="payouts-modal-container" onClick={(e) => e.stopPropagation()}>
+            <div className="payouts-modal-header">
               <h3>Cancel Withdrawal Request</h3>
-              <button className="modal-close" onClick={() => { setShowCancelModal(false); setCancellationReason(""); }}>
+              <button className="payouts-modal-close" onClick={() => { setShowCancelModal(false); setCancellationReason(""); }}>
                 ✕
               </button>
             </div>
-            <div className="modal-body">
-              <div className="cancel-info">
-                <div className="cancel-amount">
+            <div className="payouts-modal-body">
+              <div className="payouts-cancel-info">
+                <div className="payouts-cancel-amount">
                   <span>Request Amount:</span>
                   <strong>{formatCurrency(selectedPayoutForCancel.amount)}</strong>
                 </div>
-                <div className="cancel-date">
+                <div className="payouts-cancel-date">
                   <span>Requested on:</span>
                   <strong>{formatDateTime(selectedPayoutForCancel.requested_at)}</strong>
                 </div>
               </div>
-              <div className="form-group">
+              <div className="payouts-form-group">
                 <label>Reason for Cancellation *</label>
                 <textarea
                   value={cancellationReason}
@@ -1680,19 +1680,19 @@ const Payouts = () => {
                   required
                 ></textarea>
               </div>
-              <div className="warning-note" style={{ marginTop: '0' }}>
+              <div className="payouts-warning-note" style={{ marginTop: '0' }}>
                 <i className="bi bi-exclamation-triangle-fill"></i>
                 <span>This action cannot be undone. The amount will be credited back to your wallet.</span>
               </div>
             </div>
-            <div className="modal-footer">
-              <button type="button" className="btn-cancel" onClick={() => { setShowCancelModal(false); setCancellationReason(""); }}>
+            <div className="payouts-modal-footer">
+              <button type="button" className="payouts-btn-cancel" onClick={() => { setShowCancelModal(false); setCancellationReason(""); }}>
                 Close
               </button>
-              <button type="button" className="btn-danger" onClick={handleCancelRequest} disabled={requesting || !cancellationReason.trim()}>
+              <button type="button" className="payouts-btn-danger" onClick={handleCancelRequest} disabled={requesting || !cancellationReason.trim()}>
                 {requesting ? (
                   <>
-                    <span className="btn-spinner"></span> Processing...
+                    <span className="payouts-btn-spinner"></span> Processing...
                   </>
                 ) : (
                   "Confirm Cancellation"

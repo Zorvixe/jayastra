@@ -1,13 +1,13 @@
-/* Payouts.css - Complete Professional Settlement Interface */
+/* Payouts.css - Complete Professional Settlement Interface with payouts- prefix */
 
 /* Main Layout */
-.payments-layout {
+.payouts-layout {
   display: flex;
   min-height: 100vh;
 }
 
 /* Inner Sidebar */
-.payments-sidebar {
+.payouts-sidebar {
   width: 180px;
   background: white;
   border-right: none;
@@ -20,13 +20,13 @@
   border-radius: 10px;
 }
 
-.payments-nav {
+.payouts-nav {
   list-style: none;
   padding: 0;
   margin: 0;
 }
 
-.payments-nav li {
+.payouts-nav li {
   padding: 14px 24px;
   margin: 4px 12px;
   border-radius: 12px;
@@ -40,31 +40,31 @@
   transition: all 0.2s ease;
 }
 
-.payments-nav li i {
+.payouts-nav li i {
   font-size: 18px;
   width: 24px;
 }
 
-.payments-nav li:hover {
+.payouts-nav li:hover {
   background: #f7f9fc;
   color: #8E2139;
 }
 
-.payments-nav li.active {
+.payouts-nav li.active {
   background: #8E2139;
   color: white;
   box-shadow: 0 4px 12px rgba(142, 33, 57, 0.2);
 }
 
 /* Content Area */
-.payments-content {
+.payouts-content {
   flex: 1;
   padding: 10px;
   overflow-x: hidden;
 }
 
 /* Info Banner */
-.info-banner {
+.payouts-info-banner {
   background: #8E2139;
   border-radius: 16px;
   padding: 16px 24px;
@@ -77,18 +77,18 @@
   color: white;
 }
 
-.info-text {
+.payouts-info-text {
   display: flex;
   align-items: center;
   gap: 12px;
   font-size: 14px;
 }
 
-.info-text i {
+.payouts-info-text i {
   font-size: 20px;
 }
 
-.btn-resume-onboard {
+.payouts-btn-resume-onboard {
   background: rgba(255, 255, 255, 0.2);
   border: 1px solid rgba(255, 255, 255, 0.3);
   color: white;
@@ -103,12 +103,12 @@
   white-space: nowrap;
 }
 
-.btn-resume-onboard:hover {
+.payouts-btn-resume-onboard:hover {
   background: rgba(255, 255, 255, 0.3);
 }
 
 /* Super Admin Filter Bar */
-.super-admin-filter-bar {
+.payouts-super-admin-filter-bar {
   background: white;
   padding: 16px 20px;
   border-radius: 12px;
@@ -120,21 +120,21 @@
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
 }
 
-.filter-group {
+.payouts-filter-group {
   display: flex;
   align-items: center;
   gap: 8px;
 }
 
-.filter-group label {
+.payouts-filter-group label {
   font-size: 13px;
   font-weight: 500;
   color: #4a5568;
   white-space: nowrap;
 }
 
-.filter-group select,
-.filter-group input {
+.payouts-filter-group select,
+.payouts-filter-group input {
   padding: 8px 12px;
   border: 1px solid #e2e8f0;
   border-radius: 8px;
@@ -143,8 +143,8 @@
   min-width: 0;
 }
 
-.clear-filter-btn,
-.btn-reset-filters {
+.payouts-clear-filter-btn,
+.payouts-btn-reset-filters {
   background: #f1f5f9;
   border: none;
   padding: 8px 14px;
@@ -158,20 +158,20 @@
   white-space: nowrap;
 }
 
-.clear-filter-btn:hover,
-.btn-reset-filters:hover {
+.payouts-clear-filter-btn:hover,
+.payouts-btn-reset-filters:hover {
   background: #e2e8f0;
 }
 
 /* View Container */
-.view-container {
+.payouts-view-container {
   background: white;
   border-radius: 20px;
   padding: 20px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
 }
 
-.view-header {
+.payouts-view-header {
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
@@ -180,14 +180,14 @@
   margin-bottom: 24px;
 }
 
-.view-title {
+.payouts-view-title {
   font-size: 20px;
   font-weight: 600;
   color: #1a1a2e;
   margin: 0;
 }
 
-.view-subtitle {
+.payouts-view-subtitle {
   font-size: 13px;
   color: #718096;
   margin-top: 4px;
@@ -195,14 +195,14 @@
 }
 
 /* Filter Controls */
-.filter-controls {
+.payouts-filter-controls {
   display: flex;
   gap: 12px;
   align-items: center;
   flex-wrap: wrap;
 }
 
-.date-range-display {
+.payouts-date-range-display {
   background: #f7f9fc;
   padding: 8px 14px;
   border-radius: 8px;
@@ -215,7 +215,7 @@
   white-space: nowrap;
 }
 
-.search-box {
+.payouts-search-box {
   display: flex;
   gap: 0;
   border: 1px solid #e2e8f0;
@@ -223,7 +223,7 @@
   overflow: hidden;
 }
 
-.search-box input {
+.payouts-search-box input {
   padding: 8px 12px;
   border: none;
   border-radius: 0;
@@ -233,7 +233,7 @@
   background: transparent;
 }
 
-.search-box button {
+.payouts-search-box button {
   padding: 8px 12px;
   background: transparent;
   border: none;
@@ -241,7 +241,7 @@
 }
 
 /* Stats Equation Row */
-.stats-equation-row {
+.payouts-stats-equation-row {
   display: flex;
   flex-direction: column;
   gap: 20px;
@@ -252,21 +252,21 @@
   border-radius: 16px;
 }
 
-.tabs-column {
+.payouts-tabs-column {
   flex: 1;
   display: flex;
   flex-direction: row;
-  gap: 16px;
+  gap: 10px;
   flex-wrap: wrap;
 }
 
-.tab-group-container {
+.payouts-tab-group-container {
   display: flex;
   flex-direction: column;
   gap: 8px;
 }
 
-.tab-group-label {
+.payouts-tab-group-label {
   font-size: 12px;
   font-weight: 600;
   color: #64748b;
@@ -274,7 +274,7 @@
   letter-spacing: 0.5px;
 }
 
-.stat-tab {
+.payouts-stat-tab {
   display: inline-flex;
   align-items: center;
   gap: 8px;
@@ -289,30 +289,30 @@
   width: fit-content;
 }
 
-.stat-tab.active {
+.payouts-stat-tab.active {
   background: #8E2139;
   color: white;
   border-color: #8E2139;
 }
 
-.stat-tab span {
+.payouts-stat-tab span {
   background: rgba(0, 0, 0, 0.1);
   padding: 2px 6px;
   border-radius: 12px;
   font-size: 11px;
 }
 
-.stat-tab.active span {
+.payouts-stat-tab.active span {
   background: rgba(255, 255, 255, 0.2);
 }
 
-.sub-tabs-flex {
+.payouts-sub-tabs-flex {
   display: flex;
   gap: 10px;
   flex-wrap: wrap;
 }
 
-.equation-column {
+.payouts-equation-column {
   flex: 2;
   display: flex;
   align-items: center;
@@ -321,7 +321,7 @@
   flex-wrap: wrap;
 }
 
-.eq-box {
+.payouts-eq-box {
   text-align: center;
   padding: 12px 20px;
   background: white;
@@ -330,31 +330,31 @@
   flex: 1;
 }
 
-.eq-label {
+.payouts-eq-label {
   display: block;
   font-size: 12px;
   color: #64748b;
   margin-bottom: 6px;
 }
 
-.eq-value {
+.payouts-eq-value {
   font-size: 20px;
   font-weight: 700;
   color: #1a1a2e;
 }
 
-.eq-symbol {
+.payouts-eq-symbol {
   font-size: 24px;
   font-weight: 600;
   color: #cbd5e1;
 }
 
-.equation-column.no-math .eq-symbol {
+.payouts-equation-column.no-math .payouts-eq-symbol {
   display: none;
 }
 
 /* Table Toolbar */
-.table-toolbar {
+.payouts-table-toolbar {
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -365,21 +365,21 @@
   border-bottom: 1px solid #e9ecef;
 }
 
-.table-toolbar h3 {
+.payouts-table-toolbar h3 {
   font-size: 15px;
   font-weight: 600;
   color: #1a1a2e;
   margin: 0;
 }
 
-.toolbar-actions {
+.payouts-toolbar-actions {
   display: flex;
   align-items: center;
   gap: 12px;
   flex-wrap: wrap;
 }
 
-.view-summary-link {
+.payouts-view-summary-link {
   font-size: 13px;
   color: #8E2139;
   cursor: pointer;
@@ -388,19 +388,19 @@
   gap: 4px;
 }
 
-.action-icon {
+.payouts-action-icon {
   font-size: 18px;
   color: #718096;
   cursor: pointer;
   transition: color 0.2s;
 }
 
-.action-icon:hover {
+.payouts-action-icon:hover {
   color: #8E2139;
 }
 
-.btn-clear-filters,
-.btn-blue-outline {
+.payouts-btn-clear-filters,
+.payouts-btn-blue-outline {
   padding: 6px 12px;
   border-radius: 6px;
   font-size: 12px;
@@ -408,13 +408,13 @@
   transition: all 0.2s;
 }
 
-.btn-clear-filters {
+.payouts-btn-clear-filters {
   background: #f1f5f9;
   border: none;
   color: #4a5568;
 }
 
-.btn-blue-outline {
+.payouts-btn-blue-outline {
   background: white;
   border: 1px solid #8E2139;
   color: #8E2139;
@@ -423,27 +423,27 @@
   gap: 6px;
 }
 
-.btn-blue-outline:hover {
+.payouts-btn-blue-outline:hover {
   background: #8E2139;
   color: white;
 }
 
 /* Ekart Style Table */
-.ekart-table-wrapper {
+.payouts-ekart-table-wrapper {
   overflow-x: auto;
   border-radius: 12px;
   border: 1px solid #e9ecef;
   -webkit-overflow-scrolling: touch;
 }
 
-.ekart-table {
+.payouts-ekart-table {
   width: 100%;
   border-collapse: collapse;
   font-size: 13px;
   min-width: 600px;
 }
 
-.ekart-table th {
+.payouts-ekart-table th {
   text-align: left;
   padding: 14px 12px;
   background: #f8fafc;
@@ -453,77 +453,77 @@
   white-space: nowrap;
 }
 
-.ekart-table td {
+.payouts-ekart-table td {
   padding: 14px 12px;
   border-bottom: 1px solid #f1f5f9;
   color: #1e293b;
 }
 
-.ekart-table tr:hover {
+.payouts-ekart-table tr:hover {
   background: #fafbfc;
 }
 
-.empty-row td {
+.payouts-empty-row td {
   text-align: center !important;
   padding: 60px !important;
 }
 
-.empty-state {
+.payouts-empty-state {
   text-align: center;
 }
 
-.empty-state i {
+.payouts-empty-state i {
   font-size: 48px;
   color: #cbd5e1;
   margin-bottom: 12px;
   display: block;
 }
 
-.empty-state p {
+.payouts-empty-state p {
   color: #64748b;
   margin: 0 0 4px 0;
 }
 
-.empty-subtext {
+.payouts-empty-subtext {
   font-size: 12px;
   color: #a0aec0;
 }
 
-.text-blue {
+.payouts-text-blue {
   color: #8E2139;
   font-weight: 500;
 }
 
-.amount-cell {
+.payouts-amount-cell {
   font-weight: 600;
 }
 
-.amount-cell.credit {
+.payouts-amount-cell.credit {
   color: #15803d;
 }
 
-.amount-cell.debit {
+.payouts-amount-cell.debit {
   color: #dc2626;
 }
 
-.type-badge {
+.payouts-type-badge {
   padding: 4px 8px;
   border-radius: 4px;
   font-size: 11px;
   font-weight: 600;
 }
 
-.type-badge.credit {
+.payouts-type-badge.credit {
   background: #dcfce7;
   color: #15803d;
 }
 
-.type-badge.debit {
+.payouts-type-badge.debit {
   background: #fee2e2;
   color: #dc2626;
 }
 
-.status-dot {
+.payouts-status-dot {
   display: inline-block;
   width: 8px;
   height: 8px;
@@ -531,20 +531,20 @@
   margin-right: 6px;
 }
 
-.status-dot.pending {
+.payouts-status-dot.pending {
   background: #eab308;
 }
 
-.status-dot.paid,
-.status-dot.completed {
+.payouts-status-dot.paid,
+.payouts-status-dot.completed {
   background: #22c55e;
 }
 
-.status-dot.approved {
+.payouts-status-dot.approved {
   background: #22c55e;
 }
 
-.desc-text {
+.payouts-desc-text {
   max-width: 200px;
   white-space: nowrap;
   overflow: hidden;
@@ -552,7 +552,7 @@
   color: #64748b;
 }
 
-.table-btn-approve {
+.payouts-table-btn-approve {
   background: #22c55e;
   color: white;
   border: none;
@@ -568,20 +568,20 @@
   white-space: nowrap;
 }
 
-.table-btn-approve:hover {
+.payouts-table-btn-approve:hover {
   background: #16a34a;
 }
 
-.download-icon {
+.payouts-download-icon {
   transition: opacity 0.2s;
 }
 
-.download-icon:hover {
+.payouts-download-icon:hover {
   opacity: 0.7;
 }
 
 /* Large Withdrawal Modal with Split Layout */
-.withdraw-modal-large {
+.payouts-withdraw-modal-large {
   background: white;
   border-radius: 24px;
   width: 92%;
@@ -589,12 +589,12 @@
   max-height: 90vh;
   display: flex;
   flex-direction: column;
-  animation: slideUp 0.3s ease;
+  animation: payouts-slideUp 0.3s ease;
   box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
   overflow: hidden;
 }
 
-.modal-header-large {
+.payouts-modal-header-large {
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -603,14 +603,14 @@
   color: white;
 }
 
-.modal-header-large h3 {
+.payouts-modal-header-large h3 {
   color: #000;
   margin: 0;
   font-size: 20px;
   font-weight: 600;
 }
 
-.modal-close-large {
+.payouts-modal-close-large {
   background: rgba(255, 255, 255, 0.2);
   border: none;
   font-size: 20px;
@@ -626,20 +626,20 @@
   transition: all 0.2s;
 }
 
-.modal-close-large:hover {
+.payouts-modal-close-large:hover {
   background: linear-gradient(135deg, #8E2139 0%, #6b192b 100%);
   transform: rotate(90deg);
   color: #fff;
 }
 
-.modal-body-split {
+.payouts-modal-body-split {
   display: flex;
   flex: 1;
   overflow: hidden;
 }
 
 /* Left Side - Balance Section */
-.modal-left-balance {
+.payouts-modal-left-balance {
   width: 35%;
   background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
   padding: 28px 20px;
@@ -649,7 +649,7 @@
   overflow-y: auto;
 }
 
-.balance-card-large {
+.payouts-balance-card-large {
   display: flex;
   flex-direction: row;
   background: linear-gradient(135deg, #8E2139 0%, #6b192b 100%);
@@ -660,36 +660,35 @@
   box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1);
 }
 
-.balance-icon {
+.payouts-balance-icon {
   font-size: 24px;
   margin-right: 12px;
-
 }
 
-.balance-icon i {
+.payouts-balance-icon i {
   font-size: 24px;
 }
 
-.balance-amount-large span {
+.payouts-balance-amount-large span {
   font-size: 14px;
   opacity: 0.8;
   display: block;
   margin-bottom: 5px;
 }
 
-.balance-amount-large h2 {
+.payouts-balance-amount-large h2 {
   font-size: 20px;
   font-weight: 700;
   margin: 0;
 }
 
-.withdrawal-info {
+.payouts-withdrawal-info {
   display: flex;
   flex-direction: column;
   gap: 16px;
 }
 
-.info-item {
+.payouts-info-item {
   display: flex;
   align-items: center;
   gap: 14px;
@@ -699,49 +698,49 @@
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
 }
 
-.info-item i {
+.payouts-info-item i {
   font-size: 24px;
   color: #8E2139;
 }
 
-.info-item div {
+.payouts-info-item div {
   flex: 1;
 }
 
-.info-item strong {
+.payouts-info-item strong {
   display: block;
   font-size: 13px;
   color: #1e293b;
   margin-bottom: 4px;
 }
 
-.info-item p {
+.payouts-info-item p {
   font-size: 11px;
   color: #64748b;
   margin: 0;
 }
 
 /* Right Side - Scrollable Form */
-.modal-right-form {
+.payouts-modal-right-form {
   width: 65%;
   padding: 10px;
   overflow-y: auto;
   max-height: calc(90vh - 70px);
 }
 
-.withdraw-form-scrollable {
+.payouts-withdraw-form-scrollable {
   display: flex;
   flex-direction: column;
 }
 
-.form-section {
+.payouts-form-section {
   display: flex;
   flex-direction: column;
   gap: 12px;
   margin-bottom: 20px;
 }
 
-.form-section .form-label {
+.payouts-form-section .payouts-form-label {
   display: flex;
   align-items: center;
   gap: 8px;
@@ -751,19 +750,19 @@
   margin: 0;
 }
 
-.form-section .form-label i {
+.payouts-form-section .payouts-form-label i {
   color: #8E2139;
   font-size: 16px;
 }
 
 /* Amount Input Wrapper */
-.amount-input-wrapper-large {
+.payouts-amount-input-wrapper-large {
   position: relative;
   display: flex;
   align-items: center;
 }
 
-.currency-symbol-large {
+.payouts-currency-symbol-large {
   position: absolute;
   left: 14px;
   font-size: 18px;
@@ -771,7 +770,7 @@
   color: #64748b;
 }
 
-.withdrawl-textarea {
+.payouts-withdrawl-textarea {
   width: 100%;
   padding: 10px 12px;
   border: 1px solid #e2e8f0;
@@ -782,13 +781,13 @@
   box-sizing: border-box;
 }
 
-.withdrawl-textarea:focus {
+.payouts-withdrawl-textarea:focus {
   outline: none;
   border-color: #8E2139;
   box-shadow: 0 0 0 3px rgba(142, 33, 57, 0.1);
 }
 
-.amount-input-wrapper-large input {
+.payouts-amount-input-wrapper-large input {
   width: 100%;
   padding: 14px 14px 14px 35px;
   border: 1px solid #e2e8f0;
@@ -798,21 +797,21 @@
   transition: all 0.2s;
 }
 
-.amount-input-wrapper-large input:focus {
+.payouts-amount-input-wrapper-large input:focus {
   outline: none;
   border-color: #8E2139;
   box-shadow: 0 0 0 3px rgba(142, 33, 57, 0.1);
 }
 
 /* Quick Amount Buttons */
-.quick-amount-buttons {
+.payouts-quick-amount-buttons {
   display: flex;
   flex-wrap: wrap;
   gap: 10px;
   margin-top: 4px;
 }
 
-.quick-amount-buttons button {
+.payouts-quick-amount-buttons button {
   background: #f1f5f9;
   border: none;
   padding: 6px 14px;
@@ -824,13 +823,13 @@
   font-weight: 500;
 }
 
-.quick-amount-buttons button:hover {
+.payouts-quick-amount-buttons button:hover {
   background: #8E2139;
   color: white;
 }
 
 /* Saved Accounts Scrollable List */
-.saved-accounts-list-scrollable {
+.payouts-saved-accounts-list-scrollable {
   display: flex;
   flex-direction: column;
   gap: 10px;
@@ -839,22 +838,22 @@
   padding-right: 8px;
 }
 
-.saved-accounts-list-scrollable::-webkit-scrollbar {
+.payouts-saved-accounts-list-scrollable::-webkit-scrollbar {
   width: 4px;
 }
 
-.saved-accounts-list-scrollable::-webkit-scrollbar-track {
+.payouts-saved-accounts-list-scrollable::-webkit-scrollbar-track {
   background: #f1f5f9;
   border-radius: 4px;
 }
 
-.saved-accounts-list-scrollable::-webkit-scrollbar-thumb {
+.payouts-saved-accounts-list-scrollable::-webkit-scrollbar-thumb {
   background: #cbd5e1;
   border-radius: 4px;
 }
 
 /* Form Footer Buttons */
-.form-footer {
+.payouts-form-footer {
   display: flex;
   gap: 16px;
   justify-content: flex-end;
@@ -863,7 +862,7 @@
   border-top: 1px solid #e9ecef;
 }
 
-.btn-cancel-large {
+.payouts-btn-cancel-large {
   padding: 12px 24px;
   background: #f1f5f9;
   border: none;
@@ -874,11 +873,11 @@
   transition: all 0.2s;
 }
 
-.btn-cancel-large:hover {
+.payouts-btn-cancel-large:hover {
   background: #e2e8f0;
 }
 
-.btn-submit-large {
+.payouts-btn-submit-large {
   padding: 12px 28px;
   background: #8E2139;
   color: white;
@@ -893,19 +892,19 @@
   transition: all 0.2s;
 }
 
-.btn-submit-large:hover:not(:disabled) {
+.payouts-btn-submit-large:hover:not(:disabled) {
   background: #6b192b;
   transform: translateY(-1px);
   box-shadow: 0 4px 12px rgba(142, 33, 57, 0.3);
 }
 
-.btn-submit-large:disabled {
+.payouts-btn-submit-large:disabled {
   opacity: 0.6;
   cursor: not-allowed;
 }
 
 /* Withdraw Modal */
-.withdraw-modal-overlay {
+.payouts-withdraw-modal-overlay {
   position: fixed;
   top: 0;
   left: 0;
@@ -917,21 +916,21 @@
   align-items: center;
   justify-content: center;
   z-index: 1100;
-  animation: fadeIn 0.2s ease;
+  animation: payouts-fadeIn 0.2s ease;
   padding: 16px;
   box-sizing: border-box;
 }
 
-.withdraw-modal {
+.payouts-withdraw-modal {
   background: white;
   border-radius: 20px;
   width: 90%;
   max-width: 500px;
-  animation: slideUp 0.3s ease;
+  animation: payouts-slideUp 0.3s ease;
   box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
 }
 
-.modal-overlay {
+.payouts-modal-overlay {
   position: fixed;
   top: 0;
   left: 0;
@@ -943,12 +942,12 @@
   align-items: center;
   justify-content: center;
   z-index: 1100;
-  animation: fadeIn 0.2s ease;
+  animation: payouts-fadeIn 0.2s ease;
   padding: 16px;
   box-sizing: border-box;
 }
 
-.modal-header {
+.payouts-modal-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -956,13 +955,13 @@
   border-bottom: 1px solid #e9ecef;
 }
 
-.modal-header h3 {
+.payouts-modal-header h3 {
   margin: 0;
   font-size: 18px;
   font-weight: 600;
 }
 
-.modal-close {
+.payouts-modal-close {
   background: none;
   border: none;
   font-size: 20px;
@@ -971,13 +970,13 @@
   padding: 4px;
 }
 
-.modal-body {
+.payouts-modal-body {
   display: flex;
   flex-direction: column;
   padding: 24px;
 }
 
-.available-bal-box {
+.payouts-available-bal-box {
   background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%);
   padding: 16px;
   border-radius: 12px;
@@ -985,24 +984,24 @@
   margin-bottom: 20px;
 }
 
-.available-bal-box span {
+.payouts-available-bal-box span {
   font-size: 13px;
   color: #15803d;
   display: block;
   margin-bottom: 4px;
 }
 
-.available-bal-box h2 {
+.payouts-available-bal-box h2 {
   font-size: 28px;
   color: #15803d;
   margin: 0;
 }
 
-.form-group {
+.payouts-form-group {
   margin-bottom: 20px;
 }
 
-.form-group label {
+.payouts-form-group label {
   display: block;
   margin-bottom: 8px;
   font-size: 13px;
@@ -1010,8 +1009,8 @@
   color: #1e293b;
 }
 
-.form-group input,
-.form-group textarea {
+.payouts-form-group input,
+.payouts-form-group textarea {
   width: 100%;
   padding: 10px 12px;
   border: 1px solid #e2e8f0;
@@ -1021,14 +1020,14 @@
   box-sizing: border-box;
 }
 
-.form-group input:focus,
-.form-group textarea:focus {
+.payouts-form-group input:focus,
+.payouts-form-group textarea:focus {
   outline: none;
   border-color: #8E2139;
   box-shadow: 0 0 0 3px rgba(142, 33, 57, 0.1);
 }
 
-.info-note {
+.payouts-info-note {
   background: #fef3c7;
   padding: 10px 12px;
   border-radius: 8px;
@@ -1039,7 +1038,7 @@
   gap: 8px;
 }
 
-.modal-footer {
+.payouts-modal-footer {
   padding: 16px 24px;
   border-top: 1px solid #e9ecef;
   display: flex;
@@ -1047,7 +1046,7 @@
   gap: 12px;
 }
 
-.btn-cancel {
+.payouts-btn-cancel {
   padding: 8px 16px;
   background: #f1f5f9;
   border: none;
@@ -1056,7 +1055,7 @@
   font-size: 13px;
 }
 
-.btn-submit-payout {
+.payouts-btn-submit-payout {
   padding: 8px 20px;
   background: #8E2139;
   color: white;
@@ -1070,23 +1069,23 @@
   gap: 8px;
 }
 
-.btn-submit-payout:disabled {
+.payouts-btn-submit-payout:disabled {
   opacity: 0.6;
   cursor: not-allowed;
 }
 
-.btn-spinner {
+.payouts-btn-spinner {
   width: 14px;
   height: 14px;
   border: 2px solid rgba(255, 255, 255, 0.3);
   border-top-color: white;
   border-radius: 50%;
-  animation: spin 0.6s linear infinite;
+  animation: payouts-spin 0.6s linear infinite;
   display: inline-block;
 }
 
 /* Loader */
-.dash-loader-overlay {
+.payouts-dash-loader-overlay {
   position: fixed;
   top: 0;
   left: 0;
@@ -1099,21 +1098,21 @@
   z-index: 2000;
 }
 
-.dash-spinner {
+.payouts-dash-spinner {
   width: 48px;
   height: 48px;
   border: 3px solid #e9ecef;
   border-top-color: #8E2139;
   border-radius: 50%;
-  animation: spin 0.8s linear infinite;
+  animation: payouts-spin 0.8s linear infinite;
 }
 
 /* Saved Bank Accounts Section */
-.saved-accounts-section {
+.payouts-saved-accounts-section {
   margin-bottom: 20px;
 }
 
-.form-label {
+.payouts-form-label {
   display: block;
   margin-bottom: 10px;
   font-size: 13px;
@@ -1121,7 +1120,7 @@
   color: #1e293b;
 }
 
-.saved-accounts-list {
+.payouts-saved-accounts-list {
   display: flex;
   flex-direction: column;
   gap: 10px;
@@ -1130,7 +1129,7 @@
   padding-right: 5px;
 }
 
-.saved-account-card {
+.payouts-saved-account-card {
   display: flex;
   align-items: flex-start;
   gap: 12px;
@@ -1143,59 +1142,59 @@
   position: relative;
 }
 
-.saved-account-card:hover {
+.payouts-saved-account-card:hover {
   border-color: #8E2139;
   background: #fef2f2;
   transform: translateX(2px);
 }
 
-.saved-account-card.selected {
+.payouts-saved-account-card.selected {
   border-color: #8E2139;
   background: #fef2f2;
   box-shadow: 0 2px 8px rgba(142, 33, 57, 0.1);
 }
 
-.account-radio {
+.payouts-account-radio {
   padding-top: 2px;
 }
 
-.account-radio input[type="radio"] {
+.payouts-account-radio input[type="radio"] {
   width: 18px;
   height: 18px;
   cursor: pointer;
   accent-color: #8E2139;
 }
 
-.account-details {
+.payouts-account-details {
   flex: 1;
   min-width: 0;
 }
 
-.account-bank-name {
+.payouts-account-bank-name {
   display: flex;
   align-items: center;
   gap: 6px;
   margin-bottom: 4px;
 }
 
-.account-bank-name i {
+.payouts-account-bank-name i {
   color: #8E2139;
   font-size: 14px;
 }
 
-.account-bank-name strong {
+.payouts-account-bank-name strong {
   font-size: 13px;
   color: #1e293b;
 }
 
-.account-info {
+.payouts-account-info {
   font-size: 12px;
   color: #475569;
   margin-bottom: 4px;
   font-family: monospace;
 }
 
-.account-full-details {
+.payouts-account-full-details {
   font-size: 11px;
   color: #94a3b8;
   overflow: hidden;
@@ -1203,7 +1202,7 @@
   white-space: nowrap;
 }
 
-.delete-account-btn {
+.payouts-delete-account-btn {
   background: none;
   border: none;
   cursor: pointer;
@@ -1215,18 +1214,18 @@
   flex-shrink: 0;
 }
 
-.delete-account-btn:hover {
+.payouts-delete-account-btn:hover {
   opacity: 1;
   background: #fee2e2;
   transform: scale(1.05);
 }
 
-.new-account-card {
+.payouts-new-account-card {
   border-style: dashed;
   justify-content: center;
 }
 
-.new-account-card .account-details {
+.payouts-new-account-card .payouts-account-details {
   display: flex;
   align-items: center;
   gap: 8px;
@@ -1234,49 +1233,49 @@
   font-weight: 500;
 }
 
-.new-account-card .account-details i {
+.payouts-new-account-card .payouts-account-details i {
   font-size: 16px;
 }
 
-.field-hint {
+.payouts-field-hint {
   display: block;
   font-size: 11px;
   color: #64748b;
   margin-top: 5px;
 }
 
-.field-hint i {
+.payouts-field-hint i {
   font-size: 11px;
   margin-right: 3px;
 }
 
 /* Scrollbar for saved accounts */
-.saved-accounts-list::-webkit-scrollbar {
+.payouts-saved-accounts-list::-webkit-scrollbar {
   width: 4px;
 }
 
-.saved-accounts-list::-webkit-scrollbar-track {
+.payouts-saved-accounts-list::-webkit-scrollbar-track {
   background: #f1f5f9;
   border-radius: 4px;
 }
 
-.saved-accounts-list::-webkit-scrollbar-thumb {
+.payouts-saved-accounts-list::-webkit-scrollbar-thumb {
   background: #cbd5e1;
   border-radius: 4px;
 }
 
-.saved-accounts-list::-webkit-scrollbar-thumb:hover {
+.payouts-saved-accounts-list::-webkit-scrollbar-thumb:hover {
   background: #94a3b8;
 }
 
 /* Action Buttons */
-.action-buttons {
+.payouts-action-buttons {
   display: flex;
   gap: 8px;
   flex-wrap: wrap;
 }
 
-.table-btn-reject {
+.payouts-table-btn-reject {
   background: #dc2626;
   color: white;
   border: none;
@@ -1292,11 +1291,11 @@
   white-space: nowrap;
 }
 
-.table-btn-reject:hover {
+.payouts-table-btn-reject:hover {
   background: #b91c1c;
 }
 
-.table-btn-cancel {
+.payouts-table-btn-cancel {
   background: #f59e0b;
   color: white;
   border: none;
@@ -1312,12 +1311,12 @@
   white-space: nowrap;
 }
 
-.table-btn-cancel:hover {
+.payouts-table-btn-cancel:hover {
   background: #d97706;
 }
 
 /* Status Badge Colors */
-.status-badge {
+.payouts-status-badge {
   display: inline-flex;
   align-items: center;
   gap: 5px;
@@ -1328,73 +1327,73 @@
   white-space: nowrap;
 }
 
-.status-badge.pending {
+.payouts-status-badge.pending {
   background: #fef9c3;
   color: #a16207;
 }
 
-.status-badge.paid {
+.payouts-status-badge.paid {
   background: #dcfce7;
   color: #15803d;
 }
 
-.status-badge.rejected {
+.payouts-status-badge.rejected {
   background: #fee2e2;
   color: #dc2626;
 }
 
-.status-badge.cancelled {
+.payouts-status-badge.cancelled {
   background: #fef3c7;
   color: #d97706;
 }
 
 /* Modal Container */
-.modal-container {
+.payouts-modal-container {
   background: white;
   border-radius: 20px;
   width: 92%;
   max-width: 500px;
-  animation: slideUp 0.3s ease;
+  animation: payouts-slideUp 0.3s ease;
   box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
   max-height: 90vh;
   overflow-y: auto;
 }
 
 /* Cancel Info Box */
-.cancel-info {
+.payouts-cancel-info {
   background: #f8fafc;
   padding: 16px;
   border-radius: 12px;
   margin-bottom: 20px;
 }
 
-.cancel-amount,
-.cancel-date {
+.payouts-cancel-amount,
+.payouts-cancel-date {
   display: flex;
   justify-content: space-between;
   padding: 8px 0;
   border-bottom: 1px solid #e2e8f0;
 }
 
-.cancel-amount:last-child,
-.cancel-date:last-child {
+.payouts-cancel-amount:last-child,
+.payouts-cancel-date:last-child {
   border-bottom: none;
 }
 
-.cancel-amount span,
-.cancel-date span {
+.payouts-cancel-amount span,
+.payouts-cancel-date span {
   font-size: 13px;
   color: #64748b;
 }
 
-.cancel-amount strong,
-.cancel-date strong {
+.payouts-cancel-amount strong,
+.payouts-cancel-date strong {
   font-size: 14px;
   color: #1e293b;
 }
 
 /* Warning Note */
-.warning-note {
+.payouts-warning-note {
   background: #fef3c7;
   padding: 12px;
   border-radius: 10px;
@@ -1404,19 +1403,19 @@
   margin-top: 16px;
 }
 
-.warning-note i {
+.payouts-warning-note i {
   font-size: 18px;
   color: #d97706;
   flex-shrink: 0;
 }
 
-.warning-note span {
+.payouts-warning-note span {
   font-size: 12px;
   color: #92400e;
 }
 
 /* Danger Button */
-.btn-danger {
+.payouts-btn-danger {
   padding: 8px 20px;
   background: #dc2626;
   color: white;
@@ -1431,40 +1430,38 @@
   transition: all 0.2s;
 }
 
-.btn-danger:hover:not(:disabled) {
+.payouts-btn-danger:hover:not(:disabled) {
   background: #b91c1c;
   transform: translateY(-1px);
 }
 
-.btn-danger:disabled {
+.payouts-btn-danger:disabled {
   opacity: 0.6;
   cursor: not-allowed;
 }
 
 /* Animations */
-@keyframes fadeIn {
+@keyframes payouts-fadeIn {
   from {
     opacity: 0;
   }
-
   to {
     opacity: 1;
   }
 }
 
-@keyframes slideUp {
+@keyframes payouts-slideUp {
   from {
     opacity: 0;
     transform: translateY(20px);
   }
-
   to {
     opacity: 1;
     transform: translateY(0);
   }
 }
 
-@keyframes spin {
+@keyframes payouts-spin {
   to {
     transform: rotate(360deg);
   }
@@ -1476,32 +1473,32 @@
 
 /* Large tablets / small laptops (≤1200px) */
 @media (max-width: 1200px) {
-  .payments-sidebar {
+  .payouts-sidebar {
     width: 160px;
   }
 
-  .payments-nav li {
+  .payouts-nav li {
     padding: 12px 16px;
     font-size: 13px;
     gap: 8px;
   }
 
-  .eq-value {
+  .payouts-eq-value {
     font-size: 17px;
   }
 
-  .withdraw-modal-large {
+  .payouts-withdraw-modal-large {
     max-width: 860px;
   }
 }
 
 /* Tablets landscape / small laptops (≤1024px) */
 @media (max-width: 1024px) {
-  .payments-layout {
+  .payouts-layout {
     flex-direction: column;
   }
 
-  .payments-sidebar {
+  .payouts-sidebar {
     width: 100%;
     height: auto;
     position: relative;
@@ -1510,7 +1507,7 @@
     padding: 10px 12px;
   }
 
-  .payments-nav {
+  .payouts-nav {
     display: flex;
     flex-direction: row;
     gap: 8px;
@@ -1519,25 +1516,23 @@
     -webkit-overflow-scrolling: touch;
   }
 
-  .payments-nav li {
+  .payouts-nav li {
     white-space: nowrap;
     padding: 10px 18px;
     margin: 0;
     flex-shrink: 0;
   }
 
-
-
-  .stats-equation-row {
+  .payouts-stats-equation-row {
     flex-direction: column;
   }
 
-  .equation-column {
+  .payouts-equation-column {
     justify-content: flex-start;
     width: 100%;
   }
 
-  .eq-box {
+  .payouts-eq-box {
     flex: 1;
     min-width: 100px;
   }
@@ -1545,136 +1540,128 @@
 
 /* Tablets portrait (≤768px) */
 @media (max-width: 768px) {
-  .payments-content {
+  .payouts-content {
     width: 100%;
   }
 
-  .view-container {
+  .payouts-view-container {
     padding: 14px;
     border-radius: 14px;
   }
 
-  .view-header {
+  .payouts-view-header {
     flex-direction: column;
     align-items: flex-start;
     gap: 12px;
   }
 
-  .filter-controls {
+  .payouts-filter-controls {
     width: 100%;
     justify-content: flex-start;
   }
 
-  .date-range-display {
+  .payouts-date-range-display {
     flex: 1;
     min-width: 0;
     font-size: 12px;
     padding: 7px 10px;
   }
 
-  .search-box {
+  .payouts-search-box {
     flex: 1;
     min-width: 0;
   }
 
-  .search-box input {
+  .payouts-search-box input {
     width: 100%;
     min-width: 0;
   }
 
-  .super-admin-filter-bar {
+  .payouts-super-admin-filter-bar {
     flex-direction: column;
     align-items: stretch;
     gap: 10px;
     padding: 14px;
   }
 
-  .filter-group {
+  .payouts-filter-group {
     justify-content: space-between;
     width: 100%;
   }
 
-  .filter-group select,
-  .filter-group input {
+  .payouts-filter-group select,
+  .payouts-filter-group input {
     flex: 1;
     min-width: 0;
   }
 
-  .table-toolbar {
+  .payouts-table-toolbar {
     display: flex;
     justify-content: space-between;
     gap: 10px;
   }
 
-  .table-toolbar h3 {
+  .payouts-table-toolbar h3 {
     font-size: 13px;
   }
 
-  .toolbar-actions {
-    width: 100%;
-    justify-content: flex-start;
-  }
+ 
 
-  .tabs-column {
-    flex-direction: row;
-    gap: 12px;
-  }
-
-  .sub-tabs-flex {
+  .payouts-sub-tabs-flex {
     gap: 8px;
   }
 
-  .stat-tab {
+  .payouts-stat-tab {
     font-size: 12px;
     padding: 5px 12px;
   }
 
-  .eq-box {
+  .payouts-eq-box {
     padding: 10px 12px;
     min-width: 90px;
   }
 
-  .eq-value {
+  .payouts-eq-value {
     font-size: 15px;
   }
 
-  .eq-label {
+  .payouts-eq-label {
     font-size: 11px;
   }
 
-  .ekart-table th,
-  .ekart-table td {
+  .payouts-ekart-table th,
+  .payouts-ekart-table td {
     padding: 10px 8px;
     font-size: 12px;
   }
 
-  .modal-container {
+  .payouts-modal-container {
     width: 96%;
     margin: 0;
   }
 
-  .modal-body {
+  .payouts-modal-body {
     padding: 16px;
   }
 
-  .modal-footer {
+  .payouts-modal-footer {
     padding: 12px 16px;
     gap: 8px;
   }
 
-  .btn-cancel,
-  .btn-danger {
+  .payouts-btn-cancel,
+  .payouts-btn-danger {
     padding: 8px 14px;
     font-size: 12px;
   }
 
   /* Withdraw modal stacks on tablet */
-  .modal-body-split {
+  .payouts-modal-body-split {
     flex-direction: column;
     overflow-y: auto;
   }
 
-  .modal-left-balance {
+  .payouts-modal-left-balance {
     width: 100%;
     padding: 20px;
     flex-direction: row;
@@ -1682,205 +1669,202 @@
     gap: 16px;
   }
 
-
-  .balance-amount-large h2 {
+  .payouts-balance-amount-large h2 {
     font-size: 28px;
   }
 
-  .balance-icon {
+  .payouts-balance-icon {
     font-size: 36px;
     margin-bottom: 8px;
   }
 
-  .balance-icon i {
+  .payouts-balance-icon i {
     font-size: 36px;
   }
 
-  .withdrawal-info {
+  .payouts-withdrawal-info {
     flex: 1;
     flex-direction: row;
     flex-wrap: wrap;
     gap: 10px;
   }
 
-  .info-item {
+  .payouts-info-item {
     flex: 1;
     min-width: 130px;
   }
 
-  .modal-right-form {
+  .payouts-modal-right-form {
     width: 100%;
     padding: 16px 20px;
     max-height: none;
   }
 
-  .quick-amount-buttons {
+  .payouts-quick-amount-buttons {
     justify-content: flex-start;
   }
 
-  .form-footer {
+  .payouts-form-footer {
     flex-direction: column;
     gap: 10px;
   }
 
-  .btn-cancel-large,
-  .btn-submit-large {
+  .payouts-btn-cancel-large,
+  .payouts-btn-submit-large {
     width: 100%;
     justify-content: center;
   }
 
-  .withdraw-modal-large {
+  .payouts-withdraw-modal-large {
     width: 96%;
     max-height: 92vh;
     border-radius: 16px;
   }
 
-  .modal-header-large {
+  .payouts-modal-header-large {
     padding: 16px 20px;
   }
 
-  .modal-header-large h3 {
+  .payouts-modal-header-large h3 {
     font-size: 17px;
   }
 }
 
 /* Large phones (≤576px) */
 @media (max-width: 576px) {
-  .payments-nav li {
+  .payouts-nav li {
     padding: 9px 14px;
     font-size: 12px;
     gap: 6px;
   }
 
-  .payments-nav li i {
+  .payouts-nav li i {
     font-size: 16px;
     width: 20px;
   }
 
-  .info-banner {
+  .payouts-info-banner {
     padding: 14px 16px;
     border-radius: 12px;
     gap: 12px;
   }
 
-  .info-text {
+  .payouts-info-text {
     font-size: 13px;
   }
 
-  .info-text i {
+  .payouts-info-text i {
     font-size: 17px;
   }
 
-  .btn-resume-onboard {
+  .payouts-btn-resume-onboard {
     padding: 8px 14px;
     font-size: 13px;
     width: 100%;
     justify-content: center;
   }
 
-  .view-container {
+  .payouts-view-container {
     padding: 12px;
     border-radius: 12px;
   }
 
-  .view-title {
+  .payouts-view-title {
     font-size: 17px;
   }
 
-  .stats-equation-row {
+  .payouts-stats-equation-row {
     padding: 14px;
     gap: 16px;
   }
 
-  .equation-column {
+  .payouts-equation-column {
     gap: 8px;
   }
 
-  .eq-box {
+  .payouts-eq-box {
     padding: 8px 10px;
     min-width: 80px;
   }
 
-  .eq-value {
+  .payouts-eq-value {
     font-size: 14px;
   }
 
-  .ekart-table {
+  .payouts-ekart-table {
     min-width: 540px;
   }
 
-  .ekart-table th,
-  .ekart-table td {
+  .payouts-ekart-table th,
+  .payouts-ekart-table td {
     padding: 9px 7px;
     font-size: 11.5px;
   }
 
-  .action-buttons {
+  .payouts-action-buttons {
     flex-direction: column;
     gap: 6px;
   }
 
-  .table-btn-approve,
-  .table-btn-reject,
-  .table-btn-cancel {
+  .payouts-table-btn-approve,
+  .payouts-table-btn-reject,
+  .payouts-table-btn-cancel {
     font-size: 11px;
     padding: 5px 9px;
   }
 
-  .modal-left-balance {
+  .payouts-modal-left-balance {
     flex-direction: row;
     padding: 16px;
   }
 
-  .balance-card-large {
+  .payouts-balance-card-large {
     min-width: 100%;
   }
 
-  .balance-amount-large h2 {
+  .payouts-balance-amount-large h2 {
     font-size: 26px;
   }
 
-  .withdrawal-info {
+  .payouts-withdrawal-info {
     flex-direction: column;
   }
 
-  .info-item {
+  .payouts-info-item {
     min-width: unset;
   }
 
-  .quick-amount-buttons button {
+  .payouts-quick-amount-buttons button {
     padding: 5px 10px;
     font-size: 11px;
   }
 
-  .saved-accounts-list-scrollable {
+  .payouts-saved-accounts-list-scrollable {
     max-height: 160px;
   }
 
-  .btn-cancel-large {
+  .payouts-btn-cancel-large {
     padding: 11px 20px;
     font-size: 13px;
   }
 
-  .btn-submit-large {
+  .payouts-btn-submit-large {
     padding: 11px 20px;
     font-size: 13px;
   }
 }
 
-
 @media (max-width: 480px) {
-
-  .btn-resume-onboard{
+  .payouts-btn-resume-onboard {
     display: none;
   }
-  .payments-content {
+  .payouts-content {
     width: 100%;
   }
 }
 
-/* Invoice Modal Styles - Add to existing Payouts.css */
-.invoice-modal-overlay {
+/* Invoice Modal Styles */
+.payouts-invoice-modal-overlay {
   position: fixed;
   top: 0;
   left: 0;
@@ -1892,23 +1876,23 @@
   align-items: center;
   justify-content: center;
   z-index: 1200;
-  animation: fadeIn 0.2s ease;
+  animation: payouts-fadeIn 0.2s ease;
   padding: 20px;
 }
 
-.invoice-modal-container {
+.payouts-invoice-modal-container {
   background: #f8fafc;
   border-radius: 20px;
-  width: 95%;
-  max-width: 900px;
+  width: 100%;
+  max-width: 550px;
   max-height: 90vh;
   display: flex;
   flex-direction: column;
-  animation: slideUp 0.3s ease;
+  animation: payouts-slideUp 0.3s ease;
   box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.3);
 }
 
-.invoice-modal-header {
+.payouts-invoice-modal-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -1919,7 +1903,7 @@
   flex-shrink: 0;
 }
 
-.invoice-modal-header h3 {
+.payouts-invoice-modal-header h3 {
   margin: 0;
   font-size: 18px;
   font-weight: 600;
@@ -1929,18 +1913,18 @@
   gap: 8px;
 }
 
-.invoice-modal-header h3 i {
+.payouts-invoice-modal-header h3 i {
   color: #8E2139;
   font-size: 20px;
 }
 
-.invoice-modal-actions {
+.payouts-invoice-modal-actions {
   display: flex;
   gap: 12px;
   align-items: center;
 }
 
-.btn-print {
+.payouts-btn-print {
   background: #8E2139;
   color: white;
   border: none;
@@ -1955,13 +1939,13 @@
   transition: all 0.2s;
 }
 
-.btn-print:hover {
+.payouts-btn-print:hover {
   background: #6b192b;
   transform: translateY(-1px);
   box-shadow: 0 4px 12px rgba(142, 33, 57, 0.3);
 }
 
-.btn-close-modal {
+.payouts-btn-close-modal {
   background: #f1f5f9;
   border: none;
   width: 38px;
@@ -1976,33 +1960,33 @@
   color: #64748b;
 }
 
-.btn-close-modal:hover {
+.payouts-btn-close-modal:hover {
   background: #e2e8f0;
   transform: rotate(90deg);
   color: #8E2139;
 }
 
-.invoice-modal-content {
+.payouts-invoice-modal-content {
   flex: 1;
   overflow-y: auto;
-  padding: 24px;
+  padding: 10px;
 }
 
-.invoice-modal-content::-webkit-scrollbar {
+.payouts-invoice-modal-content::-webkit-scrollbar {
   width: 6px;
 }
 
-.invoice-modal-content::-webkit-scrollbar-track {
+.payouts-invoice-modal-content::-webkit-scrollbar-track {
   background: #e2e8f0;
   border-radius: 10px;
 }
 
-.invoice-modal-content::-webkit-scrollbar-thumb {
+.payouts-invoice-modal-content::-webkit-scrollbar-thumb {
   background: #8E2139;
   border-radius: 10px;
 }
 
-.btn-view-invoice {
+.payouts-btn-view-invoice {
   background: #8E2139;
   color: white;
   border: none;
@@ -2017,18 +2001,18 @@
   transition: all 0.2s;
 }
 
-.btn-view-invoice:hover {
+.payouts-btn-view-invoice:hover {
   background: #6b192b;
   transform: translateY(-1px);
   box-shadow: 0 2px 8px rgba(142, 33, 57, 0.2);
 }
 
 /* Loading Skeleton Styles */
-.loading-skeleton {
-  animation: pulse 1.5s ease-in-out infinite;
+.payouts-loading-skeleton {
+  animation: payouts-pulse 1.5s ease-in-out infinite;
 }
 
-.skeleton-banner {
+.payouts-skeleton-banner {
   height: 70px;
   background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
   background-size: 200% 100%;
@@ -2036,7 +2020,7 @@
   margin-bottom: 24px;
 }
 
-.skeleton-stats {
+.payouts-skeleton-stats {
   height: 120px;
   background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
   background-size: 200% 100%;
@@ -2044,35 +2028,32 @@
   margin-bottom: 24px;
 }
 
-.skeleton-table {
+.payouts-skeleton-table {
   height: 300px;
   background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
   background-size: 200% 100%;
   border-radius: 16px;
 }
 
-@keyframes pulse {
+@keyframes payouts-pulse {
   0% {
     opacity: 1;
   }
-
   50% {
     opacity: 0.5;
   }
-
   100% {
     opacity: 1;
   }
 }
 
 /* Transaction Details Modal Styles */
-.transaction-details-card {
-  background: white;
+.payouts-transaction-details-card {
   border-radius: 16px;
   overflow: hidden;
 }
 
-.transaction-status-banner {
+.payouts-transaction-status-banner {
   display: flex;
   align-items: center;
   justify-content: center;
@@ -2084,50 +2065,50 @@
   font-size: 14px;
 }
 
-.transaction-status-banner.completed {
+.payouts-transaction-status-banner.completed {
   background: #dcfce7;
   color: #15803d;
 }
 
-.transaction-status-banner.pending {
+.payouts-transaction-status-banner.pending {
   background: #fef3c7;
   color: #d97706;
 }
 
-.transaction-status-banner.cancelled {
+.payouts-transaction-status-banner.cancelled {
   background: #fee2e2;
   color: #dc2626;
 }
 
-.transaction-status-banner i {
+.payouts-transaction-status-banner i {
   font-size: 18px;
 }
 
-.transaction-amount-section {
+.payouts-transaction-amount-section {
   text-align: center;
   margin-bottom: 24px;
 }
 
-.transaction-amount-section .amount-label {
+.payouts-transaction-amount-section .payouts-amount-label {
   font-size: 13px;
   color: #64748b;
   margin-bottom: 8px;
 }
 
-.transaction-amount-section .amount-value {
+.payouts-transaction-amount-section .payouts-amount-value {
   font-size: 32px;
   font-weight: 700;
 }
 
-.transaction-amount-section .amount-value.credit {
+.payouts-transaction-amount-section .payouts-amount-value.credit {
   color: #15803d;
 }
 
-.transaction-amount-section .amount-value.debit {
+.payouts-transaction-amount-section .payouts-amount-value.debit {
   color: #dc2626;
 }
 
-.transaction-description {
+.payouts-transaction-description {
   background: #f8fafc;
   padding: 12px 16px;
   border-radius: 12px;
@@ -2139,19 +2120,19 @@
   color: #1e293b;
 }
 
-.transaction-description i {
+.payouts-transaction-description i {
   color: #8E2139;
   font-size: 18px;
 }
 
-.transaction-breakdown {
+.payouts-transaction-breakdown {
   background: #f8fafc;
   border-radius: 12px;
   padding: 16px;
   margin-bottom: 20px;
 }
 
-.transaction-breakdown h4 {
+.payouts-transaction-breakdown h4 {
   font-size: 13px;
   font-weight: 600;
   color: #1e293b;
@@ -2160,34 +2141,34 @@
   border-bottom: 1px solid #e2e8f0;
 }
 
-.breakdown-row {
+.payouts-breakdown-row {
   display: flex;
   justify-content: space-between;
   padding: 8px 0;
   font-size: 13px;
 }
 
-.breakdown-row.text-danger {
+.payouts-breakdown-row.text-danger {
   color: #dc2626;
 }
 
-.breakdown-row.text-warning {
+.payouts-breakdown-row.text-warning {
   color: #d97706;
 }
 
-.breakdown-divider {
+.payouts-breakdown-divider {
   height: 1px;
   background: #e2e8f0;
   margin: 8px 0;
 }
 
-.breakdown-row.total {
+.payouts-breakdown-row.total {
   font-weight: 700;
   font-size: 14px;
   color: #1e293b;
 }
 
-.transaction-info-grid {
+.payouts-transaction-info-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 12px;
@@ -2197,33 +2178,33 @@
   border-radius: 12px;
 }
 
-.info-item {
+.payouts-info-item {
   display: flex;
   flex-direction: column;
   gap: 4px;
 }
 
-.info-label {
+.payouts-info-label {
   font-size: 11px;
   color: #64748b;
   text-transform: uppercase;
   letter-spacing: 0.5px;
 }
 
-.info-value {
+.payouts-info-value {
   font-size: 13px;
   font-weight: 500;
   color: #1e293b;
 }
 
-.vendor-info-section {
+.payouts-vendor-info-section {
   background: #f8fafc;
   border-radius: 12px;
   padding: 16px;
   margin-bottom: 20px;
 }
 
-.vendor-info-section h4 {
+.payouts-vendor-info-section h4 {
   font-size: 13px;
   font-weight: 600;
   color: #1e293b;
@@ -2232,7 +2213,7 @@
   border-bottom: 1px solid #e2e8f0;
 }
 
-.transaction-footer {
+.payouts-transaction-footer {
   background: #fefce8;
   padding: 12px;
   border-radius: 10px;
@@ -2243,30 +2224,29 @@
   color: #854d0e;
 }
 
-.transaction-footer i {
+.payouts-transaction-footer i {
   font-size: 14px;
 }
 
-.transaction-row {
+.payouts-transaction-row {
   transition: background 0.2s ease;
 }
 
-.transaction-row:hover {
+.payouts-transaction-row:hover {
   background: #f1f5f9;
   cursor: pointer;
 }
 
-.transaction-row.clickable {
+.payouts-transaction-row.clickable {
   cursor: pointer;
 }
 
-/* Add these styles to Payouts.css */
-
-.invoice-section {
+/* Invoice section styles */
+.payouts-invoice-section {
   margin-bottom: 25px;
 }
 
-.section-title {
+.payouts-section-title {
   font-size: 14px;
   font-weight: 600;
   color: #1e293b;
@@ -2276,7 +2256,7 @@
   gap: 8px;
 }
 
-.bank-details-box {
+.payouts-bank-details-box {
   background: #f0f9ff;
   border-radius: 12px;
   padding: 16px;
@@ -2284,10 +2264,16 @@
 }
 
 @media (max-width: 480px) {
-  .table-toolbar {
+  .payouts-table-toolbar {
     display: flex;
     flex-direction: row !important;
     justify-content: space-between !important;
     align-items: center;
   }
+ 
+}
+
+.payout-info-model-details{
+  display: flex;
+  gap: 10px;
 }
