@@ -73,6 +73,10 @@ const Dashboard = () => {
     avatar: ""
   });
 
+  // Store toggle states
+  const [storeActive, setStoreActive] = useState(true);
+  const [togglingStore, setTogglingStore] = useState(false);
+  const [showStoreWarningModal, setShowStoreWarningModal] = useState(false);
   const [showProfileDropdown, setShowProfileDropdown] = useState(false);
 
   const userRole = localStorage.getItem("userRole");
@@ -88,6 +92,9 @@ const Dashboard = () => {
   const navigate = useNavigate();
   const [selectedDate, setSelectedDate] = useState("");
   const API_URL = process.env.REACT_APP_API_URL;
+
+  // IMPORTANT: Define showStoreToggle BEFORE any useEffect that uses it
+  const showStoreToggle = userRole && userRole !== 'user';
 
   const formatDate = (date) => date.toISOString().split("T")[0];
   const formatDisplayDate = (date) => {
@@ -106,6 +113,21 @@ const Dashboard = () => {
     fetchDashboardBanner();
     fetchUserProfile(); // Fetch user profile on mount
   }, [selectedDate]);
+
+  // Store warning modal effect - showStoreToggle is now defined before this
+  useEffect(() => {
+    if (loading || !showStoreToggle || storeActive) {
+      setShowStoreWarningModal(false);
+      return undefined;
+    }
+
+    setShowStoreWarningModal(true);
+    const warningInterval = setInterval(() => {
+      setShowStoreWarningModal(true);
+    }, 30000);
+
+    return () => clearInterval(warningInterval);
+  }, [loading, showStoreToggle, storeActive]);
 
   // New function to fetch user profile
   const fetchUserProfile = async () => {
@@ -128,9 +150,42 @@ const Dashboard = () => {
         pincode: response.data.pincode || "",
         avatar: response.data.avatar || ""
       });
+
+      // Set store active status from profile
+      setStoreActive(typeof response.data.store_active === 'boolean' ? response.data.store_active : true);
     } catch (error) {
       console.error("Failed to fetch user profile:", error);
     }
+  };
+
+  // Update store status function
+  const updateStoreStatus = async (nextStoreActive) => {
+    const token = localStorage.getItem("token");
+    if (!token) return;
+
+    try {
+      setTogglingStore(true);
+      const res = await axios.put(
+        `${API_URL}/user/profile/all`,
+        { store_active: nextStoreActive },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      const updated = res.data?.user?.store_active;
+      setStoreActive(typeof updated === 'boolean' ? updated : nextStoreActive);
+    } catch (error) {
+      console.error("Failed to toggle store status:", error);
+    } finally {
+      setTogglingStore(false);
+    }
+  };
+
+  const handleStoreToggle = (e) => {
+    if (e) e.stopPropagation();
+    updateStoreStatus(!storeActive);
+  };
+
+  const handleTurnStoreOn = () => {
+    updateStoreStatus(true);
   };
 
   // Add this function to fetch dashboard banner
@@ -446,9 +501,28 @@ const Dashboard = () => {
                 <span><i className="bi bi-envelope"></i> {userProfile.email}</span>
                 {userProfile.phone && <span><i className="bi bi-phone"></i> {userProfile.phone}</span>}
               </div>
+              <div className="dash-profile-dropdown-icon">
+                <i className={`bi bi-chevron-${showProfileDropdown ? 'up' : 'down'}`}></i>
+              </div>
             </div>
-            <div className="dash-profile-dropdown-icon">
-              <i className={`bi bi-chevron-${showProfileDropdown ? 'up' : 'down'}`}></i>
+
+            <div>
+              {showStoreToggle && (
+                <div className="dash-store-button">
+                  <span>{storeActive ? 'Store On' : 'Store Off'}</span>
+                  <button
+                    type="button"
+                    className={`dropdown-store-switch ${storeActive ? 'active' : ''}`}
+                    onClick={handleStoreToggle}
+                    disabled={togglingStore}
+                    aria-pressed={storeActive}
+                    aria-label={storeActive ? 'Turn store off' : 'Turn store on'}
+                    title={storeActive ? 'Turn store off' : 'Turn store on'}
+                  >
+                    <span className="dropdown-store-switch-thumb"></span>
+                  </button>
+                </div>
+              )}
             </div>
           </div>
 
@@ -795,6 +869,37 @@ const Dashboard = () => {
           </div>
         </div>
       </div>
+
+      {/* Store Warning Modal */}
+      {showStoreWarningModal && (
+        <div className="store-warning-modal-overlay" onClick={() => setShowStoreWarningModal(false)}>
+          <div className="store-warning-modal" onClick={(e) => e.stopPropagation()}>
+            <button
+              type="button"
+              className="store-warning-close"
+              onClick={() => setShowStoreWarningModal(false)}
+              aria-label="Close store warning"
+            >
+              <i className="bi bi-x-lg"></i>
+            </button>
+            <div className="store-warning-icon">
+              <i className="bi bi-exclamation-triangle"></i>
+            </div>
+            <div className="store-warning-content">
+              <h3>Store is off</h3>
+              <p>Warning: you are in off mode. Turn on your store to sell your products.</p>
+            </div>
+            <button
+              type="button"
+              className="store-warning-action"
+              onClick={handleTurnStoreOn}
+              disabled={togglingStore}
+            >
+              {togglingStore ? 'Turning on...' : 'Turn On Store'}
+            </button>
+          </div>
+        </div>
+      )}
 
       <style jsx="true">{`
         .status-pending {

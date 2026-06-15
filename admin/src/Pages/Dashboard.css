@@ -116,7 +116,7 @@
 }
 
 .dash-view-all-link {
-  color: #044e36;
+  color: #8E2139;
   /* Mockup Dark Green Link */
   font-size: 0.8rem;
   font-weight: 800;
@@ -204,7 +204,7 @@
 }
 
 .dash-pay-now-btn {
-  background: #044e36;
+  background: #8E2139;
   /* Dark forest green button from image */
   color: #ffffff;
   border: none;
@@ -430,7 +430,7 @@
 }
 
 .dash-promo-btn {
-  background: #044e36;
+  background: #8E2139;
   color: #ffffff;
   border: none;
   border-radius: 20px;
@@ -543,7 +543,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #044e36;
+  color: #8E2139;
 }
 
 .dash-stat-label {
@@ -659,7 +659,7 @@
   width: 32px;
   height: 32px;
   border: 3px solid #f1f5f9;
-  border-top-color: #044e36;
+  border-top-color: #8E2139;
   border-radius: 50%;
   animation: spin 1s linear infinite;
 }
@@ -702,7 +702,7 @@
   width: 64px;
   height: 64px;
   border-radius: 50%;
-  background: linear-gradient(135deg, #044e36, #0a6b4c);
+  background: linear-gradient(135deg, #8E2139);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -736,7 +736,7 @@
 
 .dash-profile-role {
   font-size: 0.75rem;
-  color: #044e36;
+  color: #8E2139;
   font-weight: 600;
   background: #eaf6f3;
   display: inline-block;
@@ -760,10 +760,11 @@
 
 .dash-profile-contact i {
   font-size: 0.7rem;
-  color: #044e36;
+  color: #8E2139;
 }
 
 .dash-profile-dropdown-icon {
+  display: none;
   color: #64748b;
   font-size: 1rem;
 }
@@ -807,7 +808,7 @@
   width: 48px;
   height: 48px;
   border-radius: 50%;
-  background: linear-gradient(135deg, #044e36, #0a6b4c);
+  background: linear-gradient(135deg, #8E2139);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -869,7 +870,7 @@
 
 .dash-dropdown-item i {
   font-size: 1rem;
-  color: #044e36;
+  color: #8E2139;
   width: 20px;
 }
 
@@ -992,7 +993,7 @@
 
 @media (max-width:480px) {
   .dash-profile-dropdown {
-    margin-bottom: calc(32vh - 200px);
+    margin-bottom: calc(40vh - 200px);
   }
 }
 
@@ -1011,4 +1012,15 @@
   padding: 10px;
   border-top-left-radius: 30px;
   border-top-right-radius: 30px;
+}
+
+.dash-store-button {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  gap: 12px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #374151;
 }
