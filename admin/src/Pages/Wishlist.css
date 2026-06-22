@@ -1,5 +1,9 @@
 .admin-wishlist-container {
-    background: #f8f9fa;
+    background-color: #fff;
+    padding-top: 20px;
+    padding-bottom: 20px;
+    padding-left: 10px;
+    padding-right: 10px;
 }
 
 .admin-header {
@@ -11,7 +15,13 @@
     gap: 15px;
 }
 
-.header-titles h3 {
+.header-titles-wishlist{
+    display: flex;
+    flex-direction: row;
+    justify-content: space-between;
+}
+
+.header-titles-wishlist h3 {
     color: #1a1a1a;
     font-weight: 700;
     margin-bottom: 4px;
@@ -20,11 +30,11 @@
     gap: 10px;
 }
 
-.header-titles h3 i {
+.header-titles-wishlist h3 i {
     color: #e91e63;
 }
 
-.header-titles p {
+.header-titles-wishlist p {
     color: #6c757d;
     font-size: 0.9rem;
     margin: 0;
@@ -49,6 +59,7 @@
     align-items: center;
     justify-content: center;
     cursor: pointer;
+    transition: all 0.3s ease;
 }
 
 .refresh-btn-big:hover {
@@ -56,6 +67,7 @@
     background: #f1f1f1;
 }
 
+/* ---- Desktop Search ---- */
 .search-box {
     display: flex;
     align-items: center;
@@ -66,6 +78,7 @@
     height: 45px;
     gap: 10px;
     flex-grow: 1;
+    min-width: 250px;
 }
 
 .search-box i {
@@ -78,6 +91,99 @@
     font-size: 0.9rem;
     background: transparent;
     color: #495057;
+    width: 100%;
+}
+
+/* ---- Mobile Icon Button (hidden on desktop) ---- */
+.mobile-icon-btn {
+    display: none;
+    width: 42px;
+    height: 42px;
+    border-radius: 50%;
+    border: 1px solid #e0e0e0;
+    background: #f8fafc;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.2rem;
+    color: #475569;
+    cursor: pointer;
+    transition: all 0.2s;
+    flex-shrink: 0;
+}
+
+.mobile-icon-btn:hover {
+    background: #f1f5f9;
+    border-color: #e91e63;
+    color: #e91e63;
+}
+
+.mobile-icon-btn:active {
+    transform: scale(0.92);
+}
+
+/* ---- Mobile Search Slide‑down Panel ---- */
+.mobile-search-slide {
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.12);
+    margin: -10px 0 20px 0;
+    padding: 0;
+    animation: slideDown 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+    overflow: hidden;
+    border: 1px solid #f0f0f0;
+}
+
+.mobile-search-slide .slide-content {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 16px;
+}
+
+.mobile-search-slide .slide-content i {
+    font-size: 1.2rem;
+    color: #e91e63;
+}
+
+.mobile-search-slide .slide-content input {
+    flex: 1;
+    border: none;
+    outline: none;
+    font-size: 1rem;
+    background: transparent;
+    padding: 8px 0;
+    color: #1a1a1a;
+}
+
+.mobile-search-slide .slide-content input::placeholder {
+    color: #94a3b8;
+}
+
+.mobile-search-slide .slide-close {
+    background: transparent;
+    border: none;
+    color: #94a3b8;
+    font-size: 1.2rem;
+    cursor: pointer;
+    padding: 4px 8px;
+    border-radius: 6px;
+    transition: background 0.2s;
+}
+
+.mobile-search-slide .slide-close:hover {
+    background: #f1f5f9;
+    color: #475569;
+}
+
+@keyframes slideDown {
+    from {
+        opacity: 0;
+        transform: translateY(-12px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
 }
 
 .admin-table-container {
@@ -331,13 +437,53 @@
     letter-spacing: 0.5px;
 }
 
+/* ==========================
+   RESPONSIVE MEDIA QUERIES
+========================== */
+
+@media (max-width: 768px) {
+    /* Hide desktop search, show mobile icon */
+    .desktop-search-wish {
+        display: none !important;
+    }
+
+    .mobile-icon-btn {
+        display: flex !important;
+    }
+
+    .header-actions {
+        gap: 10px;
+    }
+
+    .admin-header {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 12px;
+    }
+
+    .header-titles-wishlist h3 {
+        font-size: 1.2rem;
+    }
+}
 
 @media (max-width: 576px) {
-
     .header-actions {
         display: flex;
         flex-direction: row !important;
-        align-items: stretch;
+        align-items: center;
+        justify-content: flex-end;
+    }
+
+    .refresh-btn-big {
+        width: 38px;
+        height: 38px;
+        font-size: 0.9rem;
+    }
+
+    .mobile-icon-btn {
+        width: 38px;
+        height: 38px;
+        font-size: 1rem;
     }
 
     .wishlist-stats {
@@ -353,12 +499,30 @@
         padding: 6px 10px;
         font-size: 0.8rem;
     }
+
+    .stat-card {
+        padding: 14px;
+        gap: 14px;
+    }
+
+    .stat-card i {
+        width: 42px;
+        height: 42px;
+        font-size: 1.2rem;
+    }
+
+    .stat-info h4 {
+        font-size: 1.3rem;
+    }
+
+    .stat-info span {
+        font-size: 0.75rem;
+    }
 }
 
 @media (max-width: 480px) {
     .admin-table {
         min-width: 700px;
-        /* Further reduce min-width for very small screens */
     }
 
     .table-img-container {
@@ -374,11 +538,6 @@
         font-size: 0.85rem;
     }
 
-    .header-actions {
-        display: flex;
-        flex-direction: row !important;
-    }
-
     .refresh-btn-big {
         display: none;
     }
@@ -386,31 +545,91 @@
     .wishlist-stats {
         display: flex;
         flex-direction: row;
+        gap: 10px;
     }
 
     .stat-card {
-            gap: 10px;
-
-        padding: 10px;
+        padding: 12px;
+        gap: 10px;
+        flex: 1;
     }
 
     .stat-card i {
-        width: 45px !important;
-        height: 45px !important;
+        width: 38px !important;
+        height: 38px !important;
+        font-size: 1rem;
     }
 
     .stat-info h4 {
-        margin: 0;
-        font-size: 1.5rem;
-        font-weight: 700;
-        color: #1a1a1a;
+        font-size: 1.1rem;
     }
 
     .stat-info span {
-        font-size: 0.85rem;
-        color: #6c757d;
-        text-transform: uppercase;
-        letter-spacing: 0.5px;
+        font-size: 0.7rem;
     }
 
+    .mobile-search-slide .slide-content {
+        padding: 10px 14px;
+        gap: 10px;
+    }
+
+    .mobile-search-slide .slide-content input {
+        font-size: 0.9rem;
+    }
+
+    .mobile-search-slide .slide-content i {
+        font-size: 1rem;
+    }
+}
+
+/* Add these styles at the end of your Wishlist.css file */
+
+/* ================= EMPTY WISHLIST STATE ================= */
+.wishlist-empty-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 60px 20px;
+    text-align: center;
+    border-radius: 16px;
+    margin-bottom: 30px;
+}
+
+.empty-wishlist-image {
+    max-width: 300px;
+    width: 100%;
+    height: auto;
+    margin-bottom: 24px;
+    object-fit: contain;
+}
+
+.wishlist-empty-state h4 {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: #1f2937;
+    margin: 0 0 8px 0;
+}
+
+.wishlist-empty-state p {
+    color: #64748b;
+    font-size: 1rem;
+    max-width: 400px;
+    margin: 0 auto;
+}
+
+/* Adjust for mobile */
+@media (max-width: 480px) {
+    .wishlist-empty-state {
+        padding: 40px 16px;
+    }
+    .empty-wishlist-image {
+        max-width: 200px;
+    }
+    .wishlist-empty-state h4 {
+        font-size: 1.2rem;
+    }
+    .wishlist-empty-state p {
+        font-size: 0.9rem;
+    }
 }

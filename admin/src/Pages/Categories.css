@@ -1,6 +1,7 @@
-/* ================= ========================================
+/* =========================================================
    MODERN CATEGORIES UI CSS
    Clean, SaaS-style aesthetic with soft shadows and colors.
+   Mobile search icon + slide-down panel included.
 ========================================================= */
 
 @import url("https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css");
@@ -28,10 +29,6 @@
 /* Base Container */
 .cate-container {
   padding: 20px;
-  background: var(--cate-surface);
-  border-radius: var(--cate-radius-lg);
-  box-shadow: var(--cate-shadow-sm);
-  border: 1px solid var(--cate-border);
   font-family: 'Inter', system-ui, -apple-system, sans-serif;
   color: var(--cate-text-main);
 }
@@ -313,14 +310,14 @@
   overflow: hidden;
   display: flex;
   flex-direction: column;
-  max-height: 90vh; /* Max height to stay contained on small viewports */
+  max-height: 90vh;
 }
 
 .cate-modal-form {
   width: 100%;
   display: flex;
   flex-direction: column;
-  overflow: hidden; /* Restrains vertical expansion of the inner body */
+  overflow: hidden;
   flex: 1;
 }
 
@@ -330,7 +327,7 @@
   justify-content: space-between;
   align-items: flex-start;
   border-bottom: 1px solid var(--cate-border);
-  flex-shrink: 0; /* Keeps header pinned */
+  flex-shrink: 0;
 }
 
 .cate-modal-title {
@@ -361,17 +358,15 @@
   gap: 24px;
   padding: 24px;
   align-items: flex-start;
-  overflow-y: auto; /* Scroll internally if fields exceed height */
+  overflow-y: auto;
   flex: 1;
 }
 
-/* Left column – form fields */
 .cate-fields-col {
   flex: 1.2;
   min-width: 0;
 }
 
-/* Right column – image upload with fixed dimensions */
 .cate-image-col {
   flex: 1.2;
   min-width: 0;
@@ -392,7 +387,6 @@
   cursor: pointer;
 }
 
-/* Fixed size for preview wrap */
 .cate-image-col .cate-preview-wrap {
   width: 100%;
   height: 200px;
@@ -411,7 +405,6 @@
   background: #f8fafc;
 }
 
-/* Fixed size for empty upload state */
 .cate-image-col .cate-upload-empty {
   padding: 40px 20px;
   text-align: center;
@@ -424,71 +417,57 @@
   align-items: center;
 }
 
-/* For screens >= 768px, adjust image columns spacing */
 @media (min-width: 768px) {
   .cate-fields-col {
     flex: 1;
   }
-
   .cate-image-col {
     flex: 0.8;
   }
-
   .cate-image-col .cate-preview-wrap {
     height: 220px;
   }
 }
 
-/* Mobile responsive details styling */
 @media (max-width: 768px) {
   .cate-modal-wrapper {
     padding: 10px;
     align-items: center;
   }
-
   .cate-modal-content {
-    max-height: 95vh; /* Larger container allowance on mobile screens */
+    max-height: 95vh;
   }
-
   .cate-modal-header {
     padding: 16px;
   }
-
   .cate-modal-body {
     flex-direction: column;
     gap: 16px;
     padding: 16px;
   }
-
   .cate-fields-col,
   .cate-image-col {
     width: 100%;
   }
-
   .cate-image-col .cate-preview-wrap {
-    height: 180px; /* Conserve space on mobile */
+    height: 180px;
   }
-
   .cate-image-col .cate-upload-empty {
     min-height: 150px;
     padding: 24px 16px;
   }
-
   .cate-form-row {
     flex-direction: column;
     align-items: stretch;
     gap: 16px;
   }
-
   .cate-form-group {
     width: 100%;
   }
-
   .cate-toggle-box {
     width: 100%;
     justify-content: space-between;
   }
-
   .cate-modal-footer {
     padding: 12px 16px;
   }
@@ -671,7 +650,7 @@
   display: flex;
   justify-content: flex-end;
   gap: 12px;
-  flex-shrink: 0; /* Keeps footer pinned */
+  flex-shrink: 0;
 }
 
 /* Shared Buttons */
@@ -771,13 +750,8 @@
 
 /* Animations */
 @keyframes fadeIn {
-  from {
-    opacity: 0;
-  }
-
-  to {
-    opacity: 1;
-  }
+  from { opacity: 0; }
+  to { opacity: 1; }
 }
 
 @keyframes slideUp {
@@ -785,7 +759,6 @@
     opacity: 0;
     transform: translateY(20px) scale(0.98);
   }
-
   to {
     opacity: 1;
     transform: translateY(0) scale(1);
@@ -797,7 +770,6 @@
     opacity: 0;
     transform: scale(0.9);
   }
-
   to {
     opacity: 1;
     transform: scale(1);
@@ -809,7 +781,6 @@
   .cate-container {
     padding: 20px;
   }
-
   .cate-top {
     flex-direction: column;
     align-items: flex-start !important;
@@ -818,13 +789,11 @@
 }
 
 @media print {
-
   .no-print,
   .cate-action-btns,
   .cate-add-main-btn {
     display: none !important;
   }
-
   .cate-container {
     box-shadow: none;
     border: none;
@@ -867,13 +836,8 @@
 }
 
 @keyframes cate-spin {
-  from {
-    transform: rotate(0deg);
-  }
-
-  to {
-    transform: rotate(360deg);
-  }
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
 }
 
 /* ================= SEARCH & PAGINATION ================= */
@@ -964,19 +928,157 @@
     flex-direction: column;
     text-align: center;
   }
-
   .pagination-controls {
     justify-content: center;
     flex-wrap: wrap;
   }
 }
 
+/* =========================================================
+   MOBILE SEARCH ICON & SLIDE-DOWN PANEL (same as Products)
+   ========================================================= */
+
+/* Mobile icon button (hidden on desktop) */
+.mobile-icon-btn {
+  display: none;
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  border: 1px solid var(--cate-border);
+  background: var(--cate-background);
+  align-items: center;
+  justify-content: center;
+  font-size: 1.2rem;
+  color: var(--cate-text-muted);
+  cursor: pointer;
+  transition: all 0.2s;
+  flex-shrink: 0;
+}
+
+.mobile-icon-btn:hover {
+  background: #f1f5f9;
+  border-color: var(--cate-primary);
+  color: var(--cate-primary);
+}
+.mobile-icon-btn:active {
+  transform: scale(0.92);
+}
+
+/* Slide-down panel (shared with Products) */
+.mobile-search-slide {
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.12);
+  margin: -10px 0 20px 0;
+  padding: 0;
+  animation: slideDown 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+  overflow: hidden;
+  border: 1px solid #f0f0f0;
+}
+
+.slide-content {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+}
+
+.slide-content i {
+  font-size: 1.2rem;
+  color: #8E2139;
+}
+
+.slide-content input,
+.slide-content select {
+  flex: 1;
+  border: none;
+  outline: none;
+  font-size: 1rem;
+  background: transparent;
+  padding: 8px 0;
+  color: var(--cate-text-main);
+}
+
+.slide-content input::placeholder {
+  color: #94a3b8;
+}
+
+.slide-close {
+  background: transparent;
+  border: none;
+  color: #94a3b8;
+  font-size: 1.2rem;
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 6px;
+  transition: background 0.2s;
+}
+
+.slide-close:hover {
+  background: #f1f5f9;
+  color: #475569;
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* ------------------ Mobile Responsive Overrides ------------------ */
+@media (max-width: 768px) {
+  /* Hide desktop search, show mobile icon */
+  .desktop-search {
+    display: none !important;
+  }
+  .mobile-icon-btn {
+    display: flex !important;
+  }
+
+  .cate-top {
+    flex-direction: column;
+    align-items: stretch !important; /* Stretch so elements take 100% width on mobile */
+    gap: 16px;
+    width: 100%;
+  }
+
+  /* Force the title and mobile search toggle container to take 100% width */
+  .categpry-heads-cate {
+    display: flex !important;
+    flex-direction: row !important;
+    justify-content: space-between !important;
+    align-items: center !important;
+    width: 100% !important;
+    flex: none !important;
+  }
+
+  /* Adjust header spacing for child containers */
+  .cate-top .d-flex {
+    width: 100%;
+    justify-content: flex-end;
+  }
+}
+
 @media (max-width: 480px) {
+  /* Hide "Add Category" button on very small screens */
   .cate-add-main-btn {
     display: none !important;
   }
 
-  .cate-modal-body{
+  .cate-modal-body {
     max-height: calc(80vh - 250px);
   }
+}
+
+/* Default styling for desktop (takes natural block size and acts as a standard child) */
+.categpry-heads-cate {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 12px;
 }

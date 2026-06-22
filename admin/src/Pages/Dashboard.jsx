@@ -471,15 +471,6 @@ const Dashboard = () => {
     <div className="dash-container">
 
       <div className="dash-banner-top-sec">
-        <div className="dash-banner">
-          {dashboardBanner.link ? (
-            <a href={dashboardBanner.link} target="_blank" rel="noopener noreferrer">
-              <img src={dashboardBanner.url} alt={dashboardBanner.alt} />
-            </a>
-          ) : (
-            <img src={dashboardBanner.url} alt={dashboardBanner.alt} />
-          )}
-        </div>
 
         {/* User Profile Section */}
         <div className="dash-profile-section">
@@ -506,24 +497,24 @@ const Dashboard = () => {
               </div>
             </div>
 
-            <div>
+            {/* <div>
               {showStoreToggle && (
                 <div className="dash-store-button">
                   <span>{storeActive ? 'Store On' : 'Store Off'}</span>
                   <button
                     type="button"
-                    className={`dropdown-store-switch ${storeActive ? 'active' : ''}`}
+                    className={`dash-dropdown-store-switch ${storeActive ? 'active' : ''}`}
                     onClick={handleStoreToggle}
                     disabled={togglingStore}
                     aria-pressed={storeActive}
                     aria-label={storeActive ? 'Turn store off' : 'Turn store on'}
                     title={storeActive ? 'Turn store off' : 'Turn store on'}
                   >
-                    <span className="dropdown-store-switch-thumb"></span>
+                    <span className="dash-dropdown-store-switch-thumb"></span>
                   </button>
                 </div>
               )}
-            </div>
+            </div> */}
           </div>
 
           {/* Dropdown Menu */}
@@ -580,6 +571,17 @@ const Dashboard = () => {
             </div>
           )}
         </div>
+
+        <div className="dash-banner">
+          {dashboardBanner.link ? (
+            <a href={dashboardBanner.link} target="_blank" rel="noopener noreferrer">
+              <img src={dashboardBanner.url} alt={dashboardBanner.alt} />
+            </a>
+          ) : (
+            <img src={dashboardBanner.url} alt={dashboardBanner.alt} />
+          )}
+        </div>
+
       </div>
 
       <div className="ash-banner-bottom-sec">

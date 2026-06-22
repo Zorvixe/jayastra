@@ -1,5 +1,5 @@
-// Categories.js - Updated version with global categories and mobile FAB support
-import React, { useState, useEffect } from "react";
+// Categories.js - Updated version with global categories and mobile search slide-down
+import React, { useState, useEffect, useRef } from "react";
 import axios from '../utils/axiosConfig';
 import "./Categories.css";
 import { toast } from "react-toastify";
@@ -30,6 +30,10 @@ const Categories = () => {
   const [initialLoading, setInitialLoading] = useState(true);
   const [userRole, setUserRole] = useState(null);
 
+  // Mobile search slide-down state
+  const [isSearchOpen, setIsSearchOpen] = useState(false);
+  const searchRef = useRef(null);
+
   const [pagination, setPagination] = useState({
     totalCount: 0,
     totalPages: 1,
@@ -56,6 +60,17 @@ const Categories = () => {
         console.error("Error parsing token", e);
       }
     }
+  }, []);
+
+  // Close search panel when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (searchRef.current && !searchRef.current.contains(event.target)) {
+        setIsSearchOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
   const fetchCategories = async (pageOverride) => {
@@ -104,22 +119,18 @@ const Categories = () => {
     return () => clearTimeout(timer);
   }, [search]);
 
-  // ========== ADD THIS: Listen for mobile FAB event ==========
+  // Listen for mobile FAB event (if used elsewhere)
   useEffect(() => {
     const handleOpenCategoryModal = () => {
       handleOpenAddModal();
     };
-    
     window.addEventListener("openAddCategoryModal", handleOpenCategoryModal);
-    
     return () => {
       window.removeEventListener("openAddCategoryModal", handleOpenCategoryModal);
     };
-  }, []); // Empty dependency array - handleOpenAddModal is stable
-  // ========== END OF ADDED CODE ==========
+  }, []);
 
   const handleDragStart = (e, index) => {
-    // Only super_admin can reorder
     if (userRole !== 'super_admin') {
       e.preventDefault();
       return;
@@ -263,6 +274,10 @@ const Categories = () => {
     setShowModal(true);
   };
 
+  const toggleSearch = () => {
+    setIsSearchOpen(!isSearchOpen);
+  };
+
   const isSuperAdmin = userRole === 'super_admin';
 
   return (
@@ -276,13 +291,21 @@ const Categories = () => {
       )}
 
       <div className="cate-top d-flex justify-content-between align-items-center flex-wrap gap-3">
-        <div>
+        <div className="categpry-heads-cate">
           <h2 className="cate-page-title">Categories</h2>
-          
+          {/* ---- Mobile search icon ---- */}
+          <button
+            className="mobile-icon-btn search-toggle"
+            onClick={toggleSearch}
+            aria-label="Search"
+          >
+            <i className="bi bi-search"></i>
+          </button>
         </div>
 
         <div className="d-flex align-items-center gap-3 flex-wrap">
-          <div className="admin-search-box" style={{ minWidth: '250px' }}>
+          {/* ---- Desktop search (hidden on mobile) ---- */}
+          <div className="admin-search-box desktop-search">
             <i className="bi bi-search me-2 text-muted"></i>
             <input
               type="text"
@@ -294,12 +317,30 @@ const Categories = () => {
             />
           </div>
 
-          
           <button className="cate-add-main-btn" onClick={handleOpenAddModal}>
             <i className="bi bi-plus-lg me-1"></i> Add Category
           </button>
         </div>
       </div>
+
+      {/* ---- Mobile Search Slide‑down ---- */}
+      {isSearchOpen && (
+        <div className="mobile-search-slide" ref={searchRef}>
+          <div className="slide-content">
+            <i className="bi bi-search"></i>
+            <input
+              type="text"
+              placeholder="Search categories..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              autoFocus
+            />
+            <button className="slide-close" onClick={() => setIsSearchOpen(false)}>
+              <i className="bi bi-x-lg"></i>
+            </button>
+          </div>
+        </div>
+      )}
 
       <div className="cate-table-wrapper">
         <table className="cate-table">
@@ -432,8 +473,8 @@ const Categories = () => {
                 <div>
                   <h5 className="cate-modal-title">{editId ? "Edit Category" : "New Category"}</h5>
                   <p className="cate-modal-subtitle m-0 text-muted">
-                    {editId 
-                      ? "Update the details of your category." 
+                    {editId
+                      ? "Update the details of your category."
                       : "Create a new global category. This will be available to all vendors."}
                   </p>
                 </div>

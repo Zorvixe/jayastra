@@ -19,7 +19,7 @@
   margin-top: 70px;
   /* Offset to compensate for the fixed topbar */
   min-height: calc(100vh - 70px);
-  background: #f8f9fa;
+  background: #fff;
   width: 100%;
   overflow-x: auto;
   /* Allow tables to scroll horizontally safely inside content block */

@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from "react";
-import axios from '../utils/axiosConfig'; // Adjust path as needed
+import React, { useState, useEffect, useRef } from "react";
+import axios from '../utils/axiosConfig';
 import { toast } from "react-toastify";
 import "./Users.css";
 
@@ -35,6 +35,21 @@ const Users = () => {
   const [loading, setLoading] = useState(false);          // global (modal & delete)
   const [tabLoading, setTabLoading] = useState(false);    // while fetching list
   const [actionInProgress, setActionInProgress] = useState(null);
+
+  // Mobile search slide-down state
+  const [isSearchOpen, setIsSearchOpen] = useState(false);
+  const searchRef = useRef(null);
+
+  // Close search panel when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (searchRef.current && !searchRef.current.contains(event.target)) {
+        setIsSearchOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
 
   // -------------------- Data fetching --------------------
   const fetchAdmins = async () => {
@@ -197,6 +212,10 @@ const Users = () => {
     return name.includes(searchTerm) || email.includes(searchTerm);
   });
 
+  const toggleSearch = () => {
+    setIsSearchOpen(!isSearchOpen);
+  };
+
   // -------------------- Render --------------------
   return (
     <div className="users-container">
@@ -211,9 +230,20 @@ const Users = () => {
 
       {/* Header */}
       <div className="users-header">
-        <h4>User Management</h4>
+        <div className="users-mobile-header">
+          <h4>Users</h4>
+          {/* ---- Mobile search icon ---- */}
+          <button
+            className="mobile-icon-btn search-toggle"
+            onClick={toggleSearch}
+            aria-label="Search"
+          >
+            <i className="bi bi-search"></i>
+          </button> 
+        </div>
         <div className="header-actions">
-          <div className="search-box">
+          {/* ---- Desktop search (hidden on mobile) ---- */}
+          <div className="search-box desktop-search-users">
             <i className="bi bi-search"></i>
             <input
               type="text"
@@ -222,6 +252,7 @@ const Users = () => {
               onChange={(e) => setSearch(e.target.value)}
             />
           </div>
+
           {userRole === "super_admin" && (
             <div className="create-buttons">
               <button className="add-admin-btn" onClick={() => { setModalRole('admin'); setShowAddModal(true); }} disabled={loading}>
@@ -234,6 +265,25 @@ const Users = () => {
           )}
         </div>
       </div>
+
+      {/* ---- Mobile Search Slide‑down ---- */}
+      {isSearchOpen && (
+        <div className="mobile-search-slide" ref={searchRef}>
+          <div className="slide-content">
+            <i className="bi bi-search"></i>
+            <input
+              type="text"
+              placeholder="Search..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              autoFocus
+            />
+            <button className="slide-close" onClick={() => setIsSearchOpen(false)}>
+              <i className="bi bi-x-lg"></i>
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Tabs (only allowed ones) */}
       <div className="users-tabs">
@@ -321,7 +371,7 @@ const Users = () => {
                       </span>
                     </td>
                     <td>
-                      <span style={{color:"white"}} className={`status-badge ${user.status === "Active" ? "active" : "blocked"}`}>
+                      <span style={{ color: "white" }} className={`status-badge ${user.status === "Active" ? "active" : "blocked"}`}>
                         {user.status}
                       </span>
                     </td>

@@ -299,7 +299,7 @@ const Banners = () => {
     <div className="sett-banners-container" key={refreshKey}>
       <div className="sett-banners-header">
         <div className="sett-banners-title-wrapper">
-          <h4 className="sett-banners-title">Banner Management System</h4>
+          <h4 className="sett-banners-title">Banner</h4>
           <button
             className="wallet-refresh-btn"
             onClick={() => fetchBanners(true)}

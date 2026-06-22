@@ -4,7 +4,6 @@
   background: #ffffff;
   padding: 20px;
   border-radius: 12px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
   font-family: 'Inter', system-ui, -apple-system, sans-serif;
 }
 
@@ -29,7 +28,7 @@
   color: #1f2937;
 }
 
-/* ================= SEARCH ================= */
+/* ================= SEARCH (Desktop) ================= */
 
 .search-box {
   display: flex;
@@ -60,6 +59,100 @@
 
 .search-box:focus-within {
   background: #e5e7eb;
+}
+
+/* ================= MOBILE SEARCH ICON & SLIDE-DOWN ================= */
+
+/* Mobile icon button (hidden on desktop) */
+.mobile-icon-btn {
+  display: none;
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  border: 1px solid #e0e0e0;
+  background: #f8fafc;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.2rem;
+  color: #475569;
+  cursor: pointer;
+  transition: all 0.2s;
+  flex-shrink: 0;
+}
+
+.mobile-icon-btn:hover {
+  background: #f1f5f9;
+  border-color: #3b82f6;
+  color: #3b82f6;
+}
+
+.mobile-icon-btn:active {
+  transform: scale(0.92);
+}
+
+/* Slide-down panel */
+.mobile-search-slide {
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.12);
+  margin: -10px 0 20px 0;
+  padding: 0;
+  animation: slideDown 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+  overflow: hidden;
+  border: 1px solid #f0f0f0;
+}
+
+.mobile-search-slide .slide-content {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+}
+
+.mobile-search-slide .slide-content i {
+  font-size: 1.2rem;
+  color: #3b82f6;
+}
+
+.mobile-search-slide .slide-content input {
+  flex: 1;
+  border: none;
+  outline: none;
+  font-size: 1rem;
+  background: transparent;
+  padding: 8px 0;
+  color: #1a1a1a;
+}
+
+.mobile-search-slide .slide-content input::placeholder {
+  color: #94a3b8;
+}
+
+.mobile-search-slide .slide-close {
+  background: transparent;
+  border: none;
+  color: #94a3b8;
+  font-size: 1.2rem;
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 6px;
+  transition: background 0.2s;
+}
+
+.mobile-search-slide .slide-close:hover {
+  background: #f1f5f9;
+  color: #475569;
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 /* ================= TABS ================= */
@@ -323,7 +416,7 @@ button:disabled {
   background: white;
   width: 450px;
   max-width: 100%;
-  max-height: 90vh; /* Keeps modal inside viewport boundaries */
+  max-height: 90vh;
   border-radius: 12px;
   box-shadow: 0 8px 30px rgba(0, 0, 0, 0.15);
   animation: scaleIn 0.3s cubic-bezier(0.16, 1, 0.3, 1);
@@ -338,7 +431,7 @@ button:disabled {
   align-items: center;
   padding: 16px 24px;
   border-bottom: 1px solid #e5e7eb;
-  flex-shrink: 0; /* Pins header */
+  flex-shrink: 0;
 }
 
 .modal-header h5 {
@@ -363,11 +456,10 @@ button:disabled {
 
 .modal-body {
   padding: 24px;
-  overflow-y: auto; /* Scrollbody behavior for dynamic/long modal structures */
+  overflow-y: auto;
   flex: 1;
 }
 
-/* Modal details */
 .user-detail-item {
   display: flex;
   padding: 12px 0;
@@ -475,7 +567,6 @@ button:disabled {
   cursor: not-allowed;
 }
 
-/* Password input wrapper */
 .password-input-wrapper {
   position: relative;
 }
@@ -504,7 +595,6 @@ button:disabled {
   margin-left: 2px;
 }
 
-/* Submit button */
 .btn-submit {
   background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
   color: white;
@@ -527,7 +617,6 @@ button:disabled {
 
 /* ================= LOADER STYLES ================= */
 
-/* Global overlay styles */
 .users-loader-overlay {
   position: fixed;
   top: 0;
@@ -555,7 +644,6 @@ button:disabled {
   animation: scaleIn 0.3s ease;
 }
 
-/* spinners */
 .users-spinner {
   width: 50px;
   height: 50px;
@@ -597,7 +685,6 @@ button:disabled {
   vertical-align: middle;
 }
 
-/* Loading inside table */
 .users-loading-state {
   display: flex;
   flex-direction: column;
@@ -612,7 +699,6 @@ button:disabled {
   font-size: 0.9rem;
 }
 
-/* Empty state */
 .users-empty-row td {
   text-align: center;
   padding: 60px 20px !important;
@@ -642,36 +728,48 @@ button:disabled {
 @media (max-width: 768px) {
   .users-header {
     flex-direction: column;
-    align-items: flex-start;
+    align-items: stretch !important; /* Forces row-width expansion on mobile block structure */
     gap: 16px;
+    width: 100%;
+  }
+
+  .users-mobile-header {
+    display: flex !important;
+    flex-direction: row !important;
+    justify-content: space-between !important;
+    align-items: center !important;
+    width: 100% !important;
   }
 
   .header-actions {
     width: 100%;
-    flex-direction: column;
-    align-items: stretch;
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: center;
     gap: 12px;
   }
 
-  .search-box {
-    width: 100%;
+  /* Hide desktop search, show mobile icon */
+  .desktop-search-users {
+    display: none !important;
   }
 
-  .search-box input {
-    width: 100%;
+  .mobile-icon-btn {
+    display: flex !important;
   }
 
   .create-buttons {
-    width: 100%;
-    flex-direction: column;
+    flex-direction: row;
     gap: 8px;
+    width: auto;
   }
 
   .add-admin-btn,
   .add-vendor-btn {
-    width: 100%;
-    margin-left: 0 !important;
+    width: auto;
     justify-content: center;
+    font-size: 12px;
+    padding: 6px 12px;
   }
 
   .user-modal {
@@ -690,6 +788,44 @@ button:disabled {
 
   .detail-label {
     width: 100%;
+  }
+}
+
+@media (max-width: 480px) {
+  .header-actions {
+    flex-direction: row;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .create-buttons {
+    flex-direction: column;
+    width: 100%;
+  }
+
+  .add-admin-btn,
+  .add-vendor-btn {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .mobile-icon-btn {
+    width: 38px;
+    height: 38px;
+    font-size: 1rem;
+  }
+
+  .mobile-search-slide .slide-content {
+    padding: 10px 14px;
+    gap: 10px;
+  }
+
+  .mobile-search-slide .slide-content input {
+    font-size: 0.9rem;
+  }
+
+  .mobile-search-slide .slide-content i {
+    font-size: 1rem;
   }
 }
 
@@ -722,4 +858,12 @@ button:disabled {
     opacity: 1;
     transform: scale(1);
   }
+}
+
+/* Desktop default layout settings */
+.users-mobile-header {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 12px;
 }

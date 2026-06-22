@@ -34,7 +34,6 @@ import AddCategoryModal from "./Pages/AddCategoryModal";
 
 import NotFound from "./Pages/NotFound/NotFound";
 
-import "./App.css"
 
 // Protected Route Component
 const ProtectedRoute = ({ children }) => {
@@ -66,6 +65,16 @@ function AppContent() {
     navigate("/admin/login", { replace: true });
     window.location.reload(); // Optional: Force reload to clear state
   };
+
+
+  const RootRedirect = () => {
+    const token = localStorage.getItem("token");
+    const userRole = localStorage.getItem("userRole");
+    return token && userRole
+      ? <Navigate to="/admin/dashboard" replace />
+      : <Navigate to="/admin/login" replace />;
+  };
+
 
   return (
     <>
@@ -111,10 +120,11 @@ function AppContent() {
         </Route>
 
         {/* Default redirect */}
-        <Route path="/" element={<Navigate to="/admin/login" />} />
+        <Route path="/" element={<RootRedirect />} />
         <Route path="/admin/not-found" element={<NotFound />} />
         <Route path="/404" element={<NotFound />} />
-        <Route path="*" element={<Navigate to="/404" replace />} />      </Routes>
+        <Route path="*" element={<Navigate to="/404" replace />} />      
+        </Routes>
     </>
   );
 }

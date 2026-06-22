@@ -814,10 +814,8 @@ const Orders = () => {
       )}
 
       <div className="orders-header-flex">
-        <h4>Orders Management</h4>
-        <div className="orders-filter-area">
+        <h4>Orders</h4>
           <div className="date-filter-group">
-            <span className="filter-label">Filter by Date:</span>
             <input
               type="date"
               className="admin-date-input"
@@ -831,7 +829,6 @@ const Orders = () => {
               </button>
             )}
           </div>
-        </div>
       </div>
 
       <div className="orders-table">

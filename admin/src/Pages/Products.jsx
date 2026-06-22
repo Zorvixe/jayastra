@@ -1,6 +1,6 @@
 // Products.js
-import React, { useState, useEffect } from "react";
-import axios from '../utils/axiosConfig'; // Adjust path as needed
+import React, { useState, useEffect, useRef } from "react";
+import axios from '../utils/axiosConfig';
 import "./AdminProducts.css";
 import { toast } from "react-toastify";
 import AddProduct from "./AddProduct";
@@ -30,6 +30,12 @@ const Products = () => {
   const [confirmBulkDelete, setConfirmBulkDelete] = useState(false);
   const userRole = localStorage.getItem("userRole")?.toLowerCase();
 
+  // Mobile slide‑down states
+  const [isSearchOpen, setIsSearchOpen] = useState(false);
+  const [isFilterOpen, setIsFilterOpen] = useState(false);
+  const searchRef = useRef(null);
+  const filterRef = useRef(null);
+
   // Modal States
   const [showAddModal, setShowAddModal] = useState(false);
   const [editProductId, setEditProductId] = useState(null);
@@ -40,6 +46,20 @@ const Products = () => {
     currentPage: 1,
     limit: 10,
   });
+
+  // Close panels when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (searchRef.current && !searchRef.current.contains(event.target)) {
+        setIsSearchOpen(false);
+      }
+      if (filterRef.current && !filterRef.current.contains(event.target)) {
+        setIsFilterOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
 
   useEffect(() => {
     fetchProducts(pagination.currentPage);
@@ -135,21 +155,121 @@ const Products = () => {
     return { text: "OK", class: "stock-ok" };
   };
 
+  const toggleSearch = () => {
+    setIsSearchOpen(!isSearchOpen);
+    setIsFilterOpen(false);
+  };
+
+  const toggleFilter = () => {
+    setIsFilterOpen(!isFilterOpen);
+    setIsSearchOpen(false);
+  };
+
   const filteredProducts = products;
 
   return (
     <div className="products-container">
       <div className="products-top">
-        <h2 className="page-title">Product Catalog</h2>
+        <h2 className="page-title">Products</h2>
+        <div className="prod-mobile-filter">
+          {/* Search Icon (always visible on mobile, hidden on desktop) */}
+          <button
+            className="mobile-icon-btn search-toggle"
+            onClick={toggleSearch}
+            aria-label="Search"
+          >
+            <i className="bi bi-search"></i>
+          </button>
+          {/* Filter Icon */}
+          <button
+            className="mobile-icon-btn filter-toggle"
+            onClick={toggleFilter}
+            aria-label="Filter"
+          >
+            <i className="bi bi-sliders2"></i>
+          </button>
+        </div>
         <div className="actions-cluster">
+          <div className="filters-prod">
+            {/* Desktop search & filter (hidden on mobile) */}
+            <div className="desktop-search">
+              <i className="bi bi-search"></i>
+              <input
+                type="text"
+                placeholder="Search by name..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+              />
+            </div>
+            <div>
+              <select
+                className="desktop-filter"
+                value={filter}
+                onChange={(e) => setFilter(e.target.value)}
+              >
+                <option value="all">Status: All</option>
+                <option value="active">Active Only</option>
+                <option value="inactive">Inactive Only</option>
+                <option value="instock">Stock: In Stock</option>
+                <option value="lowstock">Stock: Low Stock</option>
+                <option value="outofstock">Stock: Out of Stock</option>
+              </select>
+            </div>
+          </div>
           <button
             className="add-product-btn"
             onClick={() => setShowAddModal(true)}
           >
-            <i className="bi bi-plus-lg"></i> Add Product
+            <i className="bi bi-plus-lg"></i>
+            <span className="add-btn-text">Add Product</span>
           </button>
         </div>
       </div>
+
+      {/* Mobile Search Slide‑down */}
+      {isSearchOpen && (
+        <div className="mobile-search-slide" ref={searchRef}>
+          <div className="slide-content">
+            <i className="bi bi-search"></i>
+            <input
+              type="text"
+              placeholder="Search by name..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              autoFocus
+            />
+            <button className="slide-close" onClick={() => setIsSearchOpen(false)}>
+              <i className="bi bi-x-lg"></i>
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Mobile Filter Slide‑down */}
+      {isFilterOpen && (
+        <div className="mobile-filter-slide" ref={filterRef}>
+          <div className="slide-content">
+            <i className="bi bi-funnel"></i>
+            <select
+              value={filter}
+              onChange={(e) => {
+                setFilter(e.target.value);
+                setIsFilterOpen(false);
+              }}
+            >
+              <option value="all">All</option>
+              <option value="active">Active Only</option>
+              <option value="inactive">Inactive Only</option>
+              <option value="instock">In Stock</option>
+              <option value="lowstock">Low Stock</option>
+              <option value="outofstock">Out of Stock</option>
+            </select>
+            <button className="slide-close" onClick={() => setIsFilterOpen(false)}>
+              <i className="bi bi-x-lg"></i>
+            </button>
+          </div>
+        </div>
+      )}
 
       {selected.length > 0 && (
         <div className="selection-bar">
@@ -170,30 +290,6 @@ const Products = () => {
           </div>
         </div>
       )}
-
-      <div className="filters">
-        <div className="search-box">
-          <i className="bi bi-search"></i>
-          <input
-            type="text"
-            placeholder="Search by name..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-          />
-        </div>
-        <select
-          className="status-filter"
-          value={filter}
-          onChange={(e) => setFilter(e.target.value)}
-        >
-          <option value="all">Status: All</option>
-          <option value="active">Active Only</option>
-          <option value="inactive">Inactive Only</option>
-          <option value="instock">Stock: In Stock</option>
-          <option value="lowstock">Stock: Low Stock</option>
-          <option value="outofstock">Stock: Out of Stock</option>
-        </select>
-      </div>
 
       <div className="products-table">
         {loading ? (
@@ -310,7 +406,6 @@ const Products = () => {
                           >
                             {product.is_active ? "Active" : "Inactive"}
                           </span>
-
                         </td>
                         <td>
                           <div className="actions">
@@ -400,114 +495,106 @@ const Products = () => {
       </div>
 
       {/* Lightbox for Images */}
-      {
-        previewImage && (
+      {previewImage && (
+        <div
+          className="admin-lightbox-overlay"
+          onClick={() => setPreviewImage(null)}
+        >
+          <div className="lightbox-content">
+            <img
+              src={previewImage}
+              alt="Product Preview"
+              onClick={(e) => e.stopPropagation()}
+              onError={(e) => (e.target.src = "/assets/placeholder-product.jpg")}
+            />
+            <button
+              className="close-lightbox"
+              onClick={() => setPreviewImage(null)}
+            >
+              ✕
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Confirmation Modal */}
+      {(confirmDeleteId || confirmBulkDelete) && (
+        <div
+          className="custom-confirm-overlay"
+          onClick={() => {
+            setConfirmDeleteId(null);
+            setConfirmBulkDelete(false);
+          }}
+        >
           <div
-            className="admin-lightbox-overlay"
-            onClick={() => setPreviewImage(null)}
+            className="custom-confirm-box"
+            onClick={(e) => e.stopPropagation()}
           >
-            <div className="lightbox-content">
-              <img
-                src={previewImage}
-                alt="Product Preview"
-                onClick={(e) => e.stopPropagation()}
-                onError={(e) => (e.target.src = "/assets/placeholder-product.jpg")}
-              />
+            <div
+              className="confirm-icon"
+              style={{ color: "#b91c1c", background: "#fee2e2" }}
+            >
+              ⚠️
+            </div>
+            <h5>Confirm Deletion</h5>
+            <p>
+              {confirmBulkDelete
+                ? `Are you sure you want to delete ${selected.length} products? This action cannot be undone.`
+                : `Are you sure you want to delete this product? This action cannot be undone.`}
+            </p>
+            <div className="confirm-actions">
               <button
-                className="close-lightbox"
-                onClick={() => setPreviewImage(null)}
+                className="confirm-cancel-btn"
+                onClick={() => {
+                  setConfirmDeleteId(null);
+                  setConfirmBulkDelete(false);
+                }}
               >
-                ✕
+                Cancel
+              </button>
+              <button
+                className="confirm-execute-btn"
+                style={{ background: "#b91c1c" }}
+                onClick={
+                  confirmBulkDelete ? executeBulkDelete : executeDeleteProduct
+                }
+              >
+                Yes, Delete
               </button>
             </div>
           </div>
-        )
-      }
+        </div>
+      )}
 
-      {/* Delete Confirmation Modal */}
-      {
-        (confirmDeleteId || confirmBulkDelete) && (
-          <div
-            className="custom-confirm-overlay"
-            onClick={() => {
-              setConfirmDeleteId(null);
-              setConfirmBulkDelete(false);
-            }}
-          >
-            <div
-              className="custom-confirm-box"
-              onClick={(e) => e.stopPropagation()}
-            >
-              <div
-                className="confirm-icon"
-                style={{ color: "#b91c1c", background: "#fee2e2" }}
-              >
-                ⚠️
-              </div>
-              <h5>Confirm Deletion</h5>
-              <p>
-                {confirmBulkDelete
-                  ? `Are you sure you want to delete ${selected.length} products? This action cannot be undone.`
-                  : `Are you sure you want to delete this product? This action cannot be undone.`}
-              </p>
-              <div className="confirm-actions">
-                <button
-                  className="confirm-cancel-btn"
-                  onClick={() => {
-                    setConfirmDeleteId(null);
-                    setConfirmBulkDelete(false);
-                  }}
-                >
-                  Cancel
-                </button>
-                <button
-                  className="confirm-execute-btn"
-                  style={{ background: "#b91c1c" }}
-                  onClick={
-                    confirmBulkDelete ? executeBulkDelete : executeDeleteProduct
-                  }
-                >
-                  Yes, Delete
-                </button>
-              </div>
-            </div>
+      {/* Add Product Modal */}
+      {showAddModal && (
+        <div className="product-modal-overlay" onClick={() => setShowAddModal(false)}>
+          <div className="product-modal-content" onClick={(e) => e.stopPropagation()}>
+            <AddProduct
+              onClose={() => {
+                setShowAddModal(false);
+                fetchProducts();
+              }}
+            />
           </div>
-        )
-      }
+        </div>
+      )}
 
-      {/* Add Product Modal Component Overlay */}
-      {
-        showAddModal && (
-          <div className="product-modal-overlay" onClick={() => setShowAddModal(false)}>
-            <div className="product-modal-content" onClick={(e) => e.stopPropagation()}>
-              <AddProduct
-                onClose={() => {
-                  setShowAddModal(false);
-                  fetchProducts();
-                }}
-              />
-            </div>
+      {/* Edit Product Modal */}
+      {editProductId && (
+        <div className="product-modal-overlay" onClick={() => setEditProductId(null)}>
+          <div className="product-modal-content" onClick={(e) => e.stopPropagation()}>
+            <EditProduct
+              id={editProductId}
+              onClose={() => {
+                setEditProductId(null);
+                fetchProducts();
+              }}
+            />
           </div>
-        )
-      }
-
-      {/* Edit Product Modal Component Overlay */}
-      {
-        editProductId && (
-          <div className="product-modal-overlay" onClick={() => setEditProductId(null)}>
-            <div className="product-modal-content" onClick={(e) => e.stopPropagation()}>
-              <EditProduct
-                id={editProductId}
-                onClose={() => {
-                  setEditProductId(null);
-                  fetchProducts();
-                }}
-              />
-            </div>
-          </div>
-        )
-      }
-    </div >
+        </div>
+      )}
+    </div>
   );
 };
 
