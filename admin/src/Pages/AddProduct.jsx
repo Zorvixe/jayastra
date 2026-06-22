@@ -188,10 +188,7 @@ const AddProduct = ({ onClose }) => {
       toast.error("Please upload an image file");
       return;
     }
-    if (file.size > 5 * 1024 * 1024) {
-      toast.error("Image size should be less than 5MB");
-      return;
-    }
+    
     setMainImage(file);
     setMainPreview(URL.createObjectURL(file));
   };
@@ -203,10 +200,7 @@ const AddProduct = ({ onClose }) => {
       toast.error("Please upload a video file");
       return;
     }
-    if (file.size > 50 * 1024 * 1024) {
-      toast.error("Video size should be less than 50MB");
-      return;
-    }
+    
     setVideo(file);
     setVideoPreview(URL.createObjectURL(file));
   };
@@ -222,10 +216,7 @@ const AddProduct = ({ onClose }) => {
         toast.error(`${file.name} is not an image file`);
         return false;
       }
-      if (file.size > 5 * 1024 * 1024) {
-        toast.error(`${file.name} size should be less than 5MB`);
-        return false;
-      }
+     
       return true;
     });
     setGalleryImages((prev) => [...prev, ...validFiles]);
@@ -292,10 +283,7 @@ const AddProduct = ({ onClose }) => {
         toast.error("Please upload an image file");
         return;
       }
-      if (file.size > 2 * 1024 * 1024) {
-        toast.error("Image size should be less than 2MB");
-        return;
-      }
+      
       setCategoryImage(file);
       setCategoryPreview(URL.createObjectURL(file));
     }

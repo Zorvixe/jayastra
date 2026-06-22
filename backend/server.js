@@ -344,7 +344,7 @@ const productStorage = multer.diskStorage({
 
 const uploadProductMedia = multer({
   storage: productStorage,
-  limits: { fileSize: 100 * 1024 * 1024 },
+  // limits: { fileSize: 100 * 1024 * 1024 },
   fileFilter: (req, file, cb) => {
     try {
       if (file.fieldname === 'image') validateImageFile(file);
@@ -372,7 +372,7 @@ const bannerStorage = multer.diskStorage({
 
 const uploadBannerMedia = multer({
   storage: bannerStorage,
-  limits: { fileSize: 100 * 1024 * 1024 },
+  // limits: { fileSize: 100 * 1024 * 1024 },
   fileFilter: (req, file, cb) => {
     try {
       if (file.fieldname === 'image') validateImageFile(file);
@@ -400,7 +400,7 @@ const returnStorage = multer.diskStorage({
 
 const uploadReturnVideo = multer({
   storage: returnStorage,
-  limits: { fileSize: 150 * 1024 * 1024 },
+  // limits: { fileSize: 150 * 1024 * 1024 },
   fileFilter: (req, file, cb) => {
     try {
       validateVideoFile(file);
@@ -423,7 +423,7 @@ const legacyStorage = multer.diskStorage({
     cb(null, uniqueSuffix + path.extname(file.originalname));
   }
 });
-const upload = multer({ storage: legacyStorage, limits: { fileSize: 1000 * 1024 * 1024 } });
+const upload = multer({ storage: legacyStorage });
 
 // ================= AUTH MIDDLEWARE =================
 const verifyToken = async (req, res, next) => {
