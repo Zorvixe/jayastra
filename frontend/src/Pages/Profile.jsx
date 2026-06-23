@@ -5,7 +5,6 @@ import "./Profile.css";
 import AddressSection from "../components/AddressSection";
 import ExchangeModal from "../components/ExchangeModal";
 import { useUser } from "../context/UserContext";
-import { useWishlist } from "../context/WishlistContext";
 
 const API_URL = process.env.REACT_APP_API_URL;
 
@@ -24,17 +23,17 @@ const LazyImage = ({ src, alt, className }) => {
   const [error, setError] = useState(false);
 
   return (
-    <div className="lazy-image-container" style={{ position: 'relative', width: '100%', height: '100%' }}>
+    <div className="profile-lazy-image-container" style={{ position: 'relative', width: '100%', height: '100%' }}>
       {isLoading && (
-        <div className="image-skeleton">
-          <div className="skeleton-shimmer"></div>
+        <div className="profile-image-skeleton">
+          <div className="profile-skeleton-shimmer"></div>
         </div>
       )}
       <img
         src={src}
         alt={alt}
-        className={`${className} ${isLoading ? 'img-loading' : 'img-loaded'}`}
-        style={{ 
+        className={`${className} ${isLoading ? 'profile-img-loading' : 'profile-img-loaded'}`}
+        style={{
           display: isLoading ? 'none' : 'block',
           width: '100%',
           height: '100%',
@@ -47,7 +46,7 @@ const LazyImage = ({ src, alt, className }) => {
         }}
       />
       {error && (
-        <div className="image-error-fallback">
+        <div className="profile-image-error-fallback">
           <i className="bi bi-image"></i>
         </div>
       )}
@@ -55,41 +54,63 @@ const LazyImage = ({ src, alt, className }) => {
   );
 };
 
-// Loading Skeletons
+// Loading Components
 const ProfileFormSkeleton = () => (
-  <div className="skeleton-form">
-    <div className="skeleton-line" style={{ width: '80px', height: '14px', marginBottom: '8px' }}></div>
-    <div className="skeleton-line" style={{ width: '100%', height: '48px', borderRadius: '8px', marginBottom: '16px' }}></div>
-    <div className="skeleton-line" style={{ width: '100px', height: '14px', marginBottom: '8px' }}></div>
-    <div className="skeleton-line" style={{ width: '100%', height: '48px', borderRadius: '8px', marginBottom: '16px' }}></div>
-    <div className="skeleton-line" style={{ width: '60px', height: '14px', marginBottom: '8px' }}></div>
-    <div className="skeleton-line" style={{ width: '100%', height: '48px', borderRadius: '8px' }}></div>
+  <div className="profile-skeleton-form">
+    <div className="profile-input-group-row">
+      <div className="profile-form-field">
+        <div className="profile-skeleton-line" style={{ width: '80px', height: '12px', marginBottom: '6px' }}></div>
+        <div className="profile-skeleton-line" style={{ width: '100%', height: '38px', borderRadius: '6px' }}></div>
+      </div>
+      <div className="profile-form-field">
+        <div className="profile-skeleton-line" style={{ width: '80px', height: '12px', marginBottom: '6px' }}></div>
+        <div className="profile-skeleton-line" style={{ width: '100%', height: '38px', borderRadius: '6px' }}></div>
+      </div>
+    </div>
+    <div className="profile-form-field">
+      <div className="profile-skeleton-line" style={{ width: '60px', height: '12px', marginBottom: '6px' }}></div>
+      <div className="profile-skeleton-line" style={{ width: '100%', height: '38px', borderRadius: '6px' }}></div>
+    </div>
+    <div className="profile-input-group-row">
+      <div className="profile-form-field">
+        <div className="profile-skeleton-line" style={{ width: '80px', height: '12px', marginBottom: '6px' }}></div>
+        <div className="profile-skeleton-line" style={{ width: '100%', height: '38px', borderRadius: '6px' }}></div>
+      </div>
+      <div className="profile-form-field">
+        <div className="profile-skeleton-line" style={{ width: '80px', height: '12px', marginBottom: '6px' }}></div>
+        <div className="profile-skeleton-line" style={{ width: '100%', height: '38px', borderRadius: '6px' }}></div>
+      </div>
+    </div>
+    <div className="profile-skeleton-line" style={{ width: '150px', height: '38px', borderRadius: '6px', marginTop: '8px' }}></div>
   </div>
 );
 
 const OrdersSkeleton = () => (
-  <div className="orders-skeleton">
-    {[1, 2].map((i) => (
-      <div key={i} className="order-skeleton-card">
-        <div className="skeleton-line" style={{ width: '200px', height: '20px', marginBottom: '16px' }}></div>
-        <div className="order-product-skeleton">
-          <div className="skeleton-image" style={{ width: '72px', height: '72px', borderRadius: '8px' }}></div>
+  <div className="profile-orders-skeleton">
+    {[1, 2, 3].map((i) => (
+      <div key={i} className="profile-order-skeleton-card">
+        <div className="profile-skeleton-line" style={{ width: '150px', height: '16px', marginBottom: '12px' }}></div>
+        <div className="profile-order-product-skeleton">
+          <div className="profile-skeleton-image" style={{ width: '52px', height: '52px', borderRadius: '6px' }}></div>
           <div style={{ flex: 1 }}>
-            <div className="skeleton-line" style={{ width: '70%', height: '16px', marginBottom: '8px' }}></div>
-            <div className="skeleton-line" style={{ width: '40%', height: '12px' }}></div>
+            <div className="profile-skeleton-line" style={{ width: '70%', height: '13px', marginBottom: '6px' }}></div>
+            <div className="profile-skeleton-line" style={{ width: '40%', height: '10px' }}></div>
           </div>
         </div>
+        <div className="profile-skeleton-line" style={{ width: '120px', height: '18px', marginTop: '12px' }}></div>
       </div>
     ))}
   </div>
 );
 
 const ReturnsSkeleton = () => (
-  <div className="returns-skeleton">
+  <div className="profile-returns-skeleton">
     {[1, 2].map((i) => (
-      <div key={i} className="return-skeleton-card">
-        <div className="skeleton-line" style={{ width: '150px', height: '20px', marginBottom: '16px' }}></div>
-        <div className="skeleton-line" style={{ width: '100%', height: '100px', borderRadius: '8px' }}></div>
+      <div key={i} className="profile-return-skeleton-card">
+        <div className="profile-skeleton-line" style={{ width: '120px', height: '16px', marginBottom: '12px' }}></div>
+        <div className="profile-skeleton-line" style={{ width: '100%', height: '100px', borderRadius: '6px', marginBottom: '10px' }}></div>
+        <div className="profile-skeleton-line" style={{ width: '60%', height: '11px', marginBottom: '6px' }}></div>
+        <div className="profile-skeleton-line" style={{ width: '80%', height: '11px' }}></div>
       </div>
     ))}
   </div>
@@ -97,10 +118,9 @@ const ReturnsSkeleton = () => (
 
 const Profile = () => {
   const { fetchUser } = useUser();
-  const { wishlistItems, fetchWishlist } = useWishlist();
   const location = useLocation();
   const navigate = useNavigate();
-  const [activeTab, setActiveTab] = useState(location.state?.activeTab || "overview");
+  const [activeTab, setActiveTab] = useState(location.state?.activeTab || "profile");
   const [loading, setLoading] = useState({
     profile: true,
     orders: true,
@@ -112,8 +132,6 @@ const Profile = () => {
     email: "",
     phone: "",
     gender: "",
-    balance: 0,
-    created_at: null
   });
   const [orders, setOrders] = useState([]);
   const [returns, setReturns] = useState([]);
@@ -121,14 +139,19 @@ const Profile = () => {
   const [selectedOrder, setSelectedOrder] = useState(null);
   const [updatingProfile, setUpdatingProfile] = useState(false);
   const [toast, setToast] = useState({ show: false, message: "", type: "success" });
+  // Track which sections have been loaded at least once
   const [loadedTabs, setLoadedTabs] = useState({
     profile: false,
     address: false,
     orders: false,
     returns: false
   });
+  // Mobile bottom sheet state
+  const [mobileSheetOpen, setMobileSheetOpen] = useState(false);
   const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
-  const [copiedCode, setCopiedCode] = useState("");
+
+  // Compute global loading state
+  const isLoading = loading.profile || loading.orders || loading.returns;
 
   const showToast = (message, type = "success") => {
     setToast({ show: true, message, type });
@@ -137,14 +160,19 @@ const Profile = () => {
 
   const token = localStorage.getItem("token");
 
+  // Check window resize for mobile detection
   useEffect(() => {
     const handleResize = () => {
       setIsMobile(window.innerWidth <= 768);
+      if (window.innerWidth > 768) {
+        setMobileSheetOpen(false);
+      }
     };
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
+  /* FETCH PROFILE */
   const fetchProfile = useCallback(async () => {
     if (!token) return;
     try {
@@ -193,26 +221,31 @@ const Profile = () => {
     }
   }, [token]);
 
-  // Initial load
+  // Initial load: only fetch profile data (always visible in sidebar)
   useEffect(() => {
     if (token) {
       fetchProfile();
-      fetchOrders();
-      fetchWishlist();
-      if (activeTab === 'returns') {
+      // For the initially active tab, load its data
+      if (activeTab === 'orders') {
+        fetchOrders();
+      } else if (activeTab === 'returns') {
         fetchReturns();
       }
     }
-  }, [token, fetchProfile, activeTab, fetchOrders, fetchReturns, fetchWishlist]);
+  }, [token, fetchProfile, activeTab, fetchOrders, fetchReturns]);
 
-  // Tab dynamic loading
+  // Load data when tab changes, but only if not loaded before
   useEffect(() => {
     if (!token) return;
-    if (activeTab === 'returns' && !loadedTabs.returns) {
+
+    if (activeTab === 'orders' && !loadedTabs.orders) {
+      fetchOrders();
+    } else if (activeTab === 'returns' && !loadedTabs.returns) {
       fetchReturns();
     }
-  }, [activeTab, token, loadedTabs, fetchReturns]);
+  }, [activeTab, token, loadedTabs, fetchOrders, fetchReturns]);
 
+  /* UPDATE */
   const handleUpdate = async () => {
     try {
       setUpdatingProfile(true);
@@ -220,574 +253,383 @@ const Profile = () => {
         headers: { Authorization: `Bearer ${token}` }
       });
       await fetchUser();
-      showToast("Profile details updated successfully ✨");
+      showToast("Profile updated successfully ✨");
     } catch (err) {
-      showToast("Failed to update profile details", "error");
+      showToast("Failed to update profile", "error");
     } finally {
       setUpdatingProfile(false);
     }
   };
 
-  const copyCouponCode = (code) => {
-    navigator.clipboard.writeText(code);
-    setCopiedCode(code);
-    showToast(`Coupon code ${code} copied to clipboard!`, "success");
-    setTimeout(() => setCopiedCode(""), 3000);
+  // Handle tab click on mobile - open bottom sheet instead of showing content directly
+  const handleMobileTabClick = (tab) => {
+    setActiveTab(tab);
+    setMobileSheetOpen(true);
+    // Load data if not loaded
+    if (tab === 'orders' && !loadedTabs.orders) {
+      fetchOrders();
+    } else if (tab === 'returns' && !loadedTabs.returns) {
+      fetchReturns();
+    }
   };
 
-  // Derived metrics
-  const walletBalance = parseFloat(data.balance || 0);
-  const loyaltyPoints = Math.floor(walletBalance * 1.5) + (orders.length * 120) + 150;
-  const nextMilestone = 1000;
-  const loyaltyProgress = Math.min(100, (loyaltyPoints / nextMilestone) * 100);
-  const userNameInitials = data.first_name?.[0]?.toUpperCase() || "U";
-  const userFullName = data.first_name ? `${data.first_name} ${data.last_name || ""}` : "User";
+  // Close bottom sheet
+  const closeMobileSheet = () => {
+    setMobileSheetOpen(false);
+  };
 
-  // Render components inside the right column tab view
+  // Render content for bottom sheet or desktop
   const renderTabContent = () => {
-    if (activeTab === "overview") {
-      const latestOrder = orders[0];
+    return (
+      <>
+        {activeTab === "profile" && (
+          <div className="profile-info-section">
+            <div className="profile-form-section">
+              <div className="profile-input-group-row">
+                <div className="profile-form-field">
+                  <label>First Name</label>
+                  <input
+                    value={data.first_name || ""}
+                    onChange={(e) => setData({ ...data, first_name: e.target.value })}
+                    placeholder="Enter first name"
+                  />
+                </div>
+                <div className="profile-form-field">
+                  <label>Last Name</label>
+                  <input
+                    value={data.last_name || ""}
+                    onChange={(e) => setData({ ...data, last_name: e.target.value })}
+                    placeholder="Enter last name"
+                  />
+                </div>
+              </div>
 
-      return (
-        <div className="overview-hub">
-          {/* LOYALTY AND WALLET GRID */}
-          <div className="overview-grid">
-            <div className="overview-card loyalty-card-premium">
-              <div className="loyalty-header">
-                <div>
-                  <span className="badge-loyalty">Royale Club</span>
-                  <h3>Loyalty Rewards</h3>
+              <div className="profile-form-field">
+                <label>Gender</label>
+                <div className="profile-gender-selector">
+                  <div
+                    className={`profile-gender-option ${data.gender === "Male" ? "selected" : ""}`}
+                    onClick={() => setData({ ...data, gender: "Male" })}
+                  >
+                    <i className="bi bi-gender-male"></i> Male
+                  </div>
+                  <div
+                    className={`profile-gender-option ${data.gender === "Female" ? "selected" : ""}`}
+                    onClick={() => setData({ ...data, gender: "Female" })}
+                  >
+                    <i className="bi bi-gender-female"></i> Female
+                  </div>
                 </div>
-                <div className="loyalty-points-display">
-                  <span className="points-number">{loyaltyPoints}</span>
-                  <span className="points-label">Pts</span>
-                </div>
               </div>
-              <p className="loyalty-subtext">Unlock Platinum status at {nextMilestone} points</p>
-              <div className="loyalty-progress-container">
-                <div className="loyalty-progress-bar" style={{ width: `${loyaltyProgress}%` }}></div>
-              </div>
-              <div className="loyalty-footer">
-                <span>{Math.floor(loyaltyProgress)}% Completed</span>
-                <span>Tier: Gold Member</span>
-              </div>
-            </div>
 
-            <div className="overview-card wallet-card-premium">
-              <div className="wallet-header">
-                <div>
-                  <span className="badge-wallet"><i className="bi bi-wallet2"></i> J-Wallet</span>
-                  <h3>Store Credits</h3>
+              <div className="profile-input-group-row">
+                <div className="profile-form-field">
+                  <label>Email Address</label>
+                  <input
+                    value={data.email || ""}
+                    disabled
+                    placeholder="Not provided"
+                  />
                 </div>
-                <div className="wallet-amount-display">
-                  ₹{walletBalance.toLocaleString("en-IN")}
+                <div className="profile-form-field">
+                  <label>Phone Number</label>
+                  <input
+                    value={data.phone || ""}
+                    disabled
+                    placeholder="Not provided"
+                  />
                 </div>
               </div>
-              <p className="wallet-subtext">Use credits seamlessly at checkout on sarees & lehengas.</p>
-              <button className="shop-now-mini-btn" onClick={() => navigate("/all-products")}>
-                Shop Now <i className="bi bi-arrow-right-short"></i>
+
+              <button className="profile-save-profile-btn" onClick={handleUpdate} disabled={updatingProfile}>
+                {updatingProfile ? (
+                  <>
+                    <i className="bi bi-hourglass-split"></i> Saving...
+                  </>
+                ) : (
+                  "Save Profile Changes"
+                )}
               </button>
             </div>
           </div>
+        )}
 
-          {/* LATEST ORDER TRACKING */}
-          <div className="overview-section-card">
-            <div className="section-card-header">
-              <h4>Active / Recent Order Tracker</h4>
-              {orders.length > 0 && (
-                <button className="view-all-link-btn" onClick={() => setActiveTab("orders")}>
-                  View All Orders
-                </button>
-              )}
-            </div>
+        {activeTab === "address" && (
+          <div className="profile-address-section">
+            <AddressSection />
+          </div>
+        )}
 
-            {orders.length === 0 ? (
-              <div className="empty-order-overview">
-                <i className="bi bi-cart-x"></i>
-                <p>No active or past orders found.</p>
-                <button className="shop-btn-elegant" onClick={() => navigate("/all-products")}>
-                  Explore Handloom Collections
-                </button>
+        {activeTab === "orders" && (
+          <div className="profile-orders-section">
+            {orders.length === 0 && !loading.orders && loadedTabs.orders ? (
+              <div className="profile-empty-orders">
+                <i className="bi bi-bag-x"></i>
+                <p>You haven't placed any orders yet.</p>
+                <button className="profile-shop-now-btn" onClick={() => navigate("/all-products")}>Shop Now</button>
               </div>
             ) : (
-              <div className="latest-order-tracker">
-                <div className="order-summary-header">
-                  <div>
-                    <span className="order-id-lbl">Order ID: </span>
-                    <span className="order-id-val">#{latestOrder.id}</span>
-                  </div>
-                  <span className="order-date-val">{new Date(latestOrder.created_at).toLocaleDateString()}</span>
-                </div>
+              <div className="profile-orders-list">
+                {orders.map(o => (
+                  <div key={o.id} className="profile-order-item-card-flip" onClick={() => navigate(`/order/${o.id}`)}>
+                    <div className="profile-order-main-header">
+                      <div className="profile-order-info-brief">
+                        <span className={`profile-status-dot ${o.order_status.toLowerCase()}`}></span>
+                        <span className="profile-order-status-text">{o.order_status}</span>
+                        <span className="profile-dot-sep">•</span>
+                        <span className="profile-order-date-text">{new Date(o.created_at).toLocaleDateString()}</span>
+                      </div>
+                      <i className="bi bi-chevron-right"></i>
+                    </div>
 
-                <div className="order-tracker-product-row">
-                  <div className="prod-img">
-                    <LazyImage 
-                      src={getImageUrl(latestOrder.items?.[0]?.image)} 
-                      alt={latestOrder.items?.[0]?.name}
-                    />
-                  </div>
-                  <div className="prod-meta-info">
-                    <h5>{latestOrder.items?.[0]?.name || "Luxury Saree"}</h5>
-                    <p className="price-tag">₹{latestOrder.total_amount} ({latestOrder.items?.length || 1} Item)</p>
-                  </div>
-                </div>
+                    <div className="profile-order-products-preview">
+                      {o.items && o.items.slice(0, 2).map((item, idx) => (
+                        <div key={idx} className="profile-order-product-row">
+                          <div className="profile-prod-img">
+                            <LazyImage
+                              src={getImageUrl(item.image)}
+                              alt={item.name}
+                              className="profile-order-product-image"
+                            />
+                          </div>
+                          <div className="profile-prod-details">
+                            <h4 className="profile-prod-name">{item.name}</h4>
+                            <p className="profile-prod-meta">Quantity: {item.quantity} • ₹{item.price}</p>
+                          </div>
+                        </div>
+                      ))}
+                      {o.items && o.items.length > 2 && (
+                        <div className="profile-more-items">+{o.items.length - 2} more items</div>
+                      )}
+                    </div>
 
-                {/* TRACKING BAR */}
-                <div className="tracking-timeline-container">
-                  <div className="timeline-progress-line">
-                    <div 
-                      className="timeline-progress-active" 
-                      style={{
-                        width: latestOrder.order_status?.toLowerCase() === "delivered" ? "100%" :
-                               latestOrder.order_status?.toLowerCase() === "shipped" ? "66%" :
-                               latestOrder.order_status?.toLowerCase() === "processing" ? "33%" : "0%"
-                      }}
-                    ></div>
-                  </div>
-                  <div className="timeline-steps">
-                    <div className={`step-node active`}>
-                      <span className="node-icon"><i className="bi bi-check-lg"></i></span>
-                      <span className="node-label">Placed</span>
-                    </div>
-                    <div className={`step-node ${["processing", "shipped", "delivered"].includes(latestOrder.order_status?.toLowerCase()) ? "active" : ""}`}>
-                      <span className="node-icon"><i className="bi bi-gear-fill"></i></span>
-                      <span className="node-label">Processing</span>
-                    </div>
-                    <div className={`step-node ${["shipped", "delivered"].includes(latestOrder.order_status?.toLowerCase()) ? "active" : ""}`}>
-                      <span className="node-icon"><i className="bi bi-truck"></i></span>
-                      <span className="node-label">Shipped</span>
-                    </div>
-                    <div className={`step-node ${latestOrder.order_status?.toLowerCase() === "delivered" ? "active" : ""}`}>
-                      <span className="node-icon"><i className="bi bi-house-heart-fill"></i></span>
-                      <span className="node-label">Delivered</span>
+                    <div className="profile-order-footer">
+                      <span className="profile-total-label">Total Amount: <strong>₹{o.total_amount}</strong></span>
+                      <span className="profile-view-details-link">View Details <i className="bi bi-arrow-right"></i></span>
                     </div>
                   </div>
-                </div>
-
-                <div className="tracker-footer">
-                  <button className="btn-track-action" onClick={() => navigate(`/order/${latestOrder.id}`)}>
-                    Detailed Tracking Details <i className="bi bi-chevron-right"></i>
-                  </button>
-                </div>
+                ))}
               </div>
             )}
           </div>
+        )}
 
-          {/* DYNAMIC TWO COLUMN WIDGETS BELOW (COUPONS & WISHLIST) */}
-          <div className="overview-two-columns">
-            {/* WISHLIST PEEK */}
-            <div className="overview-section-card wishlist-peek-card">
-              <div className="section-card-header">
-                <h4>My Wishlist Items ({wishlistItems.length})</h4>
-                {wishlistItems.length > 0 && (
-                  <button className="view-all-link-btn" onClick={() => navigate("/wishlist")}>
-                    Go to Wishlist
-                  </button>
-                )}
+        {activeTab === "returns" && (
+          <div className="profile-returns-section">
+            {returns.length === 0 && !loading.returns && loadedTabs.returns ? (
+              <div className="profile-empty-returns">
+                <i className="bi bi-shield-check"></i>
+                <p>No active return requests.</p>
               </div>
-              {wishlistItems.length === 0 ? (
-                <div className="empty-wishlist-peek">
-                  <i className="bi bi-heart"></i>
-                  <p>Your wishlist is empty</p>
-                  <span onClick={() => navigate("/all-products")}>Browse Sarees</span>
-                </div>
-              ) : (
-                <div className="wishlist-peek-list">
-                  {wishlistItems.slice(0, 3).map((item) => (
-                    <div key={item.id} className="wishlist-peek-item" onClick={() => navigate(`/product/${item.uuid || item.id}/${item.slug || ""}`)}>
-                      <div className="wishlist-peek-img">
-                        <LazyImage src={getImageUrl(item.main_image_url || item.image)} alt={item.name} />
-                      </div>
-                      <div className="wishlist-peek-info">
-                        <h6>{item.name}</h6>
-                        <p>₹{item.price}</p>
-                      </div>
-                      <i className="bi bi-chevron-right arrow-go"></i>
+            ) : (
+              <div className="profile-returns-list">
+                {returns.map(r => (
+                  <div key={r.id} className="profile-return-request-card">
+                    <div className="profile-return-header">
+                      <span className="profile-order-ref">Order #{r.order_id}</span>
+                      <span className={`profile-status-pill ${r.status.toLowerCase()}`}>{r.status}</span>
                     </div>
-                  ))}
-                </div>
-              )}
-            </div>
-
-            {/* EXCLUSIVE COUPONS */}
-            <div className="overview-section-card coupons-card">
-              <div className="section-card-header">
-                <h4>Exclusive Offers For You</h4>
-              </div>
-              <div className="coupons-list">
-                <div className="coupon-item">
-                  <div className="coupon-left">
-                    <span className="discount-txt">10% OFF</span>
-                    <span className="label-txt">Handlooms</span>
-                  </div>
-                  <div className="coupon-right">
-                    <p className="coupon-desc">Use code for flat 10% off on all premium handloom sarees.</p>
-                    <button 
-                      className={`copy-code-btn ${copiedCode === 'JAYASILK10' ? 'copied' : ''}`}
-                      onClick={() => copyCouponCode('JAYASILK10')}
-                    >
-                      {copiedCode === 'JAYASILK10' ? 'Copied!' : 'JAYASILK10'}
-                    </button>
-                  </div>
-                </div>
-
-                <div className="coupon-item">
-                  <div className="coupon-left">
-                    <span className="discount-txt">₹500 OFF</span>
-                    <span className="label-txt">Wedding</span>
-                  </div>
-                  <div className="coupon-right">
-                    <p className="coupon-desc">Get extra ₹500 off on our designer bridal collection.</p>
-                    <button 
-                      className={`copy-code-btn ${copiedCode === 'BRIDAL500' ? 'copied' : ''}`}
-                      onClick={() => copyCouponCode('BRIDAL500')}
-                    >
-                      {copiedCode === 'BRIDAL500' ? 'Copied!' : 'BRIDAL500'}
-                    </button>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      );
-    }
-
-    if (activeTab === "orders") {
-      return (
-        <div className="profile-orders-section">
-          {orders.length === 0 && !loading.orders && loadedTabs.orders ? (
-            <div className="empty-orders">
-              <i className="bi bi-bag-x"></i>
-              <p>You haven't placed any orders yet.</p>
-              <button className="shop-now-btn" onClick={() => navigate("/all-products")}>Shop Now</button>
-            </div>
-          ) : (
-            <div className="orders-list">
-              {orders.map(o => (
-                <div key={o.id} className="order-item-card-flip" onClick={() => navigate(`/order/${o.id}`)}>
-                  <div className="order-main-header">
-                    <div className="order-info-brief">
-                      <span className={`status-dot ${o.order_status?.toLowerCase()}`}></span>
-                      <span className="order-status-text">{o.order_status}</span>
-                      <span className="dot-sep">•</span>
-                      <span className="order-date-text">{new Date(o.created_at).toLocaleDateString()}</span>
-                    </div>
-                    <i className="bi bi-chevron-right"></i>
-                  </div>
-
-                  <div className="order-products-preview">
-                    {o.items && o.items.slice(0, 2).map((item, idx) => (
-                      <div key={idx} className="order-product-row">
-                        <div className="prod-img">
-                          <LazyImage 
-                            src={getImageUrl(item.image)} 
-                            alt={item.name}
-                            className="order-product-image"
+                    <div className="profile-return-body">
+                      <div className="profile-video-container">
+                        {r.video_url && (
+                          <video
+                            src={`${API_URL.replace("/api", "")}${r.video_url}`}
+                            className="profile-unboxing-video-preview"
+                            controls
+                            preload="metadata"
                           />
-                        </div>
-                        <div className="prod-details">
-                          <h4 className="prod-name">{item.name}</h4>
-                          <p className="prod-meta">Quantity: {item.quantity} • ₹{item.price}</p>
-                        </div>
+                        )}
                       </div>
-                    ))}
-                    {o.items && o.items.length > 2 && (
-                      <div className="more-items">+{o.items.length - 2} more items</div>
-                    )}
+                      <div className="profile-return-info">
+                        <p className="label">Reason:</p>
+                        <p className="profile-reason-text">{r.reason || "No reason provided"}</p>
+                        {r.admin_comment && (
+                          <div className="profile-admin-remark">
+                            <strong>Admin Reply:</strong>
+                            <p>{r.admin_comment}</p>
+                          </div>
+                        )}
+                      </div>
+                    </div>
                   </div>
-
-                  <div className="order-footer">
-                    <span className="total-label">Total Amount: <strong>₹{o.total_amount}</strong></span>
-                    <span className="view-details-link">View Details <i className="bi bi-arrow-right"></i></span>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      );
-    }
-
-    if (activeTab === "address") {
-      return (
-        <div className="profile-address-section">
-          <AddressSection />
-        </div>
-      );
-    }
-
-    if (activeTab === "returns") {
-      return (
-        <div className="profile-returns-section">
-          <div className="returns-disclaimer">
-            <i className="bi bi-info-circle-fill"></i>
-            <p>Note: Exchange and return requests are only accepted with unboxing video verification.</p>
+                ))}
+              </div>
+            )}
           </div>
-          {returns.length === 0 && !loading.returns && loadedTabs.returns ? (
-            <div className="empty-returns">
-              <i className="bi bi-shield-check"></i>
-              <p>No active return or exchange requests.</p>
-            </div>
-          ) : (
-            <div className="returns-list">
-              {returns.map(r => (
-                <div key={r.id} className="return-request-card">
-                  <div className="return-header">
-                    <span className="order-ref">Order #{r.order_id}</span>
-                    <span className={`status-pill ${r.status?.toLowerCase()}`}>{r.status}</span>
-                  </div>
-                  <div className="return-body">
-                    <div className="video-container">
-                      {r.video_url && (
-                        <video 
-                          src={`${API_URL.replace("/api", "")}${r.video_url}`} 
-                          className="unboxing-video-preview" 
-                          controls 
-                          preload="metadata"
-                        />
-                      )}
-                    </div>
-                    <div className="return-info">
-                      <p className="label">Reason:</p>
-                      <p className="reason-text">{r.reason || "No reason provided"}</p>
-                      {r.admin_comment && (
-                        <div className="admin-remark">
-                          <strong>Admin Reply:</strong>
-                          <p>{r.admin_comment}</p>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      );
-    }
+        )}
+      </>
+    );
   };
 
-  const renderLoadingSkeleton = () => {
-    if (activeTab === "orders" && loading.orders) return <OrdersSkeleton />;
-    if (activeTab === "returns" && loading.returns) return <ReturnsSkeleton />;
+  // Render loading skeleton for bottom sheet
+  const renderLoadingContent = () => {
+    if (activeTab === "profile" && loading.profile && !loadedTabs.profile) {
+      return <ProfileFormSkeleton />;
+    }
+    if (activeTab === "orders" && loading.orders && !loadedTabs.orders) {
+      return <OrdersSkeleton />;
+    }
+    if (activeTab === "returns" && loading.returns && !loadedTabs.returns) {
+      return <ReturnsSkeleton />;
+    }
     return renderTabContent();
   };
 
   return (
-    <div className="profile-wrapper">
+    <div className="profile-container">
       {/* CUSTOM TOAST NOTIFICATION */}
       {toast.show && (
-        <div className={`custom-toast ${toast.type}`}>
-          <div className="toast-content">
-            <div className={`toast-icon ${toast.type}`}>
+        <div className={`profile-custom-toast ${toast.type}`}>
+          <div className="profile-toast-content">
+            <div className={`profile-toast-icon ${toast.type}`}>
               {toast.type === 'success' && <i className="bi bi-check-circle-fill"></i>}
               {toast.type === 'error' && <i className="bi bi-exclamation-circle-fill"></i>}
               {toast.type === 'info' && <i className="bi bi-geo-alt-fill"></i>}
             </div>
-            <span className="toast-msg">{toast.message}</span>
-            <button className="toast-close" onClick={() => setToast({ ...toast, show: false })}>
+            <span className="profile-toast-msg">{toast.message}</span>
+            <button className="profile-toast-close" onClick={() => setToast({ ...toast, show: false })}>
               <i className="bi bi-x"></i>
             </button>
           </div>
         </div>
       )}
 
-      {/* TOP DECORATIVE BANNER */}
-      <div className="profile-luxury-banner">
-        <div className="banner-overlay-gradient"></div>
-        <div className="banner-content-container">
-          <div className="banner-user-info">
-            <div className="user-avatar-gold">
-              {loading.profile && !data.first_name ? (
-                <div className="avatar-skeleton"></div>
-              ) : (
-                userNameInitials
-              )}
-            </div>
-            <div className="user-text-meta">
-              <span className="badge-member-tier"><i className="bi bi-gem"></i> Gold Royale</span>
-              <h2>Namaste, {loading.profile && !data.first_name ? "User" : data.first_name}!</h2>
-              <p className="welcome-tagline">Welcome to your JAYASTRA account dashboard. Explore your handloom legacy.</p>
-            </div>
-          </div>
-
-          {/* BANNER STATS COUNTER */}
-          <div className="banner-stats-counters">
-            <div className="stat-glass-item">
-              <span className="stat-val">{orders.length}</span>
-              <span className="stat-lbl">Orders placed</span>
-            </div>
-            <div className="stat-glass-item">
-              <span className="stat-val">{wishlistItems.length}</span>
-              <span className="stat-lbl">Saved Items</span>
-            </div>
-            <div className="stat-glass-item">
-              <span className="stat-val">{loyaltyPoints}</span>
-              <span className="stat-lbl">Reward Pts</span>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* MAIN LAYOUT WRAPPER */}
-      <div className="profile-layout-container">
-        
-        {/* LEFT COLUMN: USER DETAILS */}
-        <div className="layout-column-left">
-          <div className="user-details-card">
-            <div className="card-header-line">
-              <h3>Personal Profile Details</h3>
-              <p>Review and update your personal credentials below</p>
-            </div>
-
+      {/* SIDEBAR */}
+      <div className="profile-sidebar">
+        <div className="profile-user-card">
+          <div className="profile-avatar">
             {loading.profile && !data.first_name ? (
-              <ProfileFormSkeleton />
+              <div className="profile-avatar-skeleton"></div>
             ) : (
-              <div className="form-section-static">
-                <div className="form-field-item">
-                  <label>First Name</label>
-                  <input
-                    value={data.first_name || ""}
-                    onChange={(e) => setData({ ...data, first_name: e.target.value })}
-                    placeholder="Enter first name"
-                    className="premium-input"
-                  />
-                </div>
-                <div className="form-field-item">
-                  <label>Last Name</label>
-                  <input
-                    value={data.last_name || ""}
-                    onChange={(e) => setData({ ...data, last_name: e.target.value })}
-                    placeholder="Enter last name"
-                    className="premium-input"
-                  />
-                </div>
-
-                <div className="form-field-item">
-                  <label>Gender</label>
-                  <div className="gender-pill-container">
-                    <button
-                      type="button"
-                      className={`gender-pill-btn ${data.gender === "Male" ? "active" : ""}`}
-                      onClick={() => setData({ ...data, gender: "Male" })}
-                    >
-                      <i className="bi bi-gender-male"></i> Male
-                    </button>
-                    <button
-                      type="button"
-                      className={`gender-pill-btn ${data.gender === "Female" ? "active" : ""}`}
-                      onClick={() => setData({ ...data, gender: "Female" })}
-                    >
-                      <i className="bi bi-gender-female"></i> Female
-                    </button>
-                  </div>
-                </div>
-
-                <div className="form-field-item">
-                  <label>Email Address</label>
-                  <input
-                    value={data.email || ""}
-                    disabled
-                    placeholder="Not registered"
-                    className="premium-input disabled"
-                  />
-                  <span className="input-hint-locked"><i className="bi bi-lock-fill"></i> Email address is verified and locked</span>
-                </div>
-
-                <div className="form-field-item">
-                  <label>Phone Number</label>
-                  <input
-                    value={data.phone || ""}
-                    disabled
-                    placeholder="Not linked"
-                    className="premium-input disabled"
-                  />
-                  <span className="input-hint-locked"><i className="bi bi-lock-fill"></i> Phone number is locked</span>
-                </div>
-
-                <button 
-                  className="btn-premium-save" 
-                  onClick={handleUpdate} 
-                  disabled={updatingProfile}
-                >
-                  {updatingProfile ? (
-                    <>
-                      <span className="spinner-border-mini"></span> Updating...
-                    </>
-                  ) : (
-                    <>
-                      <i className="bi bi-shield-check"></i> Save Profile Changes
-                    </>
-                  )}
-                </button>
-
-                <div 
-                  className="btn-logout-sidebar" 
-                  onClick={() => {
-                    localStorage.removeItem("token");
-                    window.location.href = "/";
-                  }}
-                >
-                  <i className="bi bi-box-arrow-right"></i> Sign Out of Account
-                </div>
-              </div>
+              `${data?.first_name?.[0] || ""}${data?.last_name?.[0] || ""}`.toUpperCase() || "J"
             )}
           </div>
+          <div className="profile-user-meta">
+            <p>Welcome back,</p>
+            <h4>{(data.first_name)} {(data.last_name)}</h4>
+          </div>
         </div>
 
-        {/* RIGHT COLUMN: TABS & CONTENT AREA */}
-        <div className="layout-column-right">
-          
-          {/* TAB NAVIGATION BAR */}
-          <div className="premium-tab-nav">
-            <button 
-              className={`tab-nav-btn ${activeTab === "overview" ? "active" : ""}`}
-              onClick={() => setActiveTab("overview")}
-            >
-              <i className="bi bi-grid-1x2"></i> Overview
-            </button>
-            <button 
-              className={`tab-nav-btn ${activeTab === "orders" ? "active" : ""}`}
-              onClick={() => setActiveTab("orders")}
-            >
-              <i className="bi bi-bag"></i> My Orders
-            </button>
-            <button 
-              className={`tab-nav-btn ${activeTab === "address" ? "active" : ""}`}
-              onClick={() => setActiveTab("address")}
-            >
-              <i className="bi bi-geo-alt"></i> Addresses
-            </button>
-            <button 
-              className={`tab-nav-btn ${activeTab === "returns" ? "active" : ""}`}
-              onClick={() => setActiveTab("returns")}
-            >
-              <i className="bi bi-arrow-return-left"></i> Returns
-            </button>
-          </div>
-
-          {/* DYNAMIC CONTENT CONTAINER */}
-          <div className="premium-tab-content-box">
-            <div className="content-pane-header">
-              <h2>
-                {activeTab === "overview" && "Dashboard Overview"}
-                {activeTab === "orders" && "My Orders History"}
-                {activeTab === "address" && "Manage Addresses"}
-                {activeTab === "returns" && "Exchange Requests"}
-              </h2>
-              <p>
-                {activeTab === "overview" && "Track recent activities, view rewards and exclusive discounts."}
-                {activeTab === "orders" && "Review details and track all your boutique purchases."}
-                {activeTab === "address" && "Add, edit, or configure your default shipping coordinates."}
-                {activeTab === "returns" && "Check status of return requests or file new ones with unboxing video."}
-              </p>
+        <div className="profile-nav-card">
+          <div
+            className={`profile-nav-item ${activeTab === "profile" ? "active" : ""}`}
+            onClick={() => isMobile ? handleMobileTabClick("profile") : setActiveTab("profile")}
+          >
+            <div className="profile-nav-item-content">
+              <i className="bi bi-person-circle"></i>
+              <span>Personal Information</span>
             </div>
-            {renderLoadingSkeleton()}
+            <i className="bi bi-chevron-right profile-chevron-icon"></i>
+          </div>
+          <div
+            className={`profile-nav-item ${activeTab === "address" ? "active" : ""}`}
+            onClick={() => isMobile ? handleMobileTabClick("address") : setActiveTab("address")}
+          >
+            <div className="profile-nav-item-content">
+              <i className="bi bi-geo-alt"></i>
+              <span>Manage Addresses</span>
+            </div>
+            <i className="bi bi-chevron-right profile-chevron-icon"></i>
+          </div>
+          <div
+            className={`profile-nav-item ${activeTab === "orders" ? "active" : ""}`}
+            onClick={() => isMobile ? handleMobileTabClick("orders") : setActiveTab("orders")}
+          >
+            <div className="profile-nav-item-content">
+              <i className="bi bi-bag"></i>
+              <span>My Orders</span>
+            </div>
+            <i className="bi bi-chevron-right profile-chevron-icon"></i>
+          </div>
+          <div
+            className={`profile-nav-item ${activeTab === "returns" ? "active" : ""}`}
+            onClick={() => isMobile ? handleMobileTabClick("returns") : setActiveTab("returns")}
+          >
+            <div className="profile-nav-item-content">
+              <i className="bi bi-arrow-return-left"></i>
+              <span>My Returns</span>
+            </div>
+            <i className="bi bi-chevron-right profile-chevron-icon"></i>
+          </div>
+          <div
+            className="profile-nav-item profile-logout"
+            onClick={() => {
+              localStorage.removeItem("token");
+              window.location.href = "/";
+            }}
+          >
+            <div className="profile-nav-item-content">
+              <i className="bi bi-box-arrow-right"></i>
+              <span>Logout</span>
+            </div>
+            <i className="bi bi-chevron-right profile-chevron-icon"></i>
           </div>
         </div>
-
       </div>
+
+      {/* DESKTOP CONTENT AREA */}
+      {!isMobile && (
+        <div className="profile-content-area desktop-content">
+          <div className="profile-content-header">
+            <h2>
+              {activeTab === "profile" && "Personal Information"}
+              {activeTab === "address" && "Manage Addresses"}
+              {activeTab === "orders" && "My Orders History"}
+              {activeTab === "returns" && "Exchange Requests"}
+            </h2>
+            <p>
+              {activeTab === "profile" && "Update your personal details here"}
+              {activeTab === "address" && "Add, edit or remove your shipping addresses"}
+              {activeTab === "orders" && "Track and manage your recent purchases"}
+              {activeTab === "returns" && "* Returns are only accepted with unboxing video verification"}
+            </p>
+          </div>
+          <div className="profile-content-wrapper">
+            {isLoading && (
+              <div className="profile-content-loader-overlay">
+                <div className="profile-content-spinner"></div>
+              </div>
+            )}
+            {renderTabContent()}
+          </div>
+        </div>
+      )}
+
+      {/* MOBILE BOTTOM SHEET */}
+      {isMobile && (
+        <>
+          <div
+            className={`profile-mobile-sheet-overlay ${mobileSheetOpen ? 'open' : ''}`}
+            onClick={closeMobileSheet}
+          />
+          <div className={`profile-mobile-bottom-sheet ${mobileSheetOpen ? 'open' : ''}`}>
+            <div className="profile-sheet-header">
+              <div className="profile-sheet-drag-handle"></div>
+              <div className="profile-sheet-title-wrapper">
+                <h3 className="profile-sheet-title">
+                  {activeTab === "profile" && "Personal Information"}
+                  {activeTab === "address" && "Manage Addresses"}
+                  {activeTab === "orders" && "My Orders"}
+                  {activeTab === "returns" && "Exchange Requests"}
+                </h3>
+                <button className="profile-sheet-close-btn" onClick={closeMobileSheet}>
+                  <i className="bi bi-x-lg"></i>
+                </button>
+              </div>
+            </div>
+            <div className="profile-sheet-content-wrapper">
+              {isLoading && (
+                <div className="profile-sheet-loader-overlay">
+                  <div className="profile-content-spinner"></div>
+                </div>
+              )}
+              <div className="profile-sheet-content">
+                {renderLoadingContent()}
+              </div>
+            </div>
+          </div>
+        </>
+      )}
 
       <ExchangeModal
         order={selectedOrder}
