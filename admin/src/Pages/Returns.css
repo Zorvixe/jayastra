@@ -45,7 +45,6 @@
     align-items: center;
     flex-wrap: wrap;
     gap: 20px;
-    box-shadow: var(--return-shadow-sm);
     border-radius: 20px;
     margin-bottom: 10px;
 }

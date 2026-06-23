@@ -1,4 +1,4 @@
-// Categories.js - Updated version with global categories and mobile search slide-down
+// Categories.js - Frontend search & pagination
 import React, { useState, useEffect, useRef } from "react";
 import axios from '../utils/axiosConfig';
 import "./Categories.css";
@@ -34,14 +34,10 @@ const Categories = () => {
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const searchRef = useRef(null);
 
-  const [pagination, setPagination] = useState({
-    totalCount: 0,
-    totalPages: 1,
-    currentPage: 1,
-    limit: 10
-  });
-
+  // ----- Frontend search & pagination -----
   const [search, setSearch] = useState("");
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
 
   const [form, setForm] = useState({
     name: "",
@@ -73,15 +69,16 @@ const Categories = () => {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  const fetchCategories = async (pageOverride) => {
+  // Fetch all categories once on mount
+  const fetchAllCategories = async () => {
     try {
       setInitialLoading(true);
-      const pageToFetch = pageOverride || pagination.currentPage || 1;
+      // High limit to get all categories
       const res = await axios.get(`${API_URL}/admin/categories`, {
         params: {
-          page: pageToFetch,
-          limit: pagination.limit || 10,
-          search: search
+          page: 1,
+          limit: 9999,
+          search: "" // we'll search client-side
         },
         headers: {
           Authorization: `Bearer ${token}`
@@ -93,9 +90,6 @@ const Categories = () => {
           is_active: c.is_active !== false
         }))
       );
-      if (res.data.pagination) {
-        setPagination(res.data.pagination);
-      }
     } catch (err) {
       toast.error("Failed to load categories");
     } finally {
@@ -104,19 +98,12 @@ const Categories = () => {
   };
 
   useEffect(() => {
-    fetchCategories(pagination.currentPage);
-  }, [pagination.currentPage]);
+    fetchAllCategories();
+  }, []);
 
-  // Debounce search
+  // Reset page when search changes
   useEffect(() => {
-    const timer = setTimeout(() => {
-      if (pagination.currentPage !== 1) {
-        setPagination(prev => ({ ...prev, currentPage: 1 }));
-      } else {
-        fetchCategories(1);
-      }
-    }, 500);
-    return () => clearTimeout(timer);
+    setCurrentPage(1);
   }, [search]);
 
   // Listen for mobile FAB event (if used elsewhere)
@@ -130,6 +117,24 @@ const Categories = () => {
     };
   }, []);
 
+  // ----- Frontend filtering -----
+  const filteredCategories = categories.filter((cat) => {
+    const term = search.toLowerCase().trim();
+    if (!term) return true;
+    return (
+      cat.name?.toLowerCase().includes(term) ||
+      cat.description?.toLowerCase().includes(term)
+    );
+  });
+
+  // ----- Frontend pagination -----
+  const totalItems = filteredCategories.length;
+  const totalPages = Math.ceil(totalItems / itemsPerPage) || 1;
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = Math.min(startIndex + itemsPerPage, totalItems);
+  const currentItems = filteredCategories.slice(startIndex, endIndex);
+
+  // ----- Drag & drop (works on the full list, order saved via API) -----
   const handleDragStart = (e, index) => {
     if (userRole !== 'super_admin') {
       e.preventDefault();
@@ -173,6 +178,7 @@ const Categories = () => {
     }
   };
 
+  // ----- Modal handlers -----
   const resetForm = () => {
     setForm({
       name: "",
@@ -232,7 +238,7 @@ const Categories = () => {
         });
         toast.success("Category created successfully");
       }
-      fetchCategories();
+      fetchAllCategories(); // refresh list
       handleCloseModal();
     } catch (err) {
       toast.error(err.response?.data?.message || "Operation failed");
@@ -249,7 +255,7 @@ const Categories = () => {
         headers: { Authorization: `Bearer ${token}` }
       });
       toast.success("Category deleted successfully");
-      fetchCategories();
+      fetchAllCategories();
       setConfirmDeleteId(null);
     } catch (err) {
       toast.error(err.response?.data?.message || "Delete failed");
@@ -279,6 +285,9 @@ const Categories = () => {
   };
 
   const isSuperAdmin = userRole === 'super_admin';
+
+  // Determine if drag handles should be shown (no search and only one page)
+  const showDragHandles = isSuperAdmin && !search && totalPages === 1;
 
   return (
     <div className="cate-container">
@@ -363,7 +372,7 @@ const Categories = () => {
                   </div>
                 </td>
               </tr>
-            ) : categories.length === 0 ? (
+            ) : filteredCategories.length === 0 ? (
               <tr className="cate-empty-row">
                 <td colSpan={isSuperAdmin ? "6" : "5"}>
                   <div className="cate-empty-state">
@@ -373,88 +382,94 @@ const Categories = () => {
                 </td>
               </tr>
             ) : (
-              categories.map((main, index) => (
-                <tr
-                  key={main.id}
-                  className={`cate-main-row ${draggedItem === main ? 'dragging' : ''}`}
-                  draggable={isSuperAdmin && !search && pagination.totalPages === 1}
-                  onDragStart={(e) => handleDragStart(e, index)}
-                  onDragOver={(e) => { e.preventDefault(); handleDragOver(index); }}
-                  onDragEnd={handleDragEnd}
-                >
-                  {isSuperAdmin && (
-                    <td className="cate-drag-handle text-center">
-                      {(!search && pagination.totalPages === 1) && <i className="bi bi-grid-3x2-gap-fill"></i>}
-                    </td>
-                  )}
-                  <td className="cate-image-cell">
-                    {main.image_url ? (
-                      <img
-                        src={getImageUrl(main.image_url)}
-                        alt={main.name}
-                        className="cate-img-preview"
-                        onError={(e) => { e.target.src = "/assets/placeholder-category.jpg"; }}
-                      />
-                    ) : (
-                      <div className="cate-no-img-placeholder">
-                        <i className="bi bi-image text-muted"></i>
-                      </div>
+              currentItems.map((main, index) => {
+                // Compute the original index in the full categories array for drag/drop
+                const originalIndex = categories.indexOf(main);
+                return (
+                  <tr
+                    key={main.id}
+                    className={`cate-main-row ${draggedItem === main ? 'dragging' : ''}`}
+                    draggable={showDragHandles}
+                    onDragStart={(e) => handleDragStart(e, originalIndex)}
+                    onDragOver={(e) => { e.preventDefault(); handleDragOver(originalIndex); }}
+                    onDragEnd={handleDragEnd}
+                  >
+                    {isSuperAdmin && (
+                      <td className="cate-drag-handle text-center">
+                        {showDragHandles && <i className="bi bi-grid-3x2-gap-fill"></i>}
+                      </td>
                     )}
-                  </td>
-                  <td className="cate-name-cell">
-                    <span className="cate-name">{main.name}</span>
-                  </td>
-                  <td className="cate-desc-cell">
-                    <span className="cate-description">{main.description || "No description provided."}</span>
-                  </td>
-                  <td className="cate-status-cell">
-                    <span className={`cate-badge ${main.is_active ? "cate-badge-active" : "cate-badge-inactive"}`}>
-                      <span className="status-dot"></span>
-                      {main.is_active ? "Active" : "Inactive"}
-                    </span>
-                  </td>
-                  <td className="cate-actions-cell text-center">
-                    <div className="cate-action-btns">
-                      <button className="cate-icon-btn edit" onClick={() => handleEdit(main)} title="Edit">
-                        <i className="bi bi-pencil"></i>
-                      </button>
-                      <button className="cate-icon-btn delete" onClick={() => setConfirmDeleteId(main.id)} title="Delete">
-                        <i className="bi bi-trash"></i>
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))
+                    <td className="cate-image-cell">
+                      {main.image_url ? (
+                        <img
+                          src={getImageUrl(main.image_url)}
+                          alt={main.name}
+                          className="cate-img-preview"
+                          onError={(e) => { e.target.src = "/assets/placeholder-category.jpg"; }}
+                        />
+                      ) : (
+                        <div className="cate-no-img-placeholder">
+                          <i className="bi bi-image text-muted"></i>
+                        </div>
+                      )}
+                    </td>
+                    <td className="cate-name-cell">
+                      <span className="cate-name">{main.name}</span>
+                    </td>
+                    <td className="cate-desc-cell">
+                      <span className="cate-description">{main.description || "No description provided."}</span>
+                    </td>
+                    <td className="cate-status-cell">
+                      <span className={`cate-badge ${main.is_active ? "cate-badge-active" : "cate-badge-inactive"}`}>
+                        <span className="status-dot"></span>
+                        {main.is_active ? "Active" : "Inactive"}
+                      </span>
+                    </td>
+                    <td className="cate-actions-cell text-center">
+                      <div className="cate-action-btns">
+                        <button className="cate-icon-btn edit" onClick={() => handleEdit(main)} title="Edit">
+                          <i className="bi bi-pencil"></i>
+                        </button>
+                        <button className="cate-icon-btn delete" onClick={() => setConfirmDeleteId(main.id)} title="Delete">
+                          <i className="bi bi-trash"></i>
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })
             )}
           </tbody>
         </table>
 
-        {!initialLoading && pagination && pagination.totalPages > 0 && (
+        {/* Frontend Pagination */}
+        {!initialLoading && totalItems > 0 && (
           <div className="pagination-wrapper mt-4">
             <div className="pagination-info">
-              Showing <b>{((pagination.currentPage || 1) - 1) * (pagination.limit || 10) + 1}</b> to <b>{Math.min((pagination.currentPage || 1) * (pagination.limit || 10), (pagination.totalCount || 0))}</b> of <b>{pagination.totalCount || 0}</b> categories
+              Showing <b>{startIndex + 1}</b> to <b>{endIndex}</b> of{" "}
+              <b>{totalItems}</b> categories
             </div>
             <div className="pagination-controls">
               <button
-                disabled={(pagination.currentPage || 1) === 1}
-                onClick={() => setPagination(prev => ({ ...prev, currentPage: (prev.currentPage || 1) - 1 }))}
+                disabled={currentPage === 1}
+                onClick={() => setCurrentPage(prev => prev - 1)}
               >
                 <i className="bi bi-chevron-left"></i> Previous
               </button>
 
-              {[...Array(pagination.totalPages || 1)].map((_, i) => (
+              {[...Array(totalPages)].map((_, i) => (
                 <button
                   key={i + 1}
-                  className={(pagination.currentPage || 1) === i + 1 ? "active" : ""}
-                  onClick={() => setPagination(prev => ({ ...prev, currentPage: i + 1 }))}
+                  className={currentPage === i + 1 ? "active" : ""}
+                  onClick={() => setCurrentPage(i + 1)}
                 >
                   {i + 1}
                 </button>
               ))}
 
               <button
-                disabled={(pagination.currentPage || 1) === (pagination.totalPages || 1)}
-                onClick={() => setPagination(prev => ({ ...prev, currentPage: (prev.currentPage || 1) + 1 }))}
+                disabled={currentPage === totalPages}
+                onClick={() => setCurrentPage(prev => prev + 1)}
               >
                 Next <i className="bi bi-chevron-right"></i>
               </button>
@@ -463,7 +478,7 @@ const Categories = () => {
         )}
       </div>
 
-      {/* ADD/EDIT MODAL */}
+      {/* ADD/EDIT MODAL - unchanged */}
       {showModal && (
         <>
           <div className="cate-modal-backdrop" onClick={handleCloseModal}></div>
@@ -581,7 +596,7 @@ const Categories = () => {
         </>
       )}
 
-      {/* CONFIRM DELETE MODAL */}
+      {/* CONFIRM DELETE MODAL - unchanged */}
       {confirmDeleteId && (
         <>
           <div className="cate-modal-backdrop confirm-backdrop" onClick={() => setConfirmDeleteId(null)}></div>

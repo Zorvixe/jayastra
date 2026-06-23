@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import axios from '../utils/axiosConfig'; // Adjust path as needed
+import axios from '../utils/axiosConfig';
 import { toast } from "react-toastify";
 import "./Returns.css";
 
@@ -18,14 +18,11 @@ const Returns = () => {
 
     const token = localStorage.getItem("token");
 
-    // Get user role from localStorage or decode from token
     useEffect(() => {
         const role = localStorage.getItem("userRole");
         const storedVendorId = localStorage.getItem("vendorId");
         setUserRole(role);
         if (storedVendorId) setVendorId(storedVendorId);
-        
-        // Try to decode role from token if not in localStorage
         if (!role && token) {
             try {
                 const payload = JSON.parse(atob(token.split('.')[1]));
@@ -63,7 +60,6 @@ const Returns = () => {
             toast.warn("Please provide an admin comment/remark");
             return;
         }
-
         setIsUpdating(true);
         try {
             await axios.put(`${API_URL}/admin/returns/${id}/status`,
@@ -92,29 +88,26 @@ const Returns = () => {
         setCurrentVideoUrl("");
     };
 
-    // Helper to check if user can update this return (vendor isolation)
     const canUpdateReturn = (returnItem) => {
         if (userRole === 'super_admin') return true;
-        return true; // Backend will handle authorization
+        return true;
     };
 
     if (loading) return (
-        <div className="dash-loader-overlay">
-            <div className="dash-loader-container">
-                <div className="dash-spinner"></div>
+        <div className="return-loader-overlay">
+            <div className="return-loader-container">
+                <div className="return-spinner"></div>
             </div>
         </div>
     );
 
-    // Get role display name
     const getRoleDisplay = () => {
-        if (userRole === 'super_admin') return "Super Admin View - All Vendors";
+        if (userRole === 'super_admin') return "Super Admin - All Vendors";
         if (userRole === 'admin') return "Admin View";
-        if (userRole === 'vendor') return "Vendor View - Your Products Only";
+        if (userRole === 'vendor') return "Vendor - Your Products";
         return "Returns Verification";
     };
 
-    // Get full video URL
     const getFullVideoUrl = (videoUrl) => {
         if (!videoUrl) return null;
         if (videoUrl.startsWith('http')) return videoUrl;
@@ -127,14 +120,14 @@ const Returns = () => {
                 <div className="return-header-content">
                     <h1>Return Verification</h1>
                     <p>Review customer unboxing videos and manage return requests</p>
-                    <div className="role-badge" style={{ marginTop: '8px', fontSize: '12px', opacity: 0.8 }}>
+                    <div className="role-badge">
                         <i className="bi bi-shield-lock"></i> {getRoleDisplay()}
                     </div>
                 </div>
                 <div className="return-stats">
                     <div className="return-stat-card">
                         <span className="return-stat-value">{returns.length}</span>
-                        <span className="return-stat-label">Total Requests</span>
+                        <span className="return-stat-label">Total</span>
                     </div>
                     <div className="return-stat-card">
                         <span className="return-stat-value">{returns.filter(r => r.status === 'Pending').length}</span>
@@ -150,7 +143,6 @@ const Returns = () => {
             </div>
 
             <div className="return-workspace">
-                {/* Requests Table */}
                 <div className="return-requests-section">
                     <div className="return-section-title">
                         <i className="bi bi-inbox"></i> Return Requests
@@ -171,7 +163,11 @@ const Returns = () => {
                             </thead>
                             <tbody>
                                 {returns.length === 0 ? (
-                                    <td><td colSpan={userRole === 'super_admin' ? 8 : 7} className="return-empty">No return requests found</td></td>
+                                    <tr>
+                                        <td colSpan={userRole === 'super_admin' ? 8 : 7} className="return-empty">
+                                            No return requests found
+                                        </td>
+                                    </tr>
                                 ) : (
                                     returns.map(r => (
                                         <tr key={r.id} className={`return-row ${selectedRequest?.id === r.id ? 'active' : ''}`}>
@@ -190,7 +186,7 @@ const Returns = () => {
                                             {userRole === 'super_admin' && (
                                                 <td data-label="Vendor">
                                                     <span className="vendor-tag">
-                                                        <i className="bi bi-shop"></i> Vendor #{r.vendor_id || 'N/A'}
+                                                        <i className="bi bi-shop"></i> #{r.vendor_id || 'N/A'}
                                                     </span>
                                                 </td>
                                             )}
@@ -200,7 +196,7 @@ const Returns = () => {
                                                         className="view-video-btn"
                                                         onClick={() => openVideoModal(r.video_url)}
                                                     >
-                                                        <i className="bi bi-play-circle"></i> Play Video
+                                                        <i className="bi bi-play-circle"></i> Play
                                                     </button>
                                                 ) : (
                                                     <span className="no-video-tag">No video</span>
@@ -211,7 +207,7 @@ const Returns = () => {
                                                     className={`return-review-btn ${selectedRequest?.id === r.id ? 'active' : ''}`}
                                                     onClick={() => setSelectedRequest(r)}
                                                 >
-                                                    {selectedRequest?.id === r.id ? 'Reviewing' : 'Review Request'}
+                                                    {selectedRequest?.id === r.id ? 'Reviewing' : 'Review'}
                                                 </button>
                                             </td>
                                         </tr>
@@ -222,7 +218,6 @@ const Returns = () => {
                     </div>
                 </div>
 
-                {/* Verification Panel - only shows when a request is selected */}
                 {selectedRequest && (
                     <div className="return-verification-panel">
                         <div className="return-panel-header">
@@ -230,8 +225,8 @@ const Returns = () => {
                                 <h3>Verification Panel</h3>
                                 <p>Order #{selectedRequest.order_id}</p>
                                 {userRole === 'super_admin' && selectedRequest.vendor_id && (
-                                    <small style={{ display: 'block', color: '#8E2139', marginTop: '4px' }}>
-                                        <i className="bi bi-shop"></i> Vendor ID: {selectedRequest.vendor_id}
+                                    <small className="panel-vendor-badge">
+                                        <i className="bi bi-shop"></i> Vendor: {selectedRequest.vendor_id}
                                     </small>
                                 )}
                             </div>
@@ -253,13 +248,13 @@ const Returns = () => {
                                     />
                                     <div className="video-play-overlay">
                                         <i className="bi bi-play-circle-fill"></i>
-                                        <span>Click to play full video</span>
+                                        <span>Click to play</span>
                                     </div>
                                 </div>
                             ) : (
                                 <div className="no-video-placeholder">
                                     <i className="bi bi-film"></i>
-                                    <p>No video uploaded</p>
+                                    <p>No video</p>
                                 </div>
                             )}
                         </div>
@@ -269,8 +264,8 @@ const Returns = () => {
                             <textarea
                                 value={adminComment}
                                 onChange={(e) => setAdminComment(e.target.value)}
-                                placeholder="Explain why you approve or reject this return..."
-                                rows="4"
+                                placeholder="Explain your decision..."
+                                rows="3"
                             />
                         </div>
 
@@ -280,24 +275,24 @@ const Returns = () => {
                                 disabled={isUpdating || selectedRequest.status !== 'Pending'}
                                 onClick={() => handleUpdateStatus(selectedRequest.id, 'Rejected')}
                             >
-                                <i className="bi bi-x-circle"></i> Reject Return
+                                <i className="bi bi-x-circle"></i> Reject
                             </button>
                             <button
                                 className="return-action approve"
                                 disabled={isUpdating || selectedRequest.status !== 'Pending'}
                                 onClick={() => handleUpdateStatus(selectedRequest.id, 'Approved')}
                             >
-                                <i className="bi bi-check-circle"></i> Approve Return
+                                <i className="bi bi-check-circle"></i> Approve
                             </button>
                         </div>
                         
                         {selectedRequest.status !== 'Pending' && (
                             <div className="return-status-info">
                                 <i className="bi bi-info-circle"></i>
-                                This request has already been {selectedRequest.status.toLowerCase()}.
+                                Already {selectedRequest.status.toLowerCase()}.
                                 {selectedRequest.admin_comment && (
                                     <div className="previous-comment">
-                                        <strong>Previous comment:</strong> {selectedRequest.admin_comment}
+                                        <strong>Comment:</strong> {selectedRequest.admin_comment}
                                     </div>
                                 )}
                             </div>
@@ -306,7 +301,6 @@ const Returns = () => {
                 )}
             </div>
 
-            {/* Video Modal */}
             {showVideoModal && (
                 <div className="video-modal-overlay" onClick={closeVideoModal}>
                     <div className="video-modal-container" onClick={(e) => e.stopPropagation()}>

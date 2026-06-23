@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import axios from '../utils/axiosConfig'; // Adjust path as needed
+import axios from '../utils/axiosConfig';
 import { toast } from "react-toastify";
 import "./StockNotifications.css";
 
@@ -10,20 +10,20 @@ const ConfirmDeleteModal = ({ isOpen, onClose, onConfirm, productName }) => {
     if (!isOpen) return null;
 
     return (
-        <div className="modal-backdrop" onClick={onClose}>
-            <div className="confirm-modal" onClick={(e) => e.stopPropagation()}>
-                <div className="confirm-modal-header">
+        <div className="stock-modal-backdrop" onClick={onClose}>
+            <div className="stock-confirm-modal" onClick={(e) => e.stopPropagation()}>
+                <div className="stock-confirm-modal-header">
                     <i className="bi bi-exclamation-triangle-fill"></i>
                     <h4>Confirm Delete</h4>
                 </div>
-                <div className="confirm-modal-body">
+                <div className="stock-confirm-modal-body">
                     <p>Are you sure you want to delete the notification for</p>
                     <strong>"{productName}"</strong>
                     <p>This action cannot be undone.</p>
                 </div>
-                <div className="confirm-modal-footer">
-                    <button className="btn-cancel" onClick={onClose}>Cancel</button>
-                    <button className="btn-confirm" onClick={onConfirm}>Delete</button>
+                <div className="stock-confirm-modal-footer">
+                    <button className="stock-btn-cancel" onClick={onClose}>Cancel</button>
+                    <button className="stock-btn-confirm" onClick={onConfirm}>Delete</button>
                 </div>
             </div>
         </div>
@@ -101,40 +101,40 @@ const StockNotifications = () => {
         return `${baseUrl}${cleanPath}`;
     };
 
-    if (loading) return <div className="dash-loader-overlay">
-        <div className="dash-loader-container">
-            <div className="dash-spinner"></div>
+    if (loading) return <div className="stock-loader-overlay">
+        <div className="stock-loader-container">
+            <div className="stock-spinner"></div>
         </div>
     </div>;
 
     return (
         <div className="stock-notif-container">
-            <div className="admin-header">
+            <div className="stock-admin-header">
                 <h3><i className="bi bi-bell-fill"></i> Stock Notifications</h3>
                 <p>Manage products that customers are waiting for</p>
             </div>
 
             {/* TOP REQUESTED CARDS */}
-            <div className="top-requested-section">
-                <h4 className="section-subtitle">Most Requested Products</h4>
+            <div className="stock-top-requested-section">
+                <h4 className="stock-section-subtitle">Most Requested Products</h4>
                 {topRequested.length === 0 ? (
-                    <div className="empty-state-card">
+                    <div className="stock-empty-state-card">
                         <i className="bi bi-inbox"></i>
                         <p>No requested products yet</p>
                         <span>When customers request out‑of‑stock products, they will appear here</span>
                     </div>
                 ) : (
-                    <div className="top-requested-grid">
+                    <div className="stock-top-requested-grid">
                         {topRequested.map((item) => (
-                            <div key={item.id} className="request-card">
-                                <div className="card-img">
+                            <div key={item.id} className="stock-request-card">
+                                <div className="stock-card-img">
                                     <img src={getImageUrl(item.main_image_url)} alt={item.name} />
-                                    <div className="req-count-badge">{item.request_count} Requests</div>
+                                    <div className="stock-req-count-badge">{item.request_count} Requests</div>
                                 </div>
-                                <div className="card-info">
+                                <div className="stock-card-info">
                                     <h5>{item.name}</h5>
-                                    <p className="price">₹{item.price}</p>
-                                    <span className={`stock-badge ${item.stock_quantity === 0 ? 'out' : 'low'}`}>
+                                    <p className="stock-price">₹{item.price}</p>
+                                    <span className={`stock-stock-badge ${item.stock_quantity === 0 ? 'out' : 'low'}`}>
                                         Stock: {item.stock_quantity}
                                     </span>
                                 </div>
@@ -145,17 +145,17 @@ const StockNotifications = () => {
             </div>
 
             {/* NOTIFICATIONS TABLE */}
-            <div className="notifications-table-section">
-                <h4 className="section-subtitle">All Notification Requests</h4>
+            <div className="stock-notifications-table-section">
+                <h4 className="stock-section-subtitle">All Notification Requests</h4>
                 {notifications.length === 0 ? (
-                    <div className="empty-state-card table-empty">
+                    <div className="stock-empty-state-card stock-table-empty">
                         <i className="bi bi-envelope-open"></i>
                         <p>No notification requests</p>
                         <span>Customers haven't requested any stock alerts yet</span>
                     </div>
                 ) : (
-                    <div className="admin-table-container">
-                        <table className="admin-table">
+                    <div className="stock-admin-table-container">
+                        <table className="stock-admin-table">
                             <thead>
                                 <tr>
                                     <th>Product</th>
@@ -170,34 +170,34 @@ const StockNotifications = () => {
                                 {notifications.map((notif) => (
                                     <tr key={notif.id}>
                                         <td>
-                                            <div className="product-table-cell">
-                                                <img src={getImageUrl(notif.main_image_url)} alt="" className="table-thumb" />
-                                                <div className="prod-meta">
-                                                    <span className="name">{notif.product_name}</span>
-                                                    <span className="sku">{notif.sku}</span>
+                                            <div className="stock-product-table-cell">
+                                                <img src={getImageUrl(notif.main_image_url)} alt="" className="stock-table-thumb" />
+                                                <div className="stock-prod-meta">
+                                                    <span className="stock-name">{notif.product_name}</span>
+                                                    <span className="stock-sku">{notif.sku}</span>
                                                 </div>
                                             </div>
                                         </td>
                                         <td>
-                                            <div className="user-meta">
-                                                <span className="uname">{notif.customer_name || notif.user_name || "Guest"}</span>
-                                                <span className="uinfo">{notif.email || notif.user_email || notif.phone || notif.user_phone || "No info"}</span>
+                                            <div className="stock-user-meta">
+                                                <span className="stock-uname">{notif.customer_name || notif.user_name || "Guest"}</span>
+                                                <span className="stock-uinfo">{notif.email || notif.user_email || notif.phone || notif.user_phone || "No info"}</span>
                                             </div>
                                         </td>
                                         <td>{new Date(notif.created_at).toLocaleDateString()}</td>
                                         <td>
-                                            <span className={`status-pill ${notif.stock_quantity > 0 ? 'available' : 'waiting'}`}>
+                                            <span className={`stock-status-pill ${notif.stock_quantity > 0 ? 'available' : 'waiting'}`}>
                                                 {notif.stock_quantity > 0 ? "In Stock" : "Waiting"}
                                             </span>
                                         </td>
                                         <td>
-                                            <span className="request-count-badge">
+                                            <span className="stock-request-count-badge">
                                                 {notif.user_request_count || 1}
                                             </span>
                                         </td>
                                         <td>
                                             <button
-                                                className="delete-table-btn"
+                                                className="stock-delete-table-btn"
                                                 onClick={() => openDeleteModal(notif.id, notif.product_name)}
                                             >
                                                 <i className="bi bi-trash"></i>

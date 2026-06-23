@@ -1,7 +1,7 @@
 // AddProduct.js - Complete with category creation modal
 import React, { useState, useEffect } from "react";
 import axios from '../utils/axiosConfig';
-import "./AdminProducts.css";
+import "./AddProduct.css";
 import { toast } from "react-toastify";
 import RichTextEditor from "./RichTextEditor";
 
@@ -161,7 +161,6 @@ const AddProduct = ({ onClose }) => {
         headers: { Authorization: `Bearer ${token}` },
         params: { limit: 100 }
       });
-      // Show all categories (global categories)
       setCategories(res.data.categories || []);
     } catch (err) {
       toast.error("Failed to load categories");
@@ -483,19 +482,19 @@ const AddProduct = ({ onClose }) => {
 
   return (
     <>
-      <div className="add-product-container">
-        <div className="form-header">
-          <h2 className="page-title">Add New Product</h2>
-          <button type="button" className="back-btn" onClick={onClose}>
+      <div className="add-prod-container">
+        <div className="add-prod-form-header">
+          <h2 className="add-prod-page-title">Add New Product</h2>
+          <button type="button" className="add-prod-back-btn" onClick={onClose}>
             ✕
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="premium-form">
-          <div className="form-section">
-            <h4 className="section-title">General Information</h4>
-            <div className="form-group">
-              <label>Product Name <span className="required">*</span></label>
+        <form onSubmit={handleSubmit} className="add-prod-premium-form">
+          <div className="add-prod-form-section">
+            <h4 className="add-prod-section-title">General Information</h4>
+            <div className="add-prod-form-group">
+              <label>Product Name <span className="add-prod-required">*</span></label>
               <input
                 type="text"
                 name="name"
@@ -506,15 +505,15 @@ const AddProduct = ({ onClose }) => {
               />
             </div>
 
-            <div className="form-row">
-              <div className="form-group" style={{ position: "relative" }}>
-                <div className="code-rows">
-                  <label>SKU (Stock Keeping Unit) <span className="required">*</span></label>
+            <div className="add-prod-form-row">
+              <div className="add-prod-form-group" style={{ position: "relative" }}>
+                <div className="add-prod-code-rows">
+                  <label>SKU (Stock Keeping Unit) <span className="add-prod-required">*</span></label>
                   <div>
-                    {skuChecking && <small className="text-muted">Checking...</small>}
+                    {skuChecking && <small className="add-prod-text-muted">Checking...</small>}
                     {!skuChecking && skuMessage && (
                       <small
-                        className={skuAvailable ? "text-success" : "text-danger"}
+                        className={skuAvailable ? "add-prod-text-success" : "add-prod-text-danger"}
                         style={{ display: "block", marginTop: "5px" }}
                       >
                         {skuMessage}
@@ -538,7 +537,7 @@ const AddProduct = ({ onClose }) => {
                   />
                   <button
                     type="button"
-                    className="btn-suggest"
+                    className="add-prod-btn-suggest"
                     onClick={() => suggestUniqueSku(false)}
                     disabled={suggestingSku || !product.name}
                     title="Generate a unique SKU based on product name"
@@ -553,14 +552,14 @@ const AddProduct = ({ onClose }) => {
                 </div>
               </div>
 
-              <div className="form-group" style={{ position: "relative" }}>
-                <div className="code-rows">
-                  <label>Product Code (Serial) <span className="required">*</span></label>
+              <div className="add-prod-form-group" style={{ position: "relative" }}>
+                <div className="add-prod-code-rows">
+                  <label>Product Code (Serial) <span className="add-prod-required">*</span></label>
                   <div>
-                    {productCodeChecking && <small className="text-muted">Checking...</small>}
+                    {productCodeChecking && <small className="add-prod-text-muted">Checking...</small>}
                     {!productCodeChecking && productCodeMessage && (
                       <small
-                        className={productCodeAvailable ? "text-success" : "text-danger"}
+                        className={productCodeAvailable ? "add-prod-text-success" : "add-prod-text-danger"}
                         style={{ display: "block", marginTop: "5px" }}
                       >
                         {productCodeMessage}
@@ -583,7 +582,7 @@ const AddProduct = ({ onClose }) => {
                   />
                   <button
                     type="button"
-                    className="btn-suggest"
+                    className="add-prod-btn-suggest"
                     onClick={suggestUniqueProductCode}
                     disabled={suggestingCode}
                     title="Get next available product code"
@@ -599,13 +598,13 @@ const AddProduct = ({ onClose }) => {
               </div>
             </div>
 
-            <div className="form-row">
-              <div className="form-group">
+            <div className="add-prod-form-row">
+              <div className="add-prod-form-group">
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "8px" }}>
-                  <label>Category <span className="required">*</span></label>
+                  <label>Category <span className="add-prod-required">*</span></label>
                   <button
                     type="button"
-                    className="btn-suggest"
+                    className="add-prod-btn-suggest"
                     onClick={handleOpenCategoryModal}
                     style={{ padding: "4px 12px", fontSize: "12px" }}
                   >
@@ -625,11 +624,11 @@ const AddProduct = ({ onClose }) => {
                     </option>
                   ))}
                 </select>
-                <small className="text-muted" style={{ display: "block", marginTop: "5px" }}>
+                <small className="add-prod-text-muted" style={{ display: "block", marginTop: "5px" }}>
                   <i className="bi bi-info-circle"></i> Categories are global and shared across all vendors.
                 </small>
               </div>
-              <div className="form-group">
+              <div className="add-prod-form-group">
                 <label>Color</label>
                 <input
                   type="text"
@@ -641,7 +640,7 @@ const AddProduct = ({ onClose }) => {
               </div>
             </div>
 
-            <div className="form-group">
+            <div className="add-prod-form-group">
               <label>Description</label>
               <RichTextEditor
                 value={description}
@@ -652,11 +651,11 @@ const AddProduct = ({ onClose }) => {
             </div>
           </div>
 
-          <div className="form-section">
-            <h4 className="section-title">Pricing, Commission & Stock</h4>
-            <div className="form-row">
-              <div className="form-group">
-                <label>Selling Price (₹) <span className="required">*</span></label>
+          <div className="add-prod-form-section">
+            <h4 className="add-prod-section-title">Pricing, Commission & Stock</h4>
+            <div className="add-prod-form-row">
+              <div className="add-prod-form-group">
+                <label>Selling Price (₹) <span className="add-prod-required">*</span></label>
                 <input
                   type="number"
                   step="0.01"
@@ -667,7 +666,7 @@ const AddProduct = ({ onClose }) => {
                   required
                 />
               </div>
-              <div className="form-group">
+              <div className="add-prod-form-group">
                 <label>Old Price (₹)</label>
                 <input
                   type="number"
@@ -680,17 +679,17 @@ const AddProduct = ({ onClose }) => {
               </div>
             </div>
 
-            <div className="form-row">
-              <div className="form-group">
-                <label>Platform Fee (%) <span className="required">*</span></label>
+            <div className="add-prod-form-row">
+              <div className="add-prod-form-group">
+                <label>Platform Fee (%) <span className="add-prod-required">*</span></label>
                 <input
                   type="text"
                   value={`${globalPlatformFee}.00%`}
                   disabled
-                  style={{ background: "#f0fdf4", color: "#166534", fontWeight: "bold" }}
+                  className="add-prod-platform-fee-display"
                 />
               </div>
-              <div className="form-group">
+              <div className="add-prod-form-group">
                 <label>Stock Quantity</label>
                 <input
                   type="number"
@@ -702,58 +701,58 @@ const AddProduct = ({ onClose }) => {
               </div>
             </div>
 
-            <div className="earning-breakdown">
-              <div className="form-row">
-                <div className="form-group">
+            <div className="add-prod-earning-breakdown">
+              <div className="add-prod-form-row">
+                <div className="add-prod-form-group">
                   <label>Platform Fee per unit</label>
                   <input
                     type="text"
                     value={`₹${perUnitPlatformFee.toFixed(2)}`}
                     disabled
-                    className="fee-input"
+                    className="add-prod-fee-input"
                   />
                 </div>
-                <div className="form-group">
+                <div className="add-prod-form-group">
                   <label>Your Earnings per unit</label>
                   <input
                     type="text"
                     value={`₹${perUnitVendorEarning.toFixed(2)}`}
                     disabled
-                    className="earn-input"
+                    className="add-prod-earn-input"
                   />
                 </div>
               </div>
 
-              <div className="form-row total-row">
-                <div className="form-group">
+              <div className="add-prod-form-row add-prod-total-row">
+                <div className="add-prod-form-group">
                   <label>Total Platform Fee (for all stock)</label>
                   <input
                     type="text"
                     value={`₹${totalPlatformFee.toFixed(2)}`}
                     disabled
-                    className="fee-total"
+                    className="add-prod-fee-total"
                   />
                 </div>
-                <div className="form-group">
+                <div className="add-prod-form-group">
                   <label>Total Your Earnings (for all stock)</label>
                   <input
                     type="text"
                     value={`₹${totalVendorEarning.toFixed(2)}`}
                     disabled
-                    className="earn-total"
+                    className="add-prod-earn-total"
                   />
                 </div>
               </div>
             </div>
           </div>
 
-          <div className="form-section">
-            <h4 className="section-title">Shipping Details (Shiprocket)</h4>
-            <p className="section-subtitle">
+          <div className="add-prod-form-section">
+            <h4 className="add-prod-section-title">Shipping Details (Shiprocket)</h4>
+            <p className="add-prod-section-subtitle">
               Leave blank to use defaults (0.7kg, 30x20x5cm)
             </p>
-            <div className="form-row">
-              <div className="form-group">
+            <div className="add-prod-form-row">
+              <div className="add-prod-form-group">
                 <label>Weight (kg)</label>
                 <input
                   type="number"
@@ -764,7 +763,7 @@ const AddProduct = ({ onClose }) => {
                   onChange={handleChange}
                 />
               </div>
-              <div className="form-group">
+              <div className="add-prod-form-group">
                 <label>Length (cm)</label>
                 <input
                   type="number"
@@ -776,8 +775,8 @@ const AddProduct = ({ onClose }) => {
                 />
               </div>
             </div>
-            <div className="form-row">
-              <div className="form-group">
+            <div className="add-prod-form-row">
+              <div className="add-prod-form-group">
                 <label>Width (cm)</label>
                 <input
                   type="number"
@@ -788,7 +787,7 @@ const AddProduct = ({ onClose }) => {
                   onChange={handleChange}
                 />
               </div>
-              <div className="form-group">
+              <div className="add-prod-form-group">
                 <label>Height (cm)</label>
                 <input
                   type="number"
@@ -802,14 +801,14 @@ const AddProduct = ({ onClose }) => {
             </div>
           </div>
 
-          <div className="form-section">
-            <h4 className="section-title">Images & Video</h4>
+          <div className="add-prod-form-section">
+            <h4 className="add-prod-section-title">Images & Video</h4>
 
-            <div className="form-row">
-              <div className="form-group">
-                <label>Main Image <span className="required">*</span></label>
-                <div className="image-upload-grid">
-                  <div className="upload-box main-upload">
+            <div className="add-prod-form-row">
+              <div className="add-prod-form-group">
+                <label>Main Image <span className="add-prod-required">*</span></label>
+                <div className="add-prod-image-upload-grid">
+                  <div className="add-prod-upload-box add-prod-main-upload">
                     <input
                       type="file"
                       accept="image/*"
@@ -817,20 +816,20 @@ const AddProduct = ({ onClose }) => {
                       id="main-image-input"
                       hidden
                     />
-                    <label htmlFor="main-image-input" className="preview-label">
+                    <label htmlFor="main-image-input" className="add-prod-preview-label">
                       {mainPreview ? (
-                        <div className="image-preview-wrapper">
-                          <img src={mainPreview} alt="Preview" className="preview-img" />
+                        <div className="add-prod-image-preview-wrapper">
+                          <img src={mainPreview} alt="Preview" className="add-prod-preview-img" />
                           <button
                             type="button"
-                            className="remove-image-btn"
+                            className="add-prod-remove-image-btn"
                             onClick={removeMainImage}
                           >
                             <i className="bi bi-x-circle"></i>
                           </button>
                         </div>
                       ) : (
-                        <div className="upload-placeholder">
+                        <div className="add-prod-upload-placeholder">
                           <i className="bi bi-cloud-arrow-up"></i>
                           <span>Select Main Image</span>
                           <small>JPG, PNG, WEBP (Max 5MB)</small>
@@ -841,10 +840,10 @@ const AddProduct = ({ onClose }) => {
                 </div>
               </div>
 
-              <div className="form-group">
+              <div className="add-prod-form-group">
                 <label>Product Video (Optional)</label>
-                <div className="image-upload-grid">
-                  <div className="upload-box main-upload">
+                <div className="add-prod-image-upload-grid">
+                  <div className="add-prod-upload-box add-prod-main-upload">
                     <input
                       type="file"
                       accept="video/*"
@@ -852,23 +851,23 @@ const AddProduct = ({ onClose }) => {
                       id="video-input"
                       hidden
                     />
-                    <label htmlFor="video-input" className="preview-label">
+                    <label htmlFor="video-input" className="add-prod-preview-label">
                       {videoPreview ? (
-                        <div className="video-preview-wrapper">
-                          <video src={videoPreview} className="preview-img" muted />
-                          <div className="video-overlay">
+                        <div className="add-prod-video-preview-wrapper">
+                          <video src={videoPreview} className="add-prod-preview-img" muted />
+                          <div className="add-prod-video-overlay">
                             <i className="bi bi-play-circle"></i>
                           </div>
                           <button
                             type="button"
-                            className="remove-video-btn"
+                            className="add-prod-remove-video-btn"
                             onClick={removeVideo}
                           >
                             <i className="bi bi-x-circle"></i>
                           </button>
                         </div>
                       ) : (
-                        <div className="upload-placeholder">
+                        <div className="add-prod-upload-placeholder">
                           <i className="bi bi-play-btn"></i>
                           <span>Select Video</span>
                           <small>MP4, WebM (Max 50MB)</small>
@@ -880,15 +879,15 @@ const AddProduct = ({ onClose }) => {
               </div>
             </div>
 
-            <div className="form-group">
+            <div className="add-prod-form-group">
               <label>Gallery Images (Optional - Max 10 images)</label>
-              <div className="image-upload-grid gallery-grid">
+              <div className="add-prod-image-upload-grid add-prod-gallery-grid">
                 {galleryPreview.map((img, index) => (
-                  <div key={index} className="gallery-item">
+                  <div key={index} className="add-prod-gallery-item">
                     <img src={img} alt={`Gallery ${index + 1}`} />
                     <button
                       type="button"
-                      className="remove-img"
+                      className="add-prod-remove-img"
                       onClick={() => removeGalleryImage(index)}
                     >
                       <i className="bi bi-x-circle"></i>
@@ -896,7 +895,7 @@ const AddProduct = ({ onClose }) => {
                   </div>
                 ))}
                 {galleryPreview.length < 10 && (
-                  <div className="upload-box">
+                  <div className="add-prod-upload-box">
                     <input
                       type="file"
                       multiple
@@ -905,7 +904,7 @@ const AddProduct = ({ onClose }) => {
                       id="gallery-image-input"
                       hidden
                     />
-                    <label htmlFor="gallery-image-input" className="upload-placeholder">
+                    <label htmlFor="gallery-image-input" className="add-prod-upload-placeholder">
                       <i className="bi bi-plus-lg"></i>
                       <span>Add Images</span>
                       <small>{galleryPreview.length}/10</small>
@@ -916,10 +915,10 @@ const AddProduct = ({ onClose }) => {
             </div>
           </div>
 
-          <div className="form-section">
-            <h4 className="section-title">Visibility & Status</h4>
-            <div className="toggle-group">
-              <label className="toggle-item">
+          <div className="add-prod-form-section">
+            <h4 className="add-prod-section-title">Visibility & Status</h4>
+            <div className="add-prod-toggle-group">
+              <label className="add-prod-toggle-item">
                 <input
                   type="checkbox"
                   name="is_featured"
@@ -928,7 +927,7 @@ const AddProduct = ({ onClose }) => {
                 />
                 <span>Mark as Featured</span>
               </label>
-              <label className="toggle-item">
+              <label className="add-prod-toggle-item">
                 <input
                   type="checkbox"
                   name="is_active"
@@ -940,8 +939,8 @@ const AddProduct = ({ onClose }) => {
             </div>
           </div>
 
-          <div className="form-actions">
-            <button type="submit" className="submit-btn" disabled={loading}>
+          <div className="add-prod-form-actions">
+            <button type="submit" className="add-prod-submit-btn" disabled={loading}>
               {loading ? (
                 <>
                   <i className="bi bi-hourglass-split"></i> Creating Product...
@@ -957,31 +956,31 @@ const AddProduct = ({ onClose }) => {
       {/* Category Creation Modal */}
       {showCategoryModal && (
         <>
-          <div className="cate-modal-backdrop" onClick={handleCloseCategoryModal}></div>
-          <div className="cate-modal-wrapper">
-            <div className="cate-modal-content cate-modal-lg">
-              <div className="cate-modal-header">
+          <div className="add-prod-cate-modal-backdrop" onClick={handleCloseCategoryModal}></div>
+          <div className="add-prod-cate-modal-wrapper">
+            <div className="add-prod-cate-modal-content add-prod-cate-modal-lg">
+              <div className="add-prod-cate-modal-header">
                 <div>
-                  <h5 className="cate-modal-title">Create New Category</h5>
-                  <p className="cate-modal-subtitle m-0 text-muted">
+                  <h5 className="add-prod-cate-modal-title">Create New Category</h5>
+                  <p className="add-prod-cate-modal-subtitle add-prod-m-0 add-prod-text-muted">
                     Create a new global category. This will be available to all vendors.
                   </p>
                 </div>
-                <button type="button" className="cate-modal-close" onClick={handleCloseCategoryModal}>
+                <button type="button" className="add-prod-cate-modal-close" onClick={handleCloseCategoryModal}>
                   <i className="bi bi-x-lg"></i>
                 </button>
               </div>
 
-              <form onSubmit={handleCreateCategory} className="cate-modal-form">
-                <div className="cate-modal-body">
-                  <div className="cate-fields-col">
-                    <div className="cate-form-row">
-                      <div className="cate-form-group flex-grow-1">
-                        <label className="cate-form-label">Category Name <span className="text-danger">*</span></label>
+              <form onSubmit={handleCreateCategory} className="add-prod-cate-modal-form">
+                <div className="add-prod-cate-modal-body">
+                  <div className="add-prod-cate-fields-col">
+                    <div className="add-prod-cate-form-row">
+                      <div className="add-prod-cate-form-group add-prod-flex-grow-1">
+                        <label className="add-prod-cate-form-label">Category Name <span className="add-prod-text-danger">*</span></label>
                         <input
                           type="text"
                           name="name"
-                          className="cate-form-control"
+                          className="add-prod-cate-form-control"
                           placeholder="e.g. Electronics, Clothing"
                           value={categoryForm.name}
                           onChange={handleCategoryChange}
@@ -990,24 +989,24 @@ const AddProduct = ({ onClose }) => {
                         />
                       </div>
 
-                      <div className="cate-form-group">
-                        <label className="cate-form-label">Visibility Status</label>
-                        <div className="cate-toggle-box" onClick={!categoryLoading ? toggleCategoryActive : undefined}>
-                          <div className={`cate-toggle-switch ${categoryForm.is_active ? 'active' : ''}`}>
-                            <div className="cate-toggle-knob"></div>
+                      <div className="add-prod-cate-form-group">
+                        <label className="add-prod-cate-form-label">Visibility Status</label>
+                        <div className="add-prod-cate-toggle-box" onClick={!categoryLoading ? toggleCategoryActive : undefined}>
+                          <div className={`add-prod-cate-toggle-switch ${categoryForm.is_active ? 'add-prod-active' : ''}`}>
+                            <div className="add-prod-cate-toggle-knob"></div>
                           </div>
-                          <span className={`cate-toggle-text ${categoryForm.is_active ? 'text-success' : 'text-secondary'}`}>
+                          <span className={`add-prod-cate-toggle-text ${categoryForm.is_active ? 'add-prod-text-success' : 'add-prod-text-secondary'}`}>
                             {categoryForm.is_active ? 'Active' : 'Hidden'}
                           </span>
                         </div>
                       </div>
                     </div>
 
-                    <div className="cate-form-group mt-3">
-                      <label className="cate-form-label">Description <span className="text-muted fw-normal">(Optional)</span></label>
+                    <div className="add-prod-cate-form-group add-prod-mt-3">
+                      <label className="add-prod-cate-form-label">Description <span className="add-prod-text-muted add-prod-fw-normal">(Optional)</span></label>
                       <textarea
                         name="description"
-                        className="cate-form-control"
+                        className="add-prod-cate-form-control"
                         placeholder="Write a short description..."
                         value={categoryForm.description}
                         onChange={handleCategoryChange}
@@ -1017,31 +1016,31 @@ const AddProduct = ({ onClose }) => {
                     </div>
                   </div>
 
-                  <div className="cate-image-col">
-                    <label className="cate-form-label">Category Image</label>
-                    <div className="cate-upload-zone">
+                  <div className="add-prod-cate-image-col">
+                    <label className="add-prod-cate-form-label">Category Image</label>
+                    <div className="add-prod-cate-upload-zone">
                       <input
                         type="file"
                         accept="image/*"
                         onChange={handleCategoryImageChange}
                         id="cate-image-input"
-                        className="d-none"
+                        className="add-prod-d-none"
                         disabled={categoryLoading}
                       />
-                      <label htmlFor="cate-image-input" className={`cate-upload-label ${categoryLoading ? 'disabled' : ''}`}>
+                      <label htmlFor="cate-image-input" className={`add-prod-cate-upload-label ${categoryLoading ? 'add-prod-disabled' : ''}`}>
                         {categoryPreview ? (
-                          <div className="cate-preview-wrap">
-                            <img src={categoryPreview} alt="Preview" className="cate-preview-img" />
-                            <div className="cate-preview-overlay">
+                          <div className="add-prod-cate-preview-wrap">
+                            <img src={categoryPreview} alt="Preview" className="add-prod-cate-preview-img" />
+                            <div className="add-prod-cate-preview-overlay">
                               <i className="bi bi-camera"></i>
                               <span>Change Photo</span>
                             </div>
                           </div>
                         ) : (
-                          <div className="cate-upload-empty">
-                            <div className="cate-upload-icon"><i className="bi bi-cloud-arrow-up"></i></div>
-                            <span className="cate-upload-text">Click to browse or drag image here</span>
-                            <span className="cate-upload-hint">Supports JPG, PNG, WEBP (Max 2MB)</span>
+                          <div className="add-prod-cate-upload-empty">
+                            <div className="add-prod-cate-upload-icon"><i className="bi bi-cloud-arrow-up"></i></div>
+                            <span className="add-prod-cate-upload-text">Click to browse or drag image here</span>
+                            <span className="add-prod-cate-upload-hint">Supports JPG, PNG, WEBP (Max 2MB)</span>
                           </div>
                         )}
                       </label>
@@ -1049,14 +1048,14 @@ const AddProduct = ({ onClose }) => {
                   </div>
                 </div>
 
-                <div className="cate-modal-footer">
-                  <button type="button" className="cate-btn cate-btn-light" onClick={handleCloseCategoryModal} disabled={categoryLoading}>
+                <div className="add-prod-cate-modal-footer">
+                  <button type="button" className="add-prod-cate-btn add-prod-cate-btn-light" onClick={handleCloseCategoryModal} disabled={categoryLoading}>
                     Cancel
                   </button>
-                  <button type="submit" className="cate-btn cate-btn-primary" disabled={categoryLoading}>
+                  <button type="submit" className="add-prod-cate-btn add-prod-cate-btn-primary" disabled={categoryLoading}>
                     {categoryLoading ? (
                       <>
-                        <span className="cate-btn-spinner"></span>
+                        <span className="add-prod-cate-btn-spinner"></span>
                         Creating...
                       </>
                     ) : (

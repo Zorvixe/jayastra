@@ -30,6 +30,10 @@ const Products = () => {
   const [confirmBulkDelete, setConfirmBulkDelete] = useState(false);
   const userRole = localStorage.getItem("userRole")?.toLowerCase();
 
+  // Frontend pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
+
   // Mobile slide‑down states
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [isFilterOpen, setIsFilterOpen] = useState(false);
@@ -39,13 +43,6 @@ const Products = () => {
   // Modal States
   const [showAddModal, setShowAddModal] = useState(false);
   const [editProductId, setEditProductId] = useState(null);
-
-  const [pagination, setPagination] = useState({
-    totalCount: 0,
-    totalPages: 1,
-    currentPage: 1,
-    limit: 10,
-  });
 
   // Close panels when clicking outside
   useEffect(() => {
@@ -61,40 +58,34 @@ const Products = () => {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
+  // Fetch all products once on mount
   useEffect(() => {
-    fetchProducts(pagination.currentPage);
-  }, [pagination.currentPage, filter]);
+    fetchAllProducts();
+  }, []);
 
+  // Reset to page 1 when search or filter changes
   useEffect(() => {
-    const timer = setTimeout(() => {
-      if (pagination.currentPage !== 1) {
-        setPagination((prev) => ({ ...prev, currentPage: 1 }));
-      } else {
-        fetchProducts(1);
-      }
-    }, 500);
-    return () => clearTimeout(timer);
-  }, [search]);
+    setCurrentPage(1);
+  }, [search, filter]);
 
-  const fetchProducts = async (pageOverride) => {
+  const fetchAllProducts = async () => {
     try {
       const token = localStorage.getItem("token");
       setLoading(true);
-      const pageToFetch = pageOverride || pagination.currentPage || 1;
 
+      // Fetch all products – set a high limit to get everything
       const res = await axios.get(`${API_URL}/admin/products`, {
         params: {
-          page: pageToFetch,
-          limit: pagination.limit || 10,
-          search: search,
-          filter: filter,
+          page: 1,
+          limit: 9999, // large enough to get all products
         },
         headers: { Authorization: `Bearer ${token}` },
       });
 
       if (res.data.success) {
         setProducts(res.data.products || []);
-        if (res.data.pagination) setPagination(res.data.pagination);
+      } else {
+        toast.error("Failed to load products");
       }
     } catch (err) {
       console.error("Fetch products error:", err);
@@ -114,7 +105,7 @@ const Products = () => {
 
       if (res.data.success) {
         toast.success(res.data.message);
-        fetchProducts();
+        fetchAllProducts(); // re-fetch to refresh list
       } else {
         toast.error(res.data.message || "Delete failed");
       }
@@ -135,7 +126,7 @@ const Products = () => {
       );
       toast.success(`${selected.length} products processed`);
       setSelected([]);
-      fetchProducts();
+      fetchAllProducts();
       setConfirmBulkDelete(false);
     } catch (err) {
       toast.error("Bulk delete failed");
@@ -165,14 +156,53 @@ const Products = () => {
     setIsSearchOpen(false);
   };
 
-  const filteredProducts = products;
+  // ----- Frontend filtering -----
+  const filteredProducts = products.filter((product) => {
+    const searchTerm = search.toLowerCase().trim();
 
+    // Search match
+    const matchesSearch =
+      product.name?.toLowerCase().includes(searchTerm) ||
+      product.sku_code?.toLowerCase().includes(searchTerm) ||
+      product.product_code?.toLowerCase().includes(searchTerm) ||
+      product.category_name?.toLowerCase().includes(searchTerm) ||
+      product.vendor_name?.toLowerCase().includes(searchTerm) ||
+      product.price?.toString().includes(searchTerm) ||
+      product.stock_quantity?.toString().includes(searchTerm) ||
+      product.description?.toLowerCase().includes(searchTerm);
+
+    if (!matchesSearch) return false;
+
+    // Filter match
+    switch (filter) {
+      case "active":
+        return product.is_active === true;
+      case "inactive":
+        return product.is_active === false;
+      case "instock":
+        return product.stock_quantity > 0;
+      case "lowstock":
+        return product.stock_quantity > 0 && product.stock_quantity <= 5;
+      case "outofstock":
+        return product.stock_quantity === 0;
+      default:
+        return true;
+    }
+  });
+
+  // ----- Frontend pagination -----
+  const totalItems = filteredProducts.length;
+  const totalPages = Math.ceil(totalItems / itemsPerPage) || 1;
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = Math.min(startIndex + itemsPerPage, totalItems);
+  const currentItems = filteredProducts.slice(startIndex, endIndex);
+
+  // ----- Render -----
   return (
     <div className="products-container">
       <div className="products-top">
         <h2 className="page-title">Products</h2>
         <div className="prod-mobile-filter">
-          {/* Search Icon (always visible on mobile, hidden on desktop) */}
           <button
             className="mobile-icon-btn search-toggle"
             onClick={toggleSearch}
@@ -180,7 +210,6 @@ const Products = () => {
           >
             <i className="bi bi-search"></i>
           </button>
-          {/* Filter Icon */}
           <button
             className="mobile-icon-btn filter-toggle"
             onClick={toggleFilter}
@@ -191,12 +220,12 @@ const Products = () => {
         </div>
         <div className="actions-cluster">
           <div className="filters-prod">
-            {/* Desktop search & filter (hidden on mobile) */}
+            {/* Desktop search & filter */}
             <div className="desktop-search">
               <i className="bi bi-search"></i>
               <input
                 type="text"
-                placeholder="Search by name..."
+                placeholder="Search Name, SKU, Product Code, Price..."
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
               />
@@ -233,10 +262,9 @@ const Products = () => {
             <i className="bi bi-search"></i>
             <input
               type="text"
-              placeholder="Search by name..."
+              placeholder="Search Name, SKU, Product Code, Price..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              autoFocus
             />
             <button className="slide-close" onClick={() => setIsSearchOpen(false)}>
               <i className="bi bi-x-lg"></i>
@@ -316,9 +344,10 @@ const Products = () => {
                         type="checkbox"
                         onChange={(e) => {
                           if (e.target.checked)
-                            setSelected(filteredProducts.map((p) => p.id));
+                            setSelected(currentItems.map((p) => p.id));
                           else setSelected([]);
                         }}
+                        checked={currentItems.every((p) => selected.includes(p.id))}
                       />
                     </th>
                     <th>Product</th>
@@ -333,7 +362,7 @@ const Products = () => {
                   </tr>
                 </thead>
                 <tbody>
-                  {filteredProducts.map((product) => {
+                  {currentItems.map((product) => {
                     const stock = getStockStatus(product.stock_quantity);
                     const imageUrl = getImageUrl(product.main_image_url);
                     const feePercent = product.platform_fee_percent || 10;
@@ -432,58 +461,32 @@ const Products = () => {
               </table>
             </div>
 
-            {pagination && pagination.totalCount > 0 && (
+            {/* Frontend Pagination */}
+            {totalItems > 0 && (
               <div className="pagination-wrapper">
                 <div className="pagination-info">
-                  Showing{" "}
-                  <b>
-                    {((pagination.currentPage || 1) - 1) * (pagination.limit || 10) + 1}
-                  </b>{" "}
-                  to{" "}
-                  <b>
-                    {Math.min(
-                      (pagination.currentPage || 1) * (pagination.limit || 10),
-                      pagination.totalCount || 0
-                    )}
-                  </b>{" "}
-                  of <b>{pagination.totalCount || 0}</b> products
+                  Showing <b>{startIndex + 1}</b> to <b>{endIndex}</b> of{" "}
+                  <b>{totalItems}</b> products
                 </div>
                 <div className="pagination-controls">
                   <button
-                    disabled={pagination.currentPage === 1 || !pagination.currentPage}
-                    onClick={() =>
-                      setPagination((prev) => ({
-                        ...prev,
-                        currentPage: (prev.currentPage || 1) - 1,
-                      }))
-                    }
+                    disabled={currentPage === 1}
+                    onClick={() => setCurrentPage((prev) => prev - 1)}
                   >
                     <i className="bi bi-chevron-left"></i> Previous
                   </button>
-                  {pagination.totalPages && [...Array(pagination.totalPages)].map((_, i) => (
+                  {[...Array(totalPages)].map((_, i) => (
                     <button
                       key={i + 1}
-                      className={
-                        (pagination.currentPage || 1) === i + 1 ? "active" : ""
-                      }
-                      onClick={() =>
-                        setPagination((prev) => ({
-                          ...prev,
-                          currentPage: i + 1,
-                        }))
-                      }
+                      className={currentPage === i + 1 ? "active" : ""}
+                      onClick={() => setCurrentPage(i + 1)}
                     >
                       {i + 1}
                     </button>
                   ))}
                   <button
-                    disabled={pagination.currentPage === pagination.totalPages || !pagination.totalPages}
-                    onClick={() =>
-                      setPagination((prev) => ({
-                        ...prev,
-                        currentPage: (prev.currentPage || 1) + 1,
-                      }))
-                    }
+                    disabled={currentPage === totalPages}
+                    onClick={() => setCurrentPage((prev) => prev + 1)}
                   >
                     Next <i className="bi bi-chevron-right"></i>
                   </button>
@@ -573,7 +576,7 @@ const Products = () => {
             <AddProduct
               onClose={() => {
                 setShowAddModal(false);
-                fetchProducts();
+                fetchAllProducts();
               }}
             />
           </div>
@@ -588,7 +591,7 @@ const Products = () => {
               id={editProductId}
               onClose={() => {
                 setEditProductId(null);
-                fetchProducts();
+                fetchAllProducts();
               }}
             />
           </div>

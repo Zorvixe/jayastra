@@ -1,9 +1,9 @@
 // EditProduct.js
 import React, { useEffect, useState } from "react";
-import axios from '../utils/axiosConfig'; // Adjust path as needed
+import axios from '../utils/axiosConfig';
 import { toast } from "react-toastify";
 import RichTextEditor from "./RichTextEditor";
-import "./AdminProducts.css";
+import "./AddProduct.css"; // Shared styles with AddProduct
 
 const API_URL = process.env.REACT_APP_API_URL;
 
@@ -329,7 +329,7 @@ const EditProduct = ({ id, onClose }) => {
         });
       }
       toast.success("Product updated successfully");
-      onClose(); // Close modal and refresh data
+      onClose();
     } catch (err) {
       console.error("Update error:", err);
       toast.error(err.response?.data?.message || "Update failed");
@@ -355,19 +355,19 @@ const EditProduct = ({ id, onClose }) => {
   const totalVendorEarning = perUnitVendorEarning * stockVal;
 
   return (
-    <div className="edit-product-container">
-      <div className="form-header">
-        <h2 className="page-title">Edit Product</h2>
-        <button type="button" className="back-btn" onClick={onClose}>
+    <div className="add-prod-container">
+      <div className="add-prod-form-header">
+        <h2 className="add-prod-page-title">Edit Product</h2>
+        <button type="button" className="add-prod-back-btn" onClick={onClose}>
           ✕
         </button>
       </div>
 
-      <form onSubmit={saveProduct} className="premium-form">
-        <div className="form-section">
-          <h4 className="section-title">General Information</h4>
-          <div className="form-group">
-            <label>Product Name <span className="required">*</span></label>
+      <form onSubmit={saveProduct} className="add-prod-premium-form">
+        <div className="add-prod-form-section">
+          <h4 className="add-prod-section-title">General Information</h4>
+          <div className="add-prod-form-group">
+            <label>Product Name <span className="add-prod-required">*</span></label>
             <input
               type="text"
               name="name"
@@ -377,15 +377,15 @@ const EditProduct = ({ id, onClose }) => {
             />
           </div>
 
-          <div className="form-row">
-            <div className="form-group" style={{ position: "relative" }}>
-              <div className="code-rows">
-                <label>SKU (Stock Keeping Unit) <span className="required">*</span></label>
+          <div className="add-prod-form-row">
+            <div className="add-prod-form-group" style={{ position: "relative" }}>
+              <div className="add-prod-code-rows">
+                <label>SKU (Stock Keeping Unit) <span className="add-prod-required">*</span></label>
                 <div>
-                  {skuChecking && <small className="text-muted">Checking...</small>}
+                  {skuChecking && <small className="add-prod-text-muted">Checking...</small>}
                   {!skuChecking && skuMessage && (
                     <small
-                      className={skuAvailable ? "text-success" : "text-danger"}
+                      className={skuAvailable ? "add-prod-text-success" : "add-prod-text-danger"}
                       style={{ display: "block", marginTop: "5px" }}
                     >
                       {skuMessage}
@@ -409,7 +409,7 @@ const EditProduct = ({ id, onClose }) => {
                 />
                 <button
                   type="button"
-                  className="btn-suggest"
+                  className="add-prod-btn-suggest"
                   onClick={() => suggestUniqueSku(false)}
                   disabled={suggestingSku || !product.name}
                   title="Generate a unique SKU based on product name"
@@ -424,14 +424,14 @@ const EditProduct = ({ id, onClose }) => {
               </div>
             </div>
 
-            <div className="form-group" style={{ position: "relative" }}>
-              <div className="code-rows">
-                <label>Product Code (Serial) <span className="required">*</span></label>
+            <div className="add-prod-form-group" style={{ position: "relative" }}>
+              <div className="add-prod-code-rows">
+                <label>Product Code (Serial) <span className="add-prod-required">*</span></label>
                 <div>
-                  {productCodeChecking && <small className="text-muted">Checking...</small>}
+                  {productCodeChecking && <small className="add-prod-text-muted">Checking...</small>}
                   {!productCodeChecking && productCodeMessage && (
                     <small
-                      className={productCodeAvailable ? "text-success" : "text-danger"}
+                      className={productCodeAvailable ? "add-prod-text-success" : "add-prod-text-danger"}
                       style={{ display: "block", marginTop: "5px" }}
                     >
                       {productCodeMessage}
@@ -455,7 +455,7 @@ const EditProduct = ({ id, onClose }) => {
                 />
                 <button
                   type="button"
-                  className="btn-suggest"
+                  className="add-prod-btn-suggest"
                   onClick={suggestUniqueProductCode}
                   disabled={suggestingCode}
                   title="Get next available product code"
@@ -471,9 +471,9 @@ const EditProduct = ({ id, onClose }) => {
             </div>
           </div>
 
-          <div className="form-row">
-            <div className="form-group">
-              <label>Category <span className="required">*</span></label>
+          <div className="add-prod-form-row">
+            <div className="add-prod-form-group">
+              <label>Category <span className="add-prod-required">*</span></label>
               <select
                 name="category_id"
                 value={product.category_id || ""}
@@ -488,7 +488,7 @@ const EditProduct = ({ id, onClose }) => {
                 ))}
               </select>
             </div>
-            <div className="form-group">
+            <div className="add-prod-form-group">
               <label>Color</label>
               <input
                 type="text"
@@ -500,7 +500,7 @@ const EditProduct = ({ id, onClose }) => {
             </div>
           </div>
 
-          <div className="form-group">
+          <div className="add-prod-form-group">
             <label>Description</label>
             <RichTextEditor
               value={description}
@@ -511,11 +511,11 @@ const EditProduct = ({ id, onClose }) => {
           </div>
         </div>
 
-        <div className="form-section">
-          <h4 className="section-title">Pricing, Commission & Stock</h4>
-          <div className="form-row">
-            <div className="form-group">
-              <label>Selling Price (₹) <span className="required">*</span></label>
+        <div className="add-prod-form-section">
+          <h4 className="add-prod-section-title">Pricing, Commission & Stock</h4>
+          <div className="add-prod-form-row">
+            <div className="add-prod-form-group">
+              <label>Selling Price (₹) <span className="add-prod-required">*</span></label>
               <input
                 type="number"
                 step="0.01"
@@ -525,7 +525,7 @@ const EditProduct = ({ id, onClose }) => {
                 required
               />
             </div>
-            <div className="form-group">
+            <div className="add-prod-form-group">
               <label>Old Price (₹)</label>
               <input
                 type="number"
@@ -537,18 +537,17 @@ const EditProduct = ({ id, onClose }) => {
             </div>
           </div>
 
-          <div className="form-row">
-            <div className="form-group">
-              <label>Platform Fee (%) <span className="required">*</span></label>
+          <div className="add-prod-form-row">
+            <div className="add-prod-form-group">
+              <label>Platform Fee (%) <span className="add-prod-required">*</span></label>
               <input
                 type="text"
-                value={`${globalPlatformFee}%`}
+                value={`${globalPlatformFee}.00%`}
                 disabled
-                style={{ background: "#f0fdf4", color: "#166534", fontWeight: "bold" }}
+                className="add-prod-platform-fee-display"
               />
-
             </div>
-            <div className="form-group">
+            <div className="add-prod-form-group">
               <label>Stock Quantity</label>
               <input
                 type="number"
@@ -559,58 +558,58 @@ const EditProduct = ({ id, onClose }) => {
             </div>
           </div>
 
-          <div className="earning-breakdown">
-            <div className="form-row">
-              <div className="form-group">
+          <div className="add-prod-earning-breakdown">
+            <div className="add-prod-form-row">
+              <div className="add-prod-form-group">
                 <label>Platform Fee per unit</label>
                 <input
                   type="text"
                   value={`₹${perUnitPlatformFee.toFixed(2)}`}
                   disabled
-                  className="fee-input"
+                  className="add-prod-fee-input"
                 />
               </div>
-              <div className="form-group">
+              <div className="add-prod-form-group">
                 <label>Your Earnings per unit</label>
                 <input
                   type="text"
                   value={`₹${perUnitVendorEarning.toFixed(2)}`}
                   disabled
-                  className="earn-input"
+                  className="add-prod-earn-input"
                 />
               </div>
             </div>
 
-            <div className="form-row total-row">
-              <div className="form-group">
+            <div className="add-prod-form-row add-prod-total-row">
+              <div className="add-prod-form-group">
                 <label>Total Platform Fee (for all stock)</label>
                 <input
                   type="text"
                   value={`₹${totalPlatformFee.toFixed(2)}`}
                   disabled
-                  className="fee-total"
+                  className="add-prod-fee-total"
                 />
               </div>
-              <div className="form-group">
+              <div className="add-prod-form-group">
                 <label>Total Your Earnings (for all stock)</label>
                 <input
                   type="text"
                   value={`₹${totalVendorEarning.toFixed(2)}`}
                   disabled
-                  className="earn-total"
+                  className="add-prod-earn-total"
                 />
               </div>
             </div>
           </div>
         </div>
 
-        <div className="form-section">
-          <h4 className="section-title">Shipping Details (Shiprocket)</h4>
-          <p className="section-subtitle">
+        <div className="add-prod-form-section">
+          <h4 className="add-prod-section-title">Shipping Details (Shiprocket)</h4>
+          <p className="add-prod-section-subtitle">
             Leave blank to use defaults (0.7kg, 30x20x5cm)
           </p>
-          <div className="form-row">
-            <div className="form-group">
+          <div className="add-prod-form-row">
+            <div className="add-prod-form-group">
               <label>Weight (kg)</label>
               <input
                 type="number"
@@ -621,7 +620,7 @@ const EditProduct = ({ id, onClose }) => {
                 onChange={handleChange}
               />
             </div>
-            <div className="form-group">
+            <div className="add-prod-form-group">
               <label>Length (cm)</label>
               <input
                 type="number"
@@ -633,8 +632,8 @@ const EditProduct = ({ id, onClose }) => {
               />
             </div>
           </div>
-          <div className="form-row">
-            <div className="form-group">
+          <div className="add-prod-form-row">
+            <div className="add-prod-form-group">
               <label>Width (cm)</label>
               <input
                 type="number"
@@ -645,7 +644,7 @@ const EditProduct = ({ id, onClose }) => {
                 onChange={handleChange}
               />
             </div>
-            <div className="form-group">
+            <div className="add-prod-form-group">
               <label>Height (cm)</label>
               <input
                 type="number"
@@ -659,13 +658,13 @@ const EditProduct = ({ id, onClose }) => {
           </div>
         </div>
 
-        <div className="form-section">
-          <h4 className="section-title">Images & Video</h4>
-          <div className="form-row">
-            <div className="form-group">
-              <label>Main Image <span className="required">*</span></label>
-              <div className="image-upload-grid">
-                <div className="upload-box main-upload">
+        <div className="add-prod-form-section">
+          <h4 className="add-prod-section-title">Images & Video</h4>
+          <div className="add-prod-form-row">
+            <div className="add-prod-form-group">
+              <label>Main Image <span className="add-prod-required">*</span></label>
+              <div className="add-prod-image-upload-grid">
+                <div className="add-prod-upload-box add-prod-main-upload">
                   <input
                     type="file"
                     accept="image/*"
@@ -673,16 +672,13 @@ const EditProduct = ({ id, onClose }) => {
                     id="edit-main-image-input"
                     hidden
                   />
-                  <label
-                    htmlFor="edit-main-image-input"
-                    className="preview-label"
-                  >
+                  <label htmlFor="edit-main-image-input" className="add-prod-preview-label">
                     {mainPreview ? (
-                      <div className="image-preview-wrapper">
-                        <img src={mainPreview} alt="Preview" className="preview-img" />
+                      <div className="add-prod-image-preview-wrapper">
+                        <img src={mainPreview} alt="Preview" className="add-prod-preview-img" />
                         <button
                           type="button"
-                          className="remove-image-btn"
+                          className="add-prod-remove-image-btn"
                           onClick={() => {
                             setMainImage(null);
                             setMainPreview("");
@@ -693,7 +689,7 @@ const EditProduct = ({ id, onClose }) => {
                         </button>
                       </div>
                     ) : (
-                      <div className="upload-placeholder">
+                      <div className="add-prod-upload-placeholder">
                         <i className="bi bi-cloud-arrow-up"></i>
                         <span>Select Main Image</span>
                         <small>JPG, PNG, WEBP (Max 5MB)</small>
@@ -704,10 +700,10 @@ const EditProduct = ({ id, onClose }) => {
               </div>
             </div>
 
-            <div className="form-group">
+            <div className="add-prod-form-group">
               <label>Product Video (Optional)</label>
-              <div className="image-upload-grid">
-                <div className="upload-box main-upload">
+              <div className="add-prod-image-upload-grid">
+                <div className="add-prod-upload-box add-prod-main-upload">
                   <input
                     type="file"
                     accept="video/*"
@@ -715,16 +711,16 @@ const EditProduct = ({ id, onClose }) => {
                     id="edit-video-input"
                     hidden
                   />
-                  <label htmlFor="edit-video-input" className="preview-label">
+                  <label htmlFor="edit-video-input" className="add-prod-preview-label">
                     {videoPreview ? (
-                      <div className="video-preview-wrapper">
-                        <video src={videoPreview} className="preview-img" muted />
-                        <div className="video-overlay">
+                      <div className="add-prod-video-preview-wrapper">
+                        <video src={videoPreview} className="add-prod-preview-img" muted />
+                        <div className="add-prod-video-overlay">
                           <i className="bi bi-play-circle"></i>
                         </div>
                         <button
                           type="button"
-                          className="remove-video-btn"
+                          className="add-prod-remove-video-btn"
                           onClick={() => {
                             setVideo(null);
                             setVideoPreview("");
@@ -735,7 +731,7 @@ const EditProduct = ({ id, onClose }) => {
                         </button>
                       </div>
                     ) : (
-                      <div className="upload-placeholder">
+                      <div className="add-prod-upload-placeholder">
                         <i className="bi bi-play-btn"></i>
                         <span>Select Video</span>
                         <small>MP4, WebM (Max 50MB)</small>
@@ -747,15 +743,15 @@ const EditProduct = ({ id, onClose }) => {
             </div>
           </div>
 
-          <div className="form-group">
+          <div className="add-prod-form-group">
             <label>Gallery Images (Max 5)</label>
-            <div className="image-upload-grid gallery-grid">
+            <div className="add-prod-image-upload-grid add-prod-gallery-grid">
               {galleryPreview.map((img, index) => (
-                <div key={index} className="gallery-item">
+                <div key={index} className="add-prod-gallery-item">
                   <img src={img} alt="gallery" />
                   <button
                     type="button"
-                    className="remove-img"
+                    className="add-prod-remove-img"
                     onClick={() => removeGalleryImage(index)}
                   >
                     <i className="bi bi-x-circle"></i>
@@ -763,7 +759,7 @@ const EditProduct = ({ id, onClose }) => {
                 </div>
               ))}
               {gallery.length < 5 && (
-                <div className="upload-box">
+                <div className="add-prod-upload-box">
                   <input
                     type="file"
                     multiple
@@ -774,7 +770,7 @@ const EditProduct = ({ id, onClose }) => {
                   />
                   <label
                     htmlFor="edit-gallery-image-input"
-                    className="upload-placeholder"
+                    className="add-prod-upload-placeholder"
                   >
                     <i className="bi bi-plus-lg"></i>
                     <span>Add Images</span>
@@ -786,10 +782,10 @@ const EditProduct = ({ id, onClose }) => {
           </div>
         </div>
 
-        <div className="form-section">
-          <h4 className="section-title">Visibility & Status</h4>
-          <div className="toggle-group">
-            <label className="toggle-item">
+        <div className="add-prod-form-section">
+          <h4 className="add-prod-section-title">Visibility & Status</h4>
+          <div className="add-prod-toggle-group">
+            <label className="add-prod-toggle-item">
               <input
                 type="checkbox"
                 name="is_featured"
@@ -798,7 +794,7 @@ const EditProduct = ({ id, onClose }) => {
               />
               <span>Mark as Featured</span>
             </label>
-            <label className="toggle-item">
+            <label className="add-prod-toggle-item">
               <input
                 type="checkbox"
                 name="is_active"
@@ -810,8 +806,8 @@ const EditProduct = ({ id, onClose }) => {
           </div>
         </div>
 
-        <div className="form-actions">
-          <button type="submit" className="submit-btn" disabled={submitting}>
+        <div className="add-prod-form-actions">
+          <button type="submit" className="add-prod-submit-btn" disabled={submitting}>
             {submitting ? (
               <>
                 <i className="bi bi-hourglass-split"></i> Updating Product...

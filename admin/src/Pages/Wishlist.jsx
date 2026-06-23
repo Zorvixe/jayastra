@@ -1,9 +1,8 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import axios from '../utils/axiosConfig';
 import { toast } from "react-toastify";
 
 import wishlistImage from "../assets/empty-wishlist.png";
-
 import "./Wishlist.css";
 
 const API_URL = process.env.REACT_APP_API_URL;
@@ -17,19 +16,23 @@ const Wishlist = () => {
     const [isSearchOpen, setIsSearchOpen] = useState(false);
     const searchRef = useRef(null);
 
-    // Pagination States
+    // Frontend pagination
     const [currentPage, setCurrentPage] = useState(1);
-    const [itemsPerPage] = useState(10);
+    const itemsPerPage = 10;
 
-    const fetchWishlist = async () => {
+    // Fetch all wishlist items once
+    const fetchWishlist = useCallback(async () => {
         try {
             setLoading(true);
             const token = localStorage.getItem("token");
+            // Fetch all – we do not send search or pagination params
             const res = await axios.get(`${API_URL}/admin/wishlist`, {
                 headers: { Authorization: `Bearer ${token}` }
+                // Optionally add a high limit if the backend supports it:
+                // params: { limit: 9999 }
             });
             if (res.data.success) {
-                setWishlistData(res.data.wishlist);
+                setWishlistData(res.data.wishlist || []);
             }
         } catch (error) {
             console.error("Fetch wishlist error:", error);
@@ -37,7 +40,7 @@ const Wishlist = () => {
         } finally {
             setLoading(false);
         }
-    };
+    }, []);
 
     const handleDelete = async (id) => {
         if (!window.confirm("Are you sure you want to remove this entry?")) return;
@@ -48,7 +51,7 @@ const Wishlist = () => {
             });
             if (res.data.success) {
                 toast.success("Entry removed");
-                fetchWishlist();
+                fetchWishlist(); // re-fetch to refresh list
             }
         } catch (error) {
             console.error("Delete wishlist error:", error);
@@ -69,9 +72,9 @@ const Wishlist = () => {
 
     useEffect(() => {
         fetchWishlist();
-    }, []);
+    }, [fetchWishlist]);
 
-    // Reset to page 1 when search term changes
+    // Reset page when search changes
     useEffect(() => {
         setCurrentPage(1);
     }, [searchTerm]);
@@ -89,6 +92,7 @@ const Wishlist = () => {
         setIsSearchOpen(!isSearchOpen);
     };
 
+    // ----- Frontend filtering -----
     const filteredWishlist = wishlistData.filter(item =>
         (item.user_name && item.user_name.toLowerCase().includes(searchTerm.toLowerCase())) ||
         (item.user_phone && item.user_phone.includes(searchTerm)) ||
@@ -96,13 +100,12 @@ const Wishlist = () => {
         (item.product_id && item.product_id.toString().includes(searchTerm))
     );
 
-    // Pagination Logic
-    const indexOfLastItem = currentPage * itemsPerPage;
-    const indexOfFirstItem = indexOfLastItem - itemsPerPage;
-    const currentItems = filteredWishlist.slice(indexOfFirstItem, indexOfLastItem);
-    const totalPages = Math.ceil(filteredWishlist.length / itemsPerPage);
-
-    const paginate = (pageNumber) => setCurrentPage(pageNumber);
+    // ----- Frontend pagination -----
+    const totalItems = filteredWishlist.length;
+    const totalPages = Math.ceil(totalItems / itemsPerPage) || 1;
+    const startIndex = (currentPage - 1) * itemsPerPage;
+    const endIndex = Math.min(startIndex + itemsPerPage, totalItems);
+    const currentItems = filteredWishlist.slice(startIndex, endIndex);
 
     if (loading) return (
         <div className="dash-loader-overlay">
@@ -117,7 +120,7 @@ const Wishlist = () => {
             <div className="admin-header">
                 <div className="header-titles-wishlist">
                     <h3>Wishlist</h3>
-                    {/* ---- Mobile search icon ---- */}
+                    {/* Mobile search icon */}
                     <button
                         className="mobile-icon-btn search-toggle"
                         onClick={toggleSearch}
@@ -131,7 +134,7 @@ const Wishlist = () => {
                         <i className="bi bi-arrow-clockwise"></i>
                     </button>
 
-                    {/* ---- Desktop search (hidden on mobile) ---- */}
+                    {/* Desktop search (hidden on mobile) */}
                     <div className="search-box desktop-search-wish">
                         <i className="bi bi-search"></i>
                         <input
@@ -144,7 +147,7 @@ const Wishlist = () => {
                 </div>
             </div>
 
-            {/* ---- Mobile Search Slide‑down ---- */}
+            {/* Mobile Search Slide‑down */}
             {isSearchOpen && (
                 <div className="mobile-search-slide" ref={searchRef}>
                     <div className="slide-content">
@@ -163,7 +166,7 @@ const Wishlist = () => {
                 </div>
             )}
 
-            {/* ---- Show empty image if no wishlist items at all ---- */}
+            {/* Empty state: no items at all */}
             {wishlistData.length === 0 ? (
                 <div className="wishlist-empty-state">
                     <img src={wishlistImage} alt="Empty wishlist" className="empty-wishlist-image" />
@@ -194,7 +197,12 @@ const Wishlist = () => {
                                                 <td><span className="id-badge">#{item.product_id}</span></td>
                                                 <td>
                                                     <div className="table-img-container">
-                                                        <img src={getImageUrl(item.product_image)} alt={item.product_name} className="table-thumb" />
+                                                        <img
+                                                            src={getImageUrl(item.product_image)}
+                                                            alt={item.product_name}
+                                                            className="table-thumb"
+                                                            onError={(e) => { e.target.src = "/assets/placeholder-product.jpg"; }}
+                                                        />
                                                     </div>
                                                 </td>
                                                 <td>
@@ -240,7 +248,7 @@ const Wishlist = () => {
                             <div className="pagination-container">
                                 <button
                                     className="page-btn"
-                                    onClick={() => paginate(currentPage - 1)}
+                                    onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
                                     disabled={currentPage === 1}
                                 >
                                     <i className="bi bi-chevron-left"></i> Prev
@@ -250,7 +258,7 @@ const Wishlist = () => {
                                     {[...Array(totalPages)].map((_, index) => (
                                         <button
                                             key={index + 1}
-                                            onClick={() => paginate(index + 1)}
+                                            onClick={() => setCurrentPage(index + 1)}
                                             className={`page-btn num-btn ${currentPage === index + 1 ? "active" : ""}`}
                                         >
                                             {index + 1}
@@ -260,7 +268,7 @@ const Wishlist = () => {
 
                                 <button
                                     className="page-btn"
-                                    onClick={() => paginate(currentPage + 1)}
+                                    onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
                                     disabled={currentPage === totalPages}
                                 >
                                     Next <i className="bi bi-chevron-right"></i>
