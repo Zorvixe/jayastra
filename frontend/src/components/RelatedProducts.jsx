@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo, useRef } from "react";
+import React, { useMemo, useState, useEffect, useRef } from "react";
 import { getProducts } from "../data/products";
 import { shuffleArray } from "../utils/shuffle";
 import ProductCard from "./ProductCard";
