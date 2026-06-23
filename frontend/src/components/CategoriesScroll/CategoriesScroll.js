@@ -96,15 +96,7 @@ const CategoriesScroll = () => {
         </div>
 
         <div className="categories-scroll-wrapper">
-          {showScrollButtons && (
-            <button 
-              className="scroll-btn scroll-left"
-              onClick={() => scroll('left')}
-              aria-label="Scroll left"
-            >
-              <i className="bi bi-chevron-left"></i>
-            </button>
-          )}
+         
           
           <div 
             className={`categories-scroll-container ${!showScrollButtons ? 'centered' : ''}`}
@@ -135,15 +127,7 @@ const CategoriesScroll = () => {
             ))}
           </div>
 
-          {showScrollButtons && (
-            <button 
-              className="scroll-btn scroll-right"
-              onClick={() => scroll('right')}
-              aria-label="Scroll right"
-            >
-              <i className="bi bi-chevron-right"></i>
-            </button>
-          )}
+          
         </div>
       </div>
     </section>
