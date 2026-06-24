@@ -121,10 +121,11 @@ const Profile = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState(location.state?.activeTab || "profile");
+  // ✅ FIX: Initialize all loading flags to false – they will be set to true only when fetching starts.
   const [loading, setLoading] = useState({
-    profile: true,
-    orders: true,
-    returns: true
+    profile: false,
+    orders: false,
+    returns: false
   });
   const [data, setData] = useState({
     first_name: "",
