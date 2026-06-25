@@ -9572,6 +9572,52 @@ app.delete("/api/admin/settings/dashboard-banner", verifyToken, verifySuperAdmin
 });
 
 
+// ================= TRANSFER PRODUCT OWNERSHIP (SUPER ADMIN ONLY) =================
+app.put("/api/admin/products/:id/transfer", verifyToken, verifySuperAdmin, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { vendor_id } = req.body;
+
+    if (!vendor_id || isNaN(parseInt(vendor_id))) {
+      return res.status(400).json({ success: false, message: "Valid vendor_id is required" });
+    }
+
+    // Check if product exists
+    const productCheck = await pool.query("SELECT id, vendor_id FROM products WHERE id = $1", [id]);
+    if (productCheck.rows.length === 0) {
+      return res.status(404).json({ success: false, message: "Product not found" });
+    }
+
+    const currentVendorId = productCheck.rows[0].vendor_id;
+    if (currentVendorId === parseInt(vendor_id)) {
+      return res.status(400).json({ success: false, message: "Product already belongs to this vendor" });
+    }
+
+    // Check if target vendor exists and is a vendor
+    const vendorCheck = await pool.query(
+      "SELECT id, role FROM users WHERE id = $1 AND role = 'vendor'",
+      [vendor_id]
+    );
+    if (vendorCheck.rows.length === 0) {
+      return res.status(400).json({ success: false, message: "Target vendor not found or not a vendor" });
+    }
+
+    // Transfer ownership
+    await pool.query(
+      "UPDATE products SET vendor_id = $1, updated_at = NOW() WHERE id = $2",
+      [vendor_id, id]
+    );
+
+    res.json({
+      success: true,
+      message: `Product ownership transferred successfully to vendor ID ${vendor_id}`
+    });
+  } catch (error) {
+    console.error("Product transfer error:", error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
 app.get("/", (req, res) => res.send("Jayastra API is running 🚀"));
 
 app.use((err, req, res, next) => {

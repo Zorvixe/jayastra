@@ -30,6 +30,13 @@ const Products = () => {
   const [confirmBulkDelete, setConfirmBulkDelete] = useState(false);
   const userRole = localStorage.getItem("userRole")?.toLowerCase();
 
+  const [showTransferModal, setShowTransferModal] = useState(false);
+  const [transferProductId, setTransferProductId] = useState(null);
+  const [selectedVendorId, setSelectedVendorId] = useState("");
+  const [vendors, setVendors] = useState([]);
+  const [loadingVendors, setLoadingVendors] = useState(false);
+
+
   // Frontend pagination state
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
@@ -196,6 +203,46 @@ const Products = () => {
   const startIndex = (currentPage - 1) * itemsPerPage;
   const endIndex = Math.min(startIndex + itemsPerPage, totalItems);
   const currentItems = filteredProducts.slice(startIndex, endIndex);
+
+
+  const openTransferModal = async (productId) => {
+    setTransferProductId(productId);
+    setShowTransferModal(true);
+    setSelectedVendorId("");
+    setLoadingVendors(true);
+    try {
+      const token = localStorage.getItem("token");
+      const res = await axios.get(`${API_URL}/admin/vendors`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      setVendors(res.data.users || []);
+    } catch (err) {
+      toast.error("Failed to fetch vendors");
+    } finally {
+      setLoadingVendors(false);
+    }
+  };
+
+  // Function to execute transfer
+  const handleTransfer = async () => {
+    if (!selectedVendorId) {
+      toast.error("Please select a vendor");
+      return;
+    }
+    try {
+      const token = localStorage.getItem("token");
+      await axios.put(
+        `${API_URL}/admin/products/${transferProductId}/transfer`,
+        { vendor_id: selectedVendorId },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      toast.success("Product transferred successfully");
+      setShowTransferModal(false);
+      fetchAllProducts(); // refresh list
+    } catch (err) {
+      toast.error(err.response?.data?.message || "Transfer failed");
+    }
+  };
 
   // ----- Render -----
   return (
@@ -452,6 +499,15 @@ const Products = () => {
                             >
                               <i className="bi bi-trash"></i>
                             </button>
+                            {userRole === 'super_admin' && (
+                              <button
+                                className="transfer-btn-prod"
+                                onClick={() => openTransferModal(product.id)}
+                                title="Transfer Ownership"
+                              >
+                                <i className="bi bi-arrow-left-right"></i>
+                              </button>
+                            )}
                           </div>
                         </td>
                       </tr>
@@ -460,6 +516,52 @@ const Products = () => {
                 </tbody>
               </table>
             </div>
+
+            {/* Transfer Modal */}
+            {showTransferModal && (
+              <div className="custom-confirm-overlay" onClick={() => setShowTransferModal(false)}>
+                <div className="custom-confirm-box" onClick={(e) => e.stopPropagation()}>
+                  <div className="confirm-icon" style={{ color: "#2563eb", background: "#dbeafe" }}>
+                    <i className="bi bi-arrow-left-right"></i>
+                  </div>
+                  <h5>Transfer Product Ownership</h5>
+                  <p>Select the new vendor for this product. This action will change the product's ownership.</p>
+                  {loadingVendors ? (
+                    <div className="dash-loader-container" style={{ padding: "20px" }}>
+                      <div className="dash-spinner"></div>
+                    </div>
+                  ) : (
+                    <>
+                      <select
+                        value={selectedVendorId}
+                        onChange={(e) => setSelectedVendorId(e.target.value)}
+                        className="transfer-vendor-select"
+                      >
+                        <option value="">-- Select Vendor --</option>
+                        {vendors.map((vendor) => (
+                          <option key={vendor.id} value={vendor.id}>
+                            {vendor.store_name || vendor.name} ({vendor.email})
+                          </option>
+                        ))}
+                      </select>
+                      <div className="confirm-actions" style={{ marginTop: "20px" }}>
+                        <button className="confirm-cancel-btn" onClick={() => setShowTransferModal(false)}>
+                          Cancel
+                        </button>
+                        <button
+                          className="confirm-execute-btn"
+                          style={{ background: "#2563eb" }}
+                          onClick={handleTransfer}
+                          disabled={!selectedVendorId}
+                        >
+                          Transfer
+                        </button>
+                      </div>
+                    </>
+                  )}
+                </div>
+              </div>
+            )}
 
             {/* Frontend Pagination */}
             {totalItems > 0 && (
