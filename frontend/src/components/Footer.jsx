@@ -59,7 +59,7 @@ const Footer = () => {
 
         {/* WhatsApp Enquire Row */}
         <div className="footer-bottom-row">
-          <a href="https://wa.me/8328590444" target="_blank" rel="noopener noreferrer" className="whatsapp-enquire-btn">
+          <a href="https://wa.me/918328590444" target="_blank" rel="noopener noreferrer" className="whatsapp-enquire-btn">
             <i className="bi bi-whatsapp"></i> Enquire on WhatsApp
           </a>
         </div>

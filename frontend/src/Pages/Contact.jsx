@@ -22,7 +22,7 @@ const Contact = () => {
     e.preventDefault();
 
     // Construct WhatsApp Message
-    const whatsappNum = "919113657841"; // The number provided in footer
+    const whatsappNum = "918328590444"; // The number provided in footer
     const text = `*New Inquiry from Website*%0A%0A*Name:* ${formData.firstName} ${formData.lastName}%0A*Email:* ${formData.email}%0A*Phone:* ${formData.phone}%0A*Message:* ${formData.message}`;
 
     const waUrl = `https://wa.me/${whatsappNum}?text=${text}`;
