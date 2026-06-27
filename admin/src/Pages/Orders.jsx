@@ -1,9 +1,7 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import axios from '../utils/axiosConfig';
 import { toast } from "react-toastify";
-
-import shiprocketService from '../services/shiprocketService';
-
+import io from 'socket.io-client';
 import "./Order.css";
 
 const API_URL = process.env.REACT_APP_API_URL;
@@ -390,6 +388,19 @@ const Orders = () => {
 
   const [filterDate, setFilterDate] = useState(new Date().toISOString().split('T')[0]);
 
+  // --- SOUND NOTIFICATION STATE ---
+  const [soundEnabled, setSoundEnabled] = useState(() => {
+    return localStorage.getItem('orderSoundEnabled') !== 'false'; // default true
+  });
+  const [soundVolume, setSoundVolume] = useState(() => {
+    const saved = localStorage.getItem('orderSoundVolume');
+    return saved ? parseFloat(saved) : 1;
+  });
+  const [showSoundSettings, setShowSoundSettings] = useState(false);
+
+  const socketRef = useRef(null);
+  const audioRef = useRef(null);
+
   const token = localStorage.getItem("token");
   const userRole = localStorage.getItem("userRole");
   const isSuperAdmin = userRole === "super_admin";
@@ -420,6 +431,82 @@ const Orders = () => {
       fetchOrders(true);
     }, 10000);
     return () => clearInterval(interval);
+  }, []);
+
+  // --- SOCKET.IO SETUP ---
+  useEffect(() => {
+    const socket = io(API_URL.replace('/api', ''), {
+      transports: ['websocket', 'polling'],
+    });
+    socketRef.current = socket;
+
+    socket.on('connect', () => {
+      console.log('🔌 Socket connected for order notifications');
+    });
+
+    socket.on('new_order', (data) => {
+      console.log('🔔 New order received:', data);
+      // Play sound if enabled
+      if (soundEnabled) {
+        playNotificationSound();
+      }
+      // Show browser notification (if permitted)
+      if (Notification.permission === 'granted') {
+        new Notification('📦 New Order Received!', {
+          body: `Order #${data.orderId} from ${data.order.customer_name}`,
+          icon: '/favicon.ico',
+        });
+      }
+      // Refresh orders to show the new one
+      fetchOrders(true);
+      toast.info(`New order #${data.orderId} received!`);
+    });
+
+    socket.on('disconnect', () => {
+      console.log('🔌 Socket disconnected');
+    });
+
+    return () => {
+      socket.disconnect();
+    };
+  }, [soundEnabled]);
+
+  // --- PLAY SOUND ---
+  const playNotificationSound = () => {
+    try {
+      if (!audioRef.current) {
+        audioRef.current = new Audio('/sounds/notification.mp3');
+      }
+      audioRef.current.volume = soundVolume; // apply volume
+      audioRef.current.currentTime = 0;
+      audioRef.current.play().catch(err => {
+        console.warn('Sound play failed:', err);
+      });
+    } catch (err) {
+      console.warn('Sound error:', err);
+    }
+  };
+
+  // --- TOGGLE SOUND (from settings modal) ---
+  const toggleSound = () => {
+    const newState = !soundEnabled;
+    setSoundEnabled(newState);
+    localStorage.setItem('orderSoundEnabled', String(newState));
+    toast.info(newState ? '🔊 Sound notifications enabled' : '🔇 Sound notifications disabled');
+  };
+
+  // --- HANDLE VOLUME CHANGE ---
+  const handleVolumeChange = (e) => {
+    const val = parseFloat(e.target.value);
+    setSoundVolume(val);
+    localStorage.setItem('orderSoundVolume', String(val));
+  };
+
+  // Request notification permission on mount
+  useEffect(() => {
+    if (Notification.permission === 'default') {
+      Notification.requestPermission();
+    }
   }, []);
 
   useEffect(() => {
@@ -815,6 +902,7 @@ const Orders = () => {
 
       <div className="orders-header-flex">
         <h4>Orders</h4>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
           <div className="date-filter-group">
             <input
               type="date"
@@ -829,6 +917,15 @@ const Orders = () => {
               </button>
             )}
           </div>
+          {/* Three-dots button to open sound settings */}
+          <button
+            className="sound-settings-btn"
+            onClick={() => setShowSoundSettings(true)}
+            title="Sound settings"
+          >
+            <i className="bi bi-three-dots-vertical"></i>
+          </button>
+        </div>
       </div>
 
       <div className="orders-table">
@@ -1204,6 +1301,52 @@ const Orders = () => {
           <div className="lightbox-content">
             <img src={previewImage} alt="Product Preview" onClick={(e) => e.stopPropagation()} onError={(e) => e.target.src = "/assets/placeholder-product.jpg"} />
             <button className="close-lightbox" onClick={() => setPreviewImage(null)}>✕</button>
+          </div>
+        </div>
+      )}
+
+      {/* Sound Settings Modal */}
+      {showSoundSettings && (
+        <div className="sound-settings-overlay" onClick={() => setShowSoundSettings(false)}>
+          <div className="sound-settings-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <h4><i class="bi bi-bell-fill"></i> Sound Settings</h4>
+              <button className="close-btn" onClick={() => setShowSoundSettings(false)}>✕</button>
+            </div>
+            <div className="modal-body">
+              <div className="sound-setting-item">
+                <label className="toggle-label">
+                  <span className="toggle-text">Order Sound</span>
+                  <div className="toggle-switch">
+                    <input
+                      type="checkbox"
+                      checked={soundEnabled}
+                      onChange={toggleSound}
+                    />
+                    <span className="toggle-slider"></span>
+                  </div>
+                </label>
+              </div>
+              <div className="sound-setting-item">
+                <label className="volume-label">
+                  <span className="volume-text">Volume: {Math.round(soundVolume * 100)}%</span>
+                  <input
+                    type="range"
+                    min="0"
+                    max="1"
+                    step="0.01"
+                    value={soundVolume}
+                    onChange={handleVolumeChange}
+                    className="volume-slider"
+                  />
+                </label>
+              </div>
+              <div className="sound-setting-item">
+                <button className="test-sound-btn" onClick={playNotificationSound}>
+                  <i className="bi bi-play-circle"></i> Test Sound
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       )}

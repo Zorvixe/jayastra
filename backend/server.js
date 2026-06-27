@@ -4164,6 +4164,13 @@ VALUES($1, $2, $3, $4, $5, $6)`,
     await client.query(`DELETE FROM cart_items WHERE user_id = $1`, [req.user.id]);
     await client.query("COMMIT");
 
+    // Emit new order event for real‑time notification
+    const newOrder = await pool.query(`SELECT * FROM orders WHERE id = $1`, [orderId]);
+    io.emit('new_order', {
+      orderId: orderId,
+      order: newOrder.rows[0]
+    });
+
     const fullOrderResult = await pool.query(`SELECT * FROM orders WHERE id = $1`, [orderId]);
     sendAdminNotification(fullOrderResult.rows[0]);
 
@@ -4304,6 +4311,14 @@ VALUES($1, $2, $3, $4, $5, $6)`,
 
     await client.query(`DELETE FROM cart_items WHERE user_id = $1`, [req.user.id]);
     await client.query("COMMIT");
+
+    // Emit new order event for real‑time notification
+    const newOrder = await pool.query(`SELECT * FROM orders WHERE id = $1`, [orderId]);
+    io.emit('new_order', {
+      orderId: orderId,
+      order: newOrder.rows[0]
+    });
+
 
     sendAdminNotification({
       id: orderId,
