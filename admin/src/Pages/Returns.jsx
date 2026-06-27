@@ -94,10 +94,8 @@ const Returns = () => {
     };
 
     if (loading) return (
-        <div className="return-loader-overlay">
-            <div className="return-loader-container">
-                <div className="return-spinner"></div>
-            </div>
+        <div className="dash-loader-overlay">
+            <div className="dash-spinner"></div>
         </div>
     );
 
@@ -192,7 +190,7 @@ const Returns = () => {
                                             )}
                                             <td data-label="Video">
                                                 {r.video_url ? (
-                                                    <button 
+                                                    <button
                                                         className="view-video-btn"
                                                         onClick={() => openVideoModal(r.video_url)}
                                                     >
@@ -285,7 +283,7 @@ const Returns = () => {
                                 <i className="bi bi-check-circle"></i> Approve
                             </button>
                         </div>
-                        
+
                         {selectedRequest.status !== 'Pending' && (
                             <div className="return-status-info">
                                 <i className="bi bi-info-circle"></i>

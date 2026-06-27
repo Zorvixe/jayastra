@@ -2641,6 +2641,107 @@ app.put("/api/admin/users/status/:id", verifyToken, verifySuperAdmin, async (req
   }
 });
 
+
+// ================= UPDATE USER (ADMIN/SUPER_ADMIN) =================
+app.put("/api/admin/users/:id", verifyToken, verifyAdminOrSuperAdmin, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { name, email, phone, store_name, address, city, state, pincode, gst_number } = req.body;
+
+    // 1. Check if target user exists
+    const userCheck = await pool.query("SELECT id, role FROM users WHERE id = $1", [id]);
+    if (userCheck.rows.length === 0) {
+      return res.status(404).json({ success: false, message: "User not found" });
+    }
+    const targetUser = userCheck.rows[0];
+    const currentUserRole = req.user.role?.toLowerCase();
+
+    // 2. Permission checks:
+    //    - Super Admin can edit anyone.
+    //    - Admin can edit vendors and customers, but not other admins or super_admins.
+    if (currentUserRole !== 'super_admin') {
+      const targetRole = targetUser.role?.toLowerCase();
+      if (targetRole === 'super_admin' || targetRole === 'admin') {
+        return res.status(403).json({
+          success: false,
+          message: "You are not allowed to edit this user's details."
+        });
+      }
+      // Admin can edit vendors/customers only if they are not super admin
+    }
+
+    // 3. Build dynamic update query
+    const updates = [];
+    const values = [];
+    let paramCount = 1;
+
+    const addField = (field, value) => {
+      if (value !== undefined && value !== null) {
+        updates.push(`${field} = $${paramCount++}`);
+        values.push(value);
+      }
+    };
+
+    addField('name', name);
+    addField('email', email);
+    addField('phone', phone);
+    addField('store_name', store_name);
+    addField('address', address);
+    addField('city', city);
+    addField('state', state);
+    addField('pincode', pincode);
+    addField('gst_number', gst_number);
+
+    // If email changes, ensure it's unique (except for same user)
+    if (email) {
+      const existing = await pool.query(
+        "SELECT id FROM users WHERE LOWER(email) = LOWER($1) AND id != $2",
+        [email, id]
+      );
+      if (existing.rows.length > 0) {
+        return res.status(400).json({ success: false, message: "Email already in use by another user" });
+      }
+    }
+
+    // If phone changes, ensure it's unique
+    if (phone) {
+      const existing = await pool.query(
+        "SELECT id FROM users WHERE phone = $1 AND id != $2",
+        [phone, id]
+      );
+      if (existing.rows.length > 0) {
+        return res.status(400).json({ success: false, message: "Phone number already in use by another user" });
+      }
+    }
+
+    if (updates.length === 0) {
+      return res.status(400).json({ success: false, message: "No fields to update" });
+    }
+
+    updates.push(`updated_at = CURRENT_TIMESTAMP`);
+    values.push(id);
+
+    const query = `
+      UPDATE users
+      SET ${updates.join(", ")}
+      WHERE id = $${paramCount}
+      RETURNING id, name, email, phone, role, status, store_name, address, city, state, pincode, gst_number
+    `;
+
+    const result = await pool.query(query, values);
+
+    res.json({
+      success: true,
+      message: "User updated successfully",
+      user: result.rows[0]
+    });
+
+  } catch (error) {
+    console.error("Update user error:", error);
+    res.status(500).json({ success: false, message: error.message || "Update failed" });
+  }
+});
+
 // Update phone number
 app.put("/api/user/profile/phone", verifyToken, async (req, res) => {
   try {

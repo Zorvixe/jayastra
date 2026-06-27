@@ -266,6 +266,9 @@
 .role-badge.customer {
   background: #6b7280;
 }
+.role-badge.user {
+  background: #6b7280;
+}
 
 /* ================= STATUS BADGE ================= */
 
@@ -866,4 +869,28 @@ button:disabled {
   flex-direction: row;
   align-items: center;
   gap: 12px;
+}
+
+/* Edit button style */
+.edit-btn {
+  background: #3b82f6;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  padding: 4px 8px;
+  margin-right: 5px;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+.edit-btn:hover {
+  background: #2563eb;
+}
+
+/* For modal form rows */
+.form-row {
+  display: flex;
+  gap: 10px;
+}
+.form-row .form-group {
+  flex: 1;
 }

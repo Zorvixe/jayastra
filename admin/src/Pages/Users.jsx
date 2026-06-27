@@ -40,6 +40,21 @@ const Users = () => {
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const searchRef = useRef(null);
 
+  // ---------- EDIT MODAL STATE ----------
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [editUser, setEditUser] = useState(null); // the user being edited
+  const [editForm, setEditForm] = useState({
+    name: '',
+    email: '',
+    phone: '',
+    store_name: '',
+    address: '',
+    city: '',
+    state: '',
+    pincode: '',
+    gst_number: ''
+  });
+
   // Close search panel when clicking outside
   useEffect(() => {
     const handleClickOutside = (event) => {
@@ -198,6 +213,55 @@ const Users = () => {
     }
   };
 
+  // ---------- EDIT FUNCTIONS ----------
+  const openEditModal = (user) => {
+    setEditUser(user);
+    setEditForm({
+      name: user.name || '',
+      email: user.email || '',
+      phone: user.phone || '',
+      store_name: user.store_name || '',
+      address: user.address || '',
+      city: user.city || '',
+      state: user.state || '',
+      pincode: user.pincode || '',
+      gst_number: user.gst_number || ''
+    });
+    setShowEditModal(true);
+  };
+
+  const closeEditModal = () => {
+    setShowEditModal(false);
+    setEditUser(null);
+  };
+
+  const handleEditSubmit = async (e) => {
+    e.preventDefault();
+    if (!editUser) return;
+    try {
+      setLoading(true);
+      const payload = {};
+      // Only send fields that have changed (or send all, server will ignore undefined)
+      Object.keys(editForm).forEach(key => {
+        if (editForm[key] !== undefined) payload[key] = editForm[key];
+      });
+
+      await axios.put(`${API_URL}/admin/users/${editUser.id}`, payload, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      toast.success("User updated successfully");
+      closeEditModal();
+      // Refresh the current list
+      if (activeTab === "admins") await fetchAdmins();
+      else if (activeTab === "vendors") await fetchVendors();
+      else if (activeTab === "customers") await fetchCustomers();
+    } catch (err) {
+      toast.error(err.response?.data?.message || "Update failed");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   // -------------------- Helpers --------------------
   const getListForTab = () => {
     if (activeTab === "admins") return admins;
@@ -239,7 +303,7 @@ const Users = () => {
             aria-label="Search"
           >
             <i className="bi bi-search"></i>
-          </button> 
+          </button>
         </div>
         <div className="header-actions">
           {/* ---- Desktop search (hidden on mobile) ---- */}
@@ -371,7 +435,7 @@ const Users = () => {
                       </span>
                     </td>
                     <td>
-                      <span style={{ color: "white" }} className={`status-badge ${user.status === "Active" ? "active" : "blocked"}`}>
+                      <span  className={`status-badge ${user.status === "Active" ? "active" : "blocked"}`}>
                         {user.status}
                       </span>
                     </td>
@@ -379,6 +443,17 @@ const Users = () => {
                       <button className="view-btn" onClick={() => setSelectedUser(user)} title="View Details">
                         <i className="bi bi-eye"></i>
                       </button>
+
+                      {/* EDIT BUTTON - visible to super_admin, and to admin if target is not admin/super_admin */}
+                      {(userRole === 'super_admin' || (userRole === 'admin' && user.role !== 'admin' && user.role !== 'super_admin')) && (
+                        <button
+                          className="edit-btn"
+                          onClick={() => openEditModal(user)}
+                          title="Edit User"
+                        >
+                          <i className="bi bi-pencil-square"></i>
+                        </button>
+                      )}
 
                       {activeTab !== "customers" && userRole === "super_admin" && (
                         <button
@@ -517,6 +592,112 @@ const Users = () => {
               )}
               <button type="submit" className="btn-submit w-100" disabled={loading}>
                 {loading ? <><div className="btn-spinner"></div> Creating...</> : `Create ${modalRole === 'admin' ? 'Admin' : 'Vendor'}`}
+              </button>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ========== EDIT USER MODAL ========== */}
+      {showEditModal && editUser && (
+        <div className="user-modal" onClick={closeEditModal}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <h5>Edit User</h5>
+              <button onClick={closeEditModal}>✕</button>
+            </div>
+            <form onSubmit={handleEditSubmit} className="modal-body">
+              <div className="form-group mb-3">
+                <label>Full Name</label>
+                <input
+                  type="text"
+                  className="form-control"
+                  value={editForm.name}
+                  onChange={(e) => setEditForm({ ...editForm, name: e.target.value })}
+                  required
+                />
+              </div>
+              <div className="form-group mb-3">
+                <label>Email</label>
+                <input
+                  type="email"
+                  className="form-control"
+                  value={editForm.email}
+                  onChange={(e) => setEditForm({ ...editForm, email: e.target.value })}
+                  required
+                />
+              </div>
+              <div className="form-group mb-3">
+                <label>Phone</label>
+                <input
+                  type="text"
+                  className="form-control"
+                  value={editForm.phone}
+                  onChange={(e) => setEditForm({ ...editForm, phone: e.target.value })}
+                />
+              </div>
+              {/* Show store_name only for vendors */}
+              {editUser.role === 'vendor' && (
+                <div className="form-group mb-3">
+                  <label>Store Name</label>
+                  <input
+                    type="text"
+                    className="form-control"
+                    value={editForm.store_name}
+                    onChange={(e) => setEditForm({ ...editForm, store_name: e.target.value })}
+                  />
+                </div>
+              )}
+              <div className="form-group mb-3">
+                <label>Address</label>
+                <input
+                  type="text"
+                  className="form-control"
+                  value={editForm.address}
+                  onChange={(e) => setEditForm({ ...editForm, address: e.target.value })}
+                />
+              </div>
+              <div className="form-row">
+                <div className="form-group mb-3 col">
+                  <label>City</label>
+                  <input
+                    type="text"
+                    className="form-control"
+                    value={editForm.city}
+                    onChange={(e) => setEditForm({ ...editForm, city: e.target.value })}
+                  />
+                </div>
+                <div className="form-group mb-3 col">
+                  <label>State</label>
+                  <input
+                    type="text"
+                    className="form-control"
+                    value={editForm.state}
+                    onChange={(e) => setEditForm({ ...editForm, state: e.target.value })}
+                  />
+                </div>
+                <div className="form-group mb-3 col">
+                  <label>Pincode</label>
+                  <input
+                    type="text"
+                    className="form-control"
+                    value={editForm.pincode}
+                    onChange={(e) => setEditForm({ ...editForm, pincode: e.target.value })}
+                  />
+                </div>
+              </div>
+              <div className="form-group mb-3">
+                <label>GST Number</label>
+                <input
+                  type="text"
+                  className="form-control"
+                  value={editForm.gst_number}
+                  onChange={(e) => setEditForm({ ...editForm, gst_number: e.target.value })}
+                />
+              </div>
+
+              <button type="submit" className="btn-submit w-100" disabled={loading}>
+                {loading ? <><div className="btn-spinner"></div> Updating...</> : "Update User"}
               </button>
             </form>
           </div>

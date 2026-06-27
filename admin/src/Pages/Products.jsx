@@ -398,6 +398,7 @@ const Products = () => {
                       />
                     </th>
                     <th>Product</th>
+                    <th>Name</th>
                     {userRole === 'super_admin' && <th>Owner</th>}
                     <th>Category</th>
                     <th>Price</th>
@@ -425,6 +426,7 @@ const Products = () => {
                             onChange={() => toggleSelect(product.id)}
                           />
                         </td>
+
                         <td className="product-info-cell">
                           <div className="product-img-cell">
                             <img
@@ -440,8 +442,11 @@ const Products = () => {
                                 e.target.src = "/assets/placeholder-product.jpg";
                               }}
                             />
-                            <span className="product-name">{product.name}</span>
+
                           </div>
+                        </td>
+                        <td>
+                          <span className="product-name">{product.name}</span>
                         </td>
                         {userRole === 'super_admin' && (
                           <td>
@@ -477,7 +482,6 @@ const Products = () => {
                         </td>
                         <td>
                           <span
-                            style={{ color: "white" }}
                             className={`status-badge ${product.is_active ? "active" : "inactive"}`}
                           >
                             {product.is_active ? "Active" : "Inactive"}

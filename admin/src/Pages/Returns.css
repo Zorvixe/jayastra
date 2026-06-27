@@ -32,27 +32,27 @@
     font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
     overflow-x: hidden;
     width: 100%;
-    gap: 10px;
+    gap: 8px;
+    padding: 10px;
 }
 
 /* ================= HEADER SECTION ================= */
 .return-header {
     background: white;
     border-bottom: 1px solid var(--return-gray-200);
-    padding: 32px 32px 24px;
+    padding: 24px 24px 18px;
     display: flex;
     justify-content: space-between;
     align-items: center;
     flex-wrap: wrap;
-    gap: 20px;
-    border-radius: 20px;
-    margin-bottom: 10px;
+    gap: 16px;
+    margin-bottom: 8px;
 }
 
 .return-header-content h1 {
-    font-size: 1.75rem;
+    font-size: 1.4rem;
     font-weight: 700;
-    margin: 0 0 6px 0;
+    margin: 0 0 4px 0;
     background: linear-gradient(135deg, var(--return-primary) 0%, var(--return-primary-dark) 100%);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
@@ -62,32 +62,32 @@
 .return-header-content p {
     margin: 0;
     color: var(--return-gray-500);
-    font-size: 0.9rem;
+    font-size: 0.8rem;
 }
 
 .return-stats {
     display: flex;
-    gap: 16px;
+    gap: 12px;
 }
 
 .return-stat-card {
     background: var(--return-gray-50);
-    border-radius: 20px;
-    padding: 12px 20px;
-    min-width: 100px;
+    border-radius: 16px;
+    padding: 10px 16px;
+    min-width: 80px;
     text-align: center;
     border: 1px solid var(--return-gray-200);
 }
 
 .return-stat-value {
     display: block;
-    font-size: 1.75rem;
+    font-size: 1.4rem;
     font-weight: 700;
     color: var(--return-gray-800);
 }
 
 .return-stat-label {
-    font-size: 0.7rem;
+    font-size: 0.6rem;
     font-weight: 600;
     text-transform: uppercase;
     letter-spacing: 0.5px;
@@ -97,7 +97,7 @@
 /* ================= WORKSPACE LAYOUT ================= */
 .return-workspace {
     display: flex;
-    gap: 28px;
+    gap: 22px;
     align-items: flex-start;
     width: 100%;
     max-width: 100%;
@@ -110,28 +110,27 @@
     flex: 1;
     min-width: 0;
     background: white;
-    border-radius: 20px;
-    box-shadow: var(--return-shadow);
+    border-radius: 16px;
     overflow: hidden;
     width: 100%;
     max-width: 100%;
 }
 
 .return-section-title {
-    padding: 20px 24px;
+    padding: 16px 20px;
     background: white;
     border-bottom: 1px solid var(--return-gray-200);
     font-weight: 600;
-    font-size: 1rem;
+    font-size: 0.9rem;
     color: var(--return-gray-700);
     display: flex;
     align-items: center;
-    gap: 10px;
+    gap: 8px;
 }
 
 .return-section-title i {
     color: var(--return-primary);
-    font-size: 1.2rem;
+    font-size: 1rem;
 }
 
 .return-table-wrapper {
@@ -147,27 +146,27 @@
 
 .return-modern-table th {
     text-align: left;
-    padding: 16px 20px;
+    padding: 12px 16px;
     background: var(--return-gray-50);
     color: var(--return-gray-600);
     font-weight: 600;
-    font-size: 0.75rem;
+    font-size: 0.65rem;
     text-transform: uppercase;
     letter-spacing: 0.5px;
     border-bottom: 1px solid var(--return-gray-200);
 }
 
 .return-modern-table td {
-    padding: 18px 20px;
+    padding: 14px 16px;
     border-bottom: 1px solid var(--return-gray-100);
     color: var(--return-gray-700);
-    font-size: 0.85rem;
+    font-size: 0.75rem;
     vertical-align: middle;
 }
 
 .return-modern-table td small {
     display: block;
-    font-size: 0.7rem;
+    font-size: 0.6rem;
     color: var(--return-gray-400);
     margin-top: 2px;
 }
@@ -184,9 +183,9 @@
 /* Status Badges */
 .return-badge {
     display: inline-block;
-    padding: 4px 12px;
+    padding: 3px 10px;
     border-radius: 100px;
-    font-size: 0.7rem;
+    font-size: 0.6rem;
     font-weight: 600;
     text-transform: uppercase;
     letter-spacing: 0.3px;
@@ -211,16 +210,16 @@
 .view-video-btn {
     background: linear-gradient(135deg, var(--return-primary) 0%, var(--return-primary-dark) 100%);
     border: none;
-    padding: 6px 12px;
-    border-radius: 20px;
-    font-size: 0.7rem;
+    padding: 5px 10px;
+    border-radius: 16px;
+    font-size: 0.6rem;
     font-weight: 500;
     color: white;
     cursor: pointer;
     transition: all 0.2s;
     display: inline-flex;
     align-items: center;
-    gap: 5px;
+    gap: 4px;
 }
 
 .view-video-btn:hover {
@@ -230,10 +229,10 @@
 
 .no-video-tag {
     display: inline-block;
-    padding: 4px 10px;
+    padding: 3px 8px;
     background: var(--return-gray-100);
-    border-radius: 20px;
-    font-size: 0.7rem;
+    border-radius: 16px;
+    font-size: 0.6rem;
     color: var(--return-gray-500);
 }
 
@@ -241,9 +240,9 @@
 .return-review-btn {
     background: none;
     border: 1px solid var(--return-gray-300);
-    padding: 6px 14px;
-    border-radius: 30px;
-    font-size: 0.75rem;
+    padding: 5px 12px;
+    border-radius: 24px;
+    font-size: 0.65rem;
     font-weight: 500;
     color: var(--return-gray-600);
     cursor: pointer;
@@ -264,14 +263,14 @@
 
 /* ================= VERIFICATION PANEL ================= */
 .return-verification-panel {
-    width: 420px;
+    width: 340px;
     background: white;
-    border-radius: 24px;
+    border-radius: 20px;
     box-shadow: var(--return-shadow-xl);
     overflow: hidden;
     animation: returnSlideIn 0.3s ease;
     position: sticky;
-    top: 100px;
+    top: 80px;
 }
 
 @keyframes returnSlideIn {
@@ -286,7 +285,7 @@
 }
 
 .return-panel-header {
-    padding: 20px 24px;
+    padding: 16px 20px;
     background: linear-gradient(135deg, var(--return-primary) 0%, var(--return-primary-dark) 100%);
     color: white;
     display: flex;
@@ -295,22 +294,22 @@
 }
 
 .return-panel-header h3 {
-    margin: 0 0 4px 0;
-    font-size: 1.1rem;
+    margin: 0 0 3px 0;
+    font-size: 0.95rem;
     font-weight: 600;
 }
 
 .return-panel-header p {
     margin: 0;
-    font-size: 0.8rem;
+    font-size: 0.7rem;
     opacity: 0.9;
 }
 
 .return-panel-close {
     background: rgba(255,255,255,0.2);
     border: none;
-    width: 32px;
-    height: 32px;
+    width: 28px;
+    height: 28px;
     border-radius: 50%;
     display: flex;
     align-items: center;
@@ -318,7 +317,7 @@
     cursor: pointer;
     transition: all 0.2s;
     color: white;
-    font-size: 1.2rem;
+    font-size: 1rem;
 }
 
 .return-panel-close:hover {
@@ -328,25 +327,25 @@
 
 /* Video Card */
 .return-video-card {
-    padding: 20px 24px;
+    padding: 16px 20px;
     border-bottom: 1px solid var(--return-gray-100);
 }
 
 .return-video-label {
-    font-size: 0.75rem;
+    font-size: 0.65rem;
     font-weight: 600;
     text-transform: uppercase;
     color: var(--return-gray-500);
-    margin-bottom: 12px;
+    margin-bottom: 10px;
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: 6px;
 }
 
 .video-thumbnail-container {
     position: relative;
     cursor: pointer;
-    border-radius: 16px;
+    border-radius: 12px;
     overflow: hidden;
     aspect-ratio: 16 / 9;
     background: #000;
@@ -369,18 +368,18 @@
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    gap: 8px;
+    gap: 6px;
     color: white;
     transition: all 0.2s;
 }
 
 .video-play-overlay i {
-    font-size: 48px;
+    font-size: 40px;
     filter: drop-shadow(0 2px 4px rgba(0,0,0,0.3));
 }
 
 .video-play-overlay span {
-    font-size: 12px;
+    font-size: 10px;
     font-weight: 500;
 }
 
@@ -394,26 +393,26 @@
 
 /* Admin Remarks Card */
 .return-remark-card {
-    padding: 20px 24px;
+    padding: 16px 20px;
     border-bottom: 1px solid var(--return-gray-100);
 }
 
 .return-remark-card label {
     display: block;
-    font-size: 0.75rem;
+    font-size: 0.65rem;
     font-weight: 600;
     text-transform: uppercase;
     color: var(--return-gray-500);
-    margin-bottom: 12px;
+    margin-bottom: 10px;
 }
 
 .return-remark-card textarea {
     width: 100%;
     border: 1px solid var(--return-gray-200);
-    border-radius: 16px;
-    padding: 12px 16px;
+    border-radius: 12px;
+    padding: 10px 14px;
     font-family: inherit;
-    font-size: 0.85rem;
+    font-size: 0.75rem;
     resize: vertical;
     transition: all 0.2s;
 }
@@ -426,24 +425,24 @@
 
 /* Action Buttons */
 .return-action-buttons {
-    padding: 20px 24px;
+    padding: 16px 20px;
     display: flex;
-    gap: 16px;
+    gap: 12px;
 }
 
 .return-action {
     flex: 1;
-    padding: 12px;
-    border-radius: 40px;
+    padding: 10px;
+    border-radius: 30px;
     font-weight: 600;
-    font-size: 0.85rem;
+    font-size: 0.75rem;
     border: none;
     cursor: pointer;
     transition: all 0.2s;
     display: flex;
     align-items: center;
     justify-content: center;
-    gap: 8px;
+    gap: 6px;
 }
 
 .return-action.reject {
@@ -478,13 +477,13 @@
     align-items: center;
     justify-content: center;
     min-height: 60vh;
-    gap: 16px;
+    gap: 12px;
 }
 
 .return-spinner {
-    width: 48px;
-    height: 48px;
-    border: 3px solid var(--return-gray-200);
+    width: 40px;
+    height: 40px;
+    border: 2px solid var(--return-gray-200);
     border-top-color: var(--return-primary);
     border-radius: 50%;
     animation: returnSpin 0.8s linear infinite;
@@ -496,7 +495,7 @@
 
 .return-empty {
     text-align: center;
-    padding: 48px !important;
+    padding: 36px !important;
     color: var(--return-gray-400);
 }
 
@@ -518,9 +517,9 @@
 
 .video-modal-container {
     width: 90%;
-    max-width: 800px;
+    max-width: 650px;
     background: #1a1a1a;
-    border-radius: 20px;
+    border-radius: 16px;
     overflow: hidden;
     animation: slideUp 0.3s ease;
     box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
@@ -530,29 +529,29 @@
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 16px 20px;
+    padding: 12px 16px;
     background: #2d2d2d;
     color: white;
 }
 
 .video-modal-header h4 {
     margin: 0;
-    font-size: 1rem;
+    font-size: 0.9rem;
     font-weight: 600;
 }
 
 .video-modal-close {
     background: rgba(255, 255, 255, 0.1);
     border: none;
-    width: 32px;
-    height: 32px;
+    width: 28px;
+    height: 28px;
     border-radius: 50%;
     display: flex;
     align-items: center;
     justify-content: center;
     cursor: pointer;
     color: white;
-    font-size: 1rem;
+    font-size: 0.9rem;
     transition: all 0.2s;
 }
 
@@ -567,7 +566,7 @@
 
 .video-modal-player {
     width: 100%;
-    max-height: 70vh;
+    max-height: 60vh;
     background: black;
     display: block;
 }
@@ -607,7 +606,7 @@
     .return-header {
         flex-direction: column;
         text-align: center;
-        padding: 20px;
+        padding: 16px;
     }
     
     .return-stats {
@@ -615,7 +614,7 @@
     }
     
     .return-modern-table {
-        min-width: 700px;
+        min-width: 600px;
     }
     
     .video-modal-container {
@@ -625,16 +624,16 @@
 
 @media (max-width: 480px) {
     .return-stat-card {
-        min-width: 80px;
-        padding: 8px 12px;
+        min-width: 70px;
+        padding: 6px 10px;
     }
     
     .return-stat-value {
-        font-size: 1.25rem;
+        font-size: 1.1rem;
     }
     
     .return-modern-table {
-        min-width: 550px;
+        min-width: 480px;
     }
     
     .return-action-buttons {
@@ -642,52 +641,52 @@
     }
     
     .video-modal-player {
-        max-height: 60vh;
+        max-height: 50vh;
     }
 }
 
 .role-badge {
     background: rgba(255,255,255,0.2);
     display: inline-block;
-    padding: 4px 12px;
-    border-radius: 20px;
-    font-size: 12px;
+    padding: 3px 10px;
+    border-radius: 16px;
+    font-size: 10px;
 }
 
 .vendor-tag {
     background: #f0f0f0;
-    padding: 4px 8px;
-    border-radius: 12px;
-    font-size: 12px;
+    padding: 3px 6px;
+    border-radius: 10px;
+    font-size: 10px;
     display: inline-flex;
     align-items: center;
-    gap: 4px;
+    gap: 3px;
 }
 
 .vendor-tag i {
-    font-size: 11px;
+    font-size: 9px;
     color: #8E2139;
 }
 
 .return-status-info {
-    margin-top: 16px;
-    padding: 12px;
+    margin-top: 12px;
+    padding: 10px;
     background: #f8f9fa;
-    border-radius: 8px;
-    font-size: 13px;
+    border-radius: 6px;
+    font-size: 11px;
     color: #666;
 }
 
 .return-status-info i {
-    margin-right: 6px;
+    margin-right: 4px;
     color: #ffc107;
 }
 
 .previous-comment {
-    margin-top: 8px;
-    padding-top: 8px;
+    margin-top: 6px;
+    padding-top: 6px;
     border-top: 1px solid #e0e0e0;
-    font-size: 12px;
+    font-size: 10px;
     color: #555;
 }
 
@@ -696,13 +695,13 @@
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    padding: 60px;
+    padding: 40px;
     background: #f9f9f9;
-    border-radius: 12px;
+    border-radius: 10px;
     color: #999;
 }
 
 .no-video-placeholder i {
-    font-size: 48px;
-    margin-bottom: 12px;
+    font-size: 40px;
+    margin-bottom: 10px;
 }

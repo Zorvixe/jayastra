@@ -296,14 +296,10 @@
   font-size: 0.9rem;
 }
 
-.product-info-cell {
-  min-width: 200px;
-}
 
 .product-img-cell {
   display: flex;
   align-items: center;
-  gap: 12px;
 }
 
 .product-img-cell img {
@@ -311,7 +307,6 @@
   height: 50px;
   border-radius: 6px;
   object-fit: cover;
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
   cursor: pointer;
   transition: transform 0.2s, box-shadow 0.2s;
   border: 1px solid #f1f5f9;
