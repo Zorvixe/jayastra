@@ -309,12 +309,12 @@ const CheckoutPage = () => {
     // SHOW BEAUTIFUL EMPTY STATE INSTEAD OF BLANK SCREEN
     if (cartItems.length === 0) {
         return (
-            <div className="empty-checkout-container">
-                <div className="empty-checkout-content">
+            <div className="checkout-empty-container">
+                <div className="checkout-empty-content">
                     <i className="bi bi-cart-x"></i>
                     <h2>Your Cart is Empty!</h2>
                     <p>Looks like you haven't added anything to your cart yet.</p>
-                    <button className="btn-shop-now" onClick={() => navigate("/")}>
+                    <button className="checkout-btn-shop-now" onClick={() => navigate("/")}>
                         Start Shopping
                     </button>
                 </div>
@@ -327,23 +327,23 @@ const CheckoutPage = () => {
             <div className="checkout-stepper-outer">
                 <div className="container">
                     <div className="checkout-stepper-new">
-                        <div className="step-new completed">
-                            <div className="circle"><i className="bi bi-check"></i></div>
+                        <div className="checkout-step-new checkout-completed">
+                            <div className="checkout-circle"><i className="bi bi-check"></i></div>
                             <span>LOGIN</span>
                         </div>
-                        <div className="line active"></div>
-                        <div className={`step-new ${currentStep >= 2 ? 'active' : ''} ${currentStep > 2 ? 'completed' : ''}`}>
-                            <div className="circle">{currentStep > 2 ? <i className="bi bi-check"></i> : "2"}</div>
+                        <div className="checkout-line checkout-active"></div>
+                        <div className={`checkout-step-new ${currentStep >= 2 ? 'checkout-active' : ''} ${currentStep > 2 ? 'checkout-completed' : ''}`}>
+                            <div className="checkout-circle">{currentStep > 2 ? <i className="bi bi-check"></i> : "2"}</div>
                             <span>DELIVERY</span>
                         </div>
-                        <div className={`line ${currentStep > 2 ? 'active' : ''}`}></div>
-                        <div className={`step-new ${currentStep >= 3 ? 'active' : ''}`}>
-                            <div className="circle">3</div>
+                        <div className={`checkout-line ${currentStep > 2 ? 'checkout-active' : ''}`}></div>
+                        <div className={`checkout-step-new ${currentStep >= 3 ? 'checkout-active' : ''}`}>
+                            <div className="checkout-circle">3</div>
                             <span>SUMMARY</span>
                         </div>
-                        <div className="line"></div>
-                        <div className="step-new">
-                            <div className="circle">4</div>
+                        <div className="checkout-line"></div>
+                        <div className="checkout-step-new">
+                            <div className="checkout-circle">4</div>
                             <span>PAYMENT</span>
                         </div>
                     </div>
@@ -352,15 +352,15 @@ const CheckoutPage = () => {
 
             {/* CUSTOM TOAST NOTIFICATION */}
             {toast.show && (
-                <div className={`custom-toast ${toast.type}`}>
-                    <div className="toast-content">
-                        <div className={`toast-icon ${toast.type}`}>
+                <div className={`checkout-custom-toast ${toast.type}`}>
+                    <div className="checkout-toast-content">
+                        <div className={`checkout-toast-icon ${toast.type}`}>
                             {toast.type === 'success' && <i className="bi bi-check-circle-fill"></i>}
                             {toast.type === 'error' && <i className="bi bi-exclamation-circle-fill"></i>}
                             {toast.type === 'info' && <i className="bi bi-geo-alt-fill"></i>}
                         </div>
-                        <span className="toast-msg">{toast.message}</span>
-                        <button className="toast-close" onClick={() => setToast({ ...toast, show: false })}>
+                        <span className="checkout-toast-msg">{toast.message}</span>
+                        <button className="checkout-toast-close" onClick={() => setToast({ ...toast, show: false })}>
                             <i className="bi bi-x"></i>
                         </button>
                     </div>
@@ -371,18 +371,18 @@ const CheckoutPage = () => {
                 <div className="row g-4">
                     <div className="col-lg-8">
                         {/* STEP 2: DELIVERY ADDRESS */}
-                        <div className={`checkout-step-box mb-3 ${currentStep < 2 ? 'dimmed' : ''} ${currentStep !== 2 ? 'minimized' : ''}`}>
-                            <div className="step-header">
-                                <div className="step-info">
-                                    <div className={`step-count-wrap ${currentStep === 2 ? 'active' : ''}`}>
-                                        <span className="step-count">2</span>
+                        <div className={`checkout-step-box mb-3 ${currentStep < 2 ? 'checkout-dimmed' : ''} ${currentStep !== 2 ? 'checkout-minimized' : ''}`}>
+                            <div className="checkout-step-header">
+                                <div className="checkout-step-info">
+                                    <div className={`checkout-step-count-wrap ${currentStep === 2 ? 'checkout-active' : ''}`}>
+                                        <span className="checkout-step-count">2</span>
                                         <h6>DELIVERY ADDRESS</h6>
                                     </div>
-                                    {currentStep > 2 && <button className="change-btn" onClick={() => setCurrentStep(2)}>CHANGE</button>}
+                                    {currentStep > 2 && <button className="checkout-change-btn" onClick={() => setCurrentStep(2)}>CHANGE</button>}
 
                                 </div>
                                 {selectedAddress && currentStep > 2 && (
-                                    <div className="selection-preview">
+                                    <div className="checkout-selection-preview">
                                         <span>{selectedAddress.name}</span>
                                         <p>{selectedAddress.house_no}, {selectedAddress.street_area}, {selectedAddress.city}</p>
                                     </div>
@@ -390,14 +390,14 @@ const CheckoutPage = () => {
                             </div>
 
                             {currentStep === 2 && (
-                                <div className="step-content">
+                                <div className="checkout-step-content">
                                     {isEditingAddress && (
-                                        <div className="address-form-overlay" onClick={() => {
+                                        <div className="checkout-address-form-overlay" onClick={() => {
                                             setIsEditingAddress(false);
                                             setLocationStep("choice");
                                         }}>
-                                            <div className="address-form-modal" onClick={e => e.stopPropagation()}>
-                                                <div className="form-header-new">
+                                            <div className="checkout-address-form-modal" onClick={e => e.stopPropagation()}>
+                                                <div className="checkout-form-header">
                                                     <h6>{editForm.id ? "Edit Address" : "Add New Address"}</h6>
                                                     <button onClick={() => {
                                                         setIsEditingAddress(false);
@@ -406,15 +406,15 @@ const CheckoutPage = () => {
                                                 </div>
 
                                                 {locationStep === "choice" ? (
-                                                    <div className="location-choice-view">
+                                                    <div className="checkout-location-choice-view">
                                                         <p className="mb-4 text-center">How would you like to add your address?</p>
-                                                        <div className="choice-cards-new">
-                                                            <div className="choice-card-new" onClick={handleUseLocation}>
+                                                        <div className="checkout-choice-cards">
+                                                            <div className="checkout-choice-card" onClick={handleUseLocation}>
                                                                 <i className="bi bi-geo-alt-fill"></i>
                                                                 <strong>Use GPS</strong>
                                                                 <span>Auto-detect</span>
                                                             </div>
-                                                            <div className="choice-card-new" onClick={() => setLocationStep("form")}>
+                                                            <div className="checkout-choice-card" onClick={() => setLocationStep("form")}>
                                                                 <i className="bi bi-pencil-square"></i>
                                                                 <strong>Manual</strong>
                                                                 <span>Type details</span>
@@ -422,7 +422,7 @@ const CheckoutPage = () => {
                                                         </div>
                                                     </div>
                                                 ) : (
-                                                    <div className="address-fields-scroll">
+                                                    <div className="checkout-address-fields-scroll">
                                                         <div className="row g-3">
                                                             <div className="col-md-6">
                                                                 <div className="form-floating mb-2">
@@ -521,7 +521,7 @@ const CheckoutPage = () => {
                                                             </div>
                                                         </div>
                                                         <button
-                                                            className="btn-save-address-new w-100 mt-4"
+                                                            className="checkout-btn-save-address w-100 mt-4"
                                                             onClick={saveAddressEdit}
                                                             disabled={!editForm.name || !editForm.phone || !editForm.house_no || !editForm.street_area || !editForm.city || !editForm.state || !editForm.pincode}
                                                         >
@@ -533,17 +533,17 @@ const CheckoutPage = () => {
                                         </div>
                                     )}
                                     {!isEditingAddress && (
-                                        <div className="address-selector">
+                                        <div className="checkout-address-selector">
                                             {addresses.map(a => (
-                                                <div key={a.id} className={`address-card-new ${selectedAddressId === a.id ? 'active' : ''}`} onClick={() => setSelectedAddressId(a.id)}>
-                                                    <div className="radio-dot"></div>
-                                                    <div className="card-info">
-                                                        <div className="top">
-                                                            <span className="name">{a.name}</span>
-                                                            <span className="tag">{a.type}</span>
-                                                            <span className="phone">{a.phone}</span>
+                                                <div key={a.id} className={`checkout-address-card ${selectedAddressId === a.id ? 'checkout-active' : ''}`} onClick={() => setSelectedAddressId(a.id)}>
+                                                    <div className="checkout-radio-dot"></div>
+                                                    <div className="checkout-card-info">
+                                                        <div className="checkout-top">
+                                                            <span className="checkout-name">{a.name}</span>
+                                                            <span className="checkout-tag">{a.type}</span>
+                                                            <span className="checkout-phone">{a.phone}</span>
                                                         </div>
-                                                        <p className="address-text">
+                                                        <p className="checkout-address-text">
                                                             {a.house_no && `${a.house_no}, `}
                                                             {a.street_area && `${a.street_area}, `}
                                                             {a.city && `${a.city}, `}
@@ -551,10 +551,10 @@ const CheckoutPage = () => {
                                                             {a.pincode}
                                                         </p>
                                                         {selectedAddressId === a.id && (
-                                                            <button className="btn-deliver-here mt-3" onClick={() => setCurrentStep(3)}>DELIVER HERE</button>
+                                                            <button className="checkout-btn-deliver-here mt-3" onClick={() => setCurrentStep(3)}>DELIVER HERE</button>
                                                         )}
                                                     </div>
-                                                    <button className="edit-link" onClick={(e) => {
+                                                    <button className="checkout-edit-link" onClick={(e) => {
                                                         e.stopPropagation();
                                                         setEditForm(a);
                                                         setIsEditingAddress(true);
@@ -562,7 +562,7 @@ const CheckoutPage = () => {
                                                     }}>EDIT</button>
                                                 </div>
                                             ))}
-                                            <button className="add-address-btn-new" onClick={() => {
+                                            <button className="checkout-add-address-btn" onClick={() => {
                                                 setEditForm({
                                                     name: "", phone: "", address: "", city: "", state: "", pincode: "", type: "HOME",
                                                     house_no: "", street_area: "", landmark: "", id: null
@@ -577,49 +577,49 @@ const CheckoutPage = () => {
                         </div>
 
                         {/* STEP 3: ORDER SUMMARY */}
-                        <div className={`checkout-step-box mb-3 ${currentStep < 3 ? 'dimmed' : ''} ${currentStep !== 3 ? 'minimized' : ''}`}>
-                            <div className="step-header">
-                                <div className="step-info">
-                                    <div className={`step-count-wrap ${currentStep === 3 ? 'active' : ''}`}>
-                                        <span className="step-count">3</span>
+                        <div className={`checkout-step-box mb-3 ${currentStep < 3 ? 'checkout-dimmed' : ''} ${currentStep !== 3 ? 'checkout-minimized' : ''}`}>
+                            <div className="checkout-step-header">
+                                <div className="checkout-step-info">
+                                    <div className={`checkout-step-count-wrap ${currentStep === 3 ? 'checkout-active' : ''}`}>
+                                        <span className="checkout-step-count">3</span>
                                         <h6>ORDER SUMMARY</h6>
                                     </div>
                                 </div>
                             </div>
                             {currentStep === 3 && (
-                                <div className="step-content p-0">
-                                    <div className="order-items-review">
+                                <div className="checkout-step-content p-0">
+                                    <div className="checkout-order-items-review">
                                         {cartItems.map(item => (
-                                            <div key={item.id} className="review-item">
-                                                <div className="img-box" onClick={() => navigate(`/product/${item.product_id || item.id}`)}>
+                                            <div key={item.id} className="checkout-review-item">
+                                                <div className="checkout-img-box" onClick={() => navigate(`/product/${item.product_id || item.id}`)}>
                                                     <img
                                                         src={getItemImage(item)}
                                                         alt={item.name}
                                                         onError={(e) => { e.target.src = "/assets/no-image.png"; }}
                                                     />
                                                 </div>
-                                                <div className="info-box">
-                                                    <h6 className="name" onClick={() => navigate(`/product/${item.product_id || item.id}`)} style={{ cursor: 'pointer' }}>{item.name}</h6>
-                                                    <div className="price-info d-flex align-items-center flex-wrap">
-                                                        <span className="price">₹{item.price}</span>
+                                                <div className="checkout-info-box">
+                                                    <h6 className="checkout-name" onClick={() => navigate(`/product/${item.product_id || item.id}`)} style={{ cursor: 'pointer' }}>{item.name}</h6>
+                                                    <div className="checkout-price-info d-flex align-items-center flex-wrap">
+                                                        <span className="checkout-price">₹{item.price}</span>
                                                         {item.old_price && Number(item.old_price) > Number(item.price) && (
-                                                            <span className="old-price" style={{ textDecoration: 'line-through', color: '#9ca3af', fontSize: '13px', marginLeft: '8px' }}>₹{item.old_price}</span>
+                                                            <span className="checkout-old-price" style={{ textDecoration: 'line-through', color: '#9ca3af', fontSize: '13px', marginLeft: '8px' }}>₹{item.old_price}</span>
                                                         )}
                                                         {/* QTY CONTROLS IN SUMMARY */}
-                                                        <div className="qty-wrap ms-4">
-                                                            <button className="qty-btn" onClick={() => updateQty(item.id, item.qty - 1)} disabled={item.qty <= 1}>-</button>
+                                                        <div className="checkout-qty-wrap ms-4">
+                                                            <button className="checkout-qty-btn" onClick={() => updateQty(item.id, item.qty - 1)} disabled={item.qty <= 1}>-</button>
                                                             <span className="mx-2">{item.qty}</span>
-                                                            <button className="qty-btn" onClick={() => updateQty(item.id, item.qty + 1)}>+</button>
+                                                            <button className="checkout-qty-btn" onClick={() => updateQty(item.id, item.qty + 1)}>+</button>
                                                         </div>
-                                                        <button className="remove-btn ms-auto" onClick={() => removeItem(item.id)}>REMOVE</button>
+                                                        <button className="checkout-remove-btn ms-auto" onClick={() => removeItem(item.id)}>REMOVE</button>
                                                     </div>
                                                 </div>
                                             </div>
                                         ))}
                                     </div>
-                                    <div className="summary-footer d-none d-lg-none">
+                                    <div className="checkout-summary-footer d-none d-lg-none">
                                         <button
-                                            className="btn-continue-to-payment"
+                                            className="checkout-btn-continue-payment"
                                             onClick={handleProceedToPayment}
                                             disabled={!selectedAddressId}
                                         >
@@ -632,31 +632,31 @@ const CheckoutPage = () => {
                     </div>
 
                     <div className="col-lg-4">
-                        <div className="price-sidebar">
-                            <h6 className="title">PRICE DETAILS</h6>
-                            <div className="price-rows">
-                                <div className="p-row"><span>Price ({totalItems} items)</span><span>₹{totalMRP.toFixed(2)}</span></div>
-                                <div className="p-row green"><span>Discount</span><span>− ₹{mrpDiscount.toFixed(2)}</span></div>
-                                <div className="p-row green"><span>Delivery Charges</span><span>FREE</span></div>
-                                {selectedCoupon && <div className="p-row green"><span>Coupon Discount</span><span>− ₹{couponDiscount.toFixed(2)}</span></div>}
-                                <div className="coupon-box" onClick={openCouponModal}>
+                        <div className="checkout-price-sidebar">
+                            <h6 className="checkout-title">PRICE DETAILS</h6>
+                            <div className="checkout-price-rows">
+                                <div className="checkout-p-row"><span>Price ({totalItems} items)</span><span>₹{totalMRP.toFixed(2)}</span></div>
+                                <div className="checkout-p-row checkout-green"><span>Discount</span><span>− ₹{mrpDiscount.toFixed(2)}</span></div>
+                                <div className="checkout-p-row checkout-green"><span>Delivery Charges</span><span>FREE</span></div>
+                                {selectedCoupon && <div className="checkout-p-row checkout-green"><span>Coupon Discount</span><span>− ₹{couponDiscount.toFixed(2)}</span></div>}
+                                <div className="checkout-coupon-box" onClick={openCouponModal}>
                                     <i className="bi bi-patch-check"></i>
                                     <span>{selectedCoupon ? `Applied: ${selectedCoupon.code}` : "Apply Coupons"}</span>
                                     <i className="bi bi-chevron-right"></i>
                                 </div>
-                                <div className="p-total">
+                                <div className="checkout-p-total">
                                     <span>Total Amount</span>
                                     <span>₹{finalAmount.toFixed(2)}</span>
                                 </div>
                                 {settings.online_payment_discount > 0 && (
-                                    <div className="p-row text-success fw-bold mt-2" style={{ borderTop: '1px dashed #22c55e', paddingTop: '10px' }}>
+                                    <div className="checkout-p-row text-success fw-bold mt-2" style={{ borderTop: '1px dashed #22c55e', paddingTop: '10px' }}>
                                         <span><span><i className="bi bi-lightning-fill"></i> Pay Online & Save EXTRA</span></span>
                                         <span>₹{settings.online_payment_discount}</span>
                                     </div>
                                 )}
                             </div>
                             {totalSavings > 0 && (
-                                <div className="savings-msg">You will save ₹{totalSavings.toFixed(2)} on this order</div>
+                                <div className="checkout-savings-msg">You will save ₹{totalSavings.toFixed(2)} on this order</div>
                             )}
                         </div>
                     </div>
@@ -664,13 +664,13 @@ const CheckoutPage = () => {
             </div>
 
             {/* MOBILE STICKY FOOTER FOR CHECKOUT */}
-            <div className="mobile-checkout-footer">
-                <div className="price-info">
-                    <span className="label">Total Amount</span>
-                    <span className="val">₹{finalAmount.toFixed(2)}</span>
+            <div className="checkout-mobile-footer">
+                <div className="checkout-price-info">
+                    <span className="checkout-label">Total Amount</span>
+                    <span className="checkout-val">₹{finalAmount.toFixed(2)}</span>
                 </div>
                 <button
-                    className="btn-footer-continue"
+                    className="checkout-btn-footer-continue"
                     onClick={handleProceedToPayment}
                     disabled={!selectedAddressId}
                 >
@@ -678,15 +678,22 @@ const CheckoutPage = () => {
                 </button>
             </div>
 
-            {/* COUPON MODAL with filtered coupons */}
+            {/* COUPON MODAL with filtered coupons and scrollable content */}
             {showCouponModal && (
-                <div className="modal-overlay" onClick={() => setShowCouponModal(false)}>
-                    <div className="modal-content-new" onClick={e => e.stopPropagation()}>
-                        <div className="modal-head"><h6>Apply Coupon</h6><button onClick={() => setShowCouponModal(false)}>✕</button></div>
-                        <div className="modal-body-new">
-                            {couponMessage.text && <div className={`alert alert-${couponMessage.type === 'success' ? 'success' : 'danger'} mb-3`}>{couponMessage.text}</div>}
+                <div className="checkout-modal-overlay" onClick={() => setShowCouponModal(false)}>
+                    <div className="checkout-modal-content" onClick={e => e.stopPropagation()}>
+                        <div className="checkout-modal-head">
+                            <h6>Apply Coupon</h6>
+                            <button onClick={() => setShowCouponModal(false)}>✕</button>
+                        </div>
+                        <div className="checkout-modal-body">
+                            {couponMessage.text && (
+                                <div className={`alert alert-${couponMessage.type === 'success' ? 'success' : 'danger'} mb-3`}>
+                                    {couponMessage.text}
+                                </div>
+                            )}
 
-                            <div className="flipkart-coupon-input position-relative mb-4">
+                            <div className="checkout-coupon-input-wrapper">
                                 <input
                                     type="text"
                                     className="form-control"
@@ -698,51 +705,47 @@ const CheckoutPage = () => {
                                             handleManualCouponApply();
                                         }
                                     }}
-                                    style={{ textTransform: 'uppercase', paddingRight: '90px', height: '48px', border: '1px solid #e0e0e0', borderRadius: '4px', fontSize: '15px' }}
                                 />
                                 <button
-                                    className="btn position-absolute top-50 end-0 translate-middle-y"
+                                    className="checkout-apply-btn"
                                     onClick={handleManualCouponApply}
                                     disabled={!manualCoupon.trim()}
-                                    style={{
-                                        color: manualCoupon.trim() ? '#8E2139' : '#ccc',
-                                        background: 'transparent',
-                                        border: 'none',
-                                        fontWeight: '600',
-                                        paddingRight: '15px',
-                                        fontSize: '14px',
-                                        zIndex: 10
-                                    }}
                                 >
                                     APPLY
                                 </button>
                             </div>
 
-                            {coupons.length > 0 && <h6 className="available-coupons-title mb-3" style={{ fontSize: '0.9rem', color: '#666', fontWeight: 600 }}>Available Offers</h6>}
+                            <div className="checkout-coupon-list">
+                                {coupons.length > 0 && (
+                                    <h6 className="checkout-available-coupons-title">Available Offers</h6>
+                                )}
 
-                            {coupons.map(c => {
-                                const discountAmount = c.discount_type === 'percentage'
-                                    ? (totalPrice * c.discount_value / 100).toFixed(2)
-                                    : c.discount_value;
-                                return (
-                                    <div key={c.id} className="coupon-item" onClick={() => handleApplyCoupon(c)}>
-                                        <div className="code-wrap"><div className="code">{c.code}</div><button>APPLY</button></div>
-                                        <p className="desc">Save ₹{discountAmount} on this order</p>
-                                        {c.min_order_amount > 0 && (
-                                            <small className="text-muted">Min. order: ₹{c.min_order_amount}</small>
-                                        )}
+                                {coupons.map(c => {
+                                    const discountAmount = c.discount_type === 'percentage'
+                                        ? (totalPrice * c.discount_value / 100).toFixed(2)
+                                        : c.discount_value;
+                                    return (
+                                        <div key={c.id} className="checkout-coupon-item" onClick={() => handleApplyCoupon(c)}>
+                                            <div className="checkout-code-wrap">
+                                                <div className="checkout-code">{c.code}</div>
+                                                <button>APPLY</button>
+                                            </div>
+                                            <p className="checkout-desc">Save ₹{discountAmount} on this order</p>
+                                            {c.min_order_amount > 0 && (
+                                                <small className="text-muted">Min. order: ₹{c.min_order_amount}</small>
+                                            )}
+                                        </div>
+                                    );
+                                })}
+
+                                {coupons.length === 0 && (
+                                    <div className="checkout-empty-coupon-state">
+                                        <i className="bi bi-ticket-detailed checkout-empty-icon"></i>
+                                        <h6>No Offers Available</h6>
+                                        <p>There are currently no active coupons for the items in your cart.</p>
                                     </div>
-                                );
-                            })}
-
-                            {/* BEAUTIFUL EMPTY STATE FOR COUPONS */}
-                            {coupons.length === 0 && (
-                                <div className="empty-coupon-state">
-                                    <i className="bi bi-ticket-detailed empty-icon"></i>
-                                    <h6>No Offers Available</h6>
-                                    <p>There are currently no active coupons for the items in your cart.</p>
-                                </div>
-                            )}
+                                )}
+                            </div>
                         </div>
                     </div>
                 </div>

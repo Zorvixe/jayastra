@@ -4620,10 +4620,12 @@ app.post("/api/coupons/apply", verifyToken, async (req, res) => {
     console.log("Applying coupon:", { code, totalAmount, cartItemsCount: cartItems?.length });
 
     // Get coupon from database and ensure vendor store is active if applicable
-    const result = await pool.query(
-      `SELECT c.*, u.store_active FROM coupons c LEFT JOIN users u ON c.vendor_id = u.id WHERE c.code ILIKE $1 AND c.is_active = true AND c.is_hidden = false AND (c.vendor_id IS NULL OR u.store_active = true)`,
-      [code]
-    );
+      const result = await pool.query(
+        `SELECT c.*, u.store_active FROM coupons c LEFT JOIN users u ON c.vendor_id = u.id
+    WHERE c.code ILIKE $1 AND c.is_active = true
+    AND (c.vendor_id IS NULL OR u.store_active = true)`,
+        [code]
+      );
     if (result.rows.length === 0) {
       return res.status(400).json({ message: "Invalid coupon code" });
     }
