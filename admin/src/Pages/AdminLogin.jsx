@@ -313,7 +313,7 @@ function AdminLogin() {
         <div className="ad-log-form-side">
           {/* Welcome Section */}
           <div className="ad-log-welcome-section">
-            <h2 className="ad-log-title">Welcome to jayastra</h2>
+            <h2 className="ad-log-title">Welcome to Jayastra</h2>
             <p className="ad-log-subtitle">Please enter your details to continue</p>
           </div>
 
