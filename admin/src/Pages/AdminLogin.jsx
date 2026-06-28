@@ -1,9 +1,10 @@
-// AdminLogin.js - Complete Working Version with Proper PIN Error Handling
+// AdminLogin.js - Complete Working Version with Redesigned Modern UI
 import React, { useState, useEffect, useRef } from "react";
 import axios from '../utils/axiosConfig';
 import { useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
 import sarry_logo from "../assets/jayastra_banner.png";
+import login_image from "../assets/login-image.png";
 import "./AdminLogin.css";
 
 const API_URL = process.env.REACT_APP_API_URL;
@@ -13,13 +14,13 @@ function AdminLogin() {
   const [loginMethod, setLoginMethod] = useState("credentials");
   const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
   const [showPinSheet, setShowPinSheet] = useState(false);
-  
+
   // Credentials Login States
   const [identifier, setIdentifier] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
-  
+
   // Direct PIN Login States
   const [pin, setPin] = useState(["", "", "", ""]);
   const [pinLoading, setPinLoading] = useState(false);
@@ -29,7 +30,7 @@ function AdminLogin() {
   const [rememberPinUser, setRememberPinUser] = useState(false);
   const [savedUserId, setSavedUserId] = useState(null);
   const [showPin, setShowPin] = useState(false);
-  
+
   const pinInputRefs = [useRef(), useRef(), useRef(), useRef()];
 
   // Check mobile viewport
@@ -62,7 +63,6 @@ function AdminLogin() {
           setPinError("");
           clearInterval(interval);
         } else {
-          const minutesLeft = Math.ceil((lockedUntil - now) / (1000 * 60));
           setPinError(`Too many failed attempts. Login with Credentials.`);
         }
       }, 1000);
@@ -83,15 +83,15 @@ function AdminLogin() {
   // Handle PIN change
   const handlePinChange = (index, value) => {
     if (value && !/^\d*$/.test(value)) return;
-    
+
     const newPin = [...pin];
     newPin[index] = value.slice(0, 1);
     setPin(newPin);
-    
+
     if (value && index < 3) {
       pinInputRefs[index + 1].current?.focus();
     }
-    
+
     if (pinError) setPinError("");
   };
 
@@ -99,7 +99,7 @@ function AdminLogin() {
     if (e.key === 'Backspace' && !pin[index] && index > 0) {
       pinInputRefs[index - 1].current?.focus();
     }
-    
+
     if (e.key === 'Enter' && pin.join('').length === 4) {
       handlePinLogin();
     }
@@ -113,7 +113,7 @@ function AdminLogin() {
       newPin[i] = pastedData[i] || "";
     }
     setPin(newPin);
-    
+
     const lastIndex = Math.min(pastedData.length - 1, 3);
     if (lastIndex >= 0 && lastIndex < 3) {
       pinInputRefs[lastIndex + 1].current?.focus();
@@ -123,18 +123,18 @@ function AdminLogin() {
   // Direct PIN Login Handler
   const handlePinLogin = async () => {
     const pinCode = pin.join('');
-    
+
     if (pinCode.length !== 4) {
       setPinError('Please enter complete 4-digit PIN');
       return;
     }
-    
+
     setPinLoading(true);
     setPinError('');
-    
+
     try {
       let res;
-      
+
       if (savedUserId && rememberPinUser) {
         res = await axios.post(`${API_URL}/auth/login-with-pin-only`, {
           userId: savedUserId,
@@ -145,12 +145,12 @@ function AdminLogin() {
           pin: pinCode
         });
       }
-      
+
       // Check if response indicates success
       if (res.data.success === false) {
         // Handle error message from backend
         const errorMsg = res.data.message;
-        
+
         if (errorMsg.includes("locked")) {
           setPinError(errorMsg);
         } else if (errorMsg.includes("attempt")) {
@@ -163,26 +163,26 @@ function AdminLogin() {
         } else {
           setPinError(errorMsg);
         }
-        
+
         setPin(['', '', '', '']);
         pinInputRefs[0].current?.focus();
         setPinLoading(false);
         return;
       }
-      
+
       const role = res.data.user?.role;
       if (role !== "super_admin" && role !== "admin" && role !== "vendor") {
         setPinError("Access denied. Not an admin or vendor");
         setPinLoading(false);
         return;
       }
-      
+
       localStorage.setItem("token", res.data.token);
       localStorage.setItem("userRole", role);
       localStorage.setItem("admin_name", res.data.user.name);
       localStorage.setItem("admin_email", res.data.user.email || '');
       localStorage.setItem("userId", res.data.user.id);
-      
+
       if (rememberPinUser) {
         localStorage.setItem("pinLoginUserId", res.data.user.id);
         localStorage.setItem("rememberPinLogin", "true");
@@ -190,23 +190,23 @@ function AdminLogin() {
         localStorage.removeItem("pinLoginUserId");
         localStorage.removeItem("rememberPinLogin");
       }
-      
+
       toast.success("PIN login successful!");
-      
+
       setShowPinSheet(false);
       setLoginMethod("credentials");
-      
+
       setTimeout(() => {
         navigate("/admin/dashboard", { replace: true });
       }, 500);
-      
+
     } catch (err) {
       console.error("PIN login error:", err);
       // Handle different error scenarios
       if (err.response) {
         const status = err.response.status;
         const data = err.response.data;
-        
+
         if (status === 400) {
           // Bad request - show the error message from backend
           setPinError(data.message || "Invalid PIN or Not Registered. Please try again.");
@@ -297,147 +297,168 @@ function AdminLogin() {
   return (
     <div className="ad-log-container">
       <div className="ad-log-box">
-        <div className="ad-log-logo-container">
-          <img src={sarry_logo} className="ad-log-logo-img" alt="Logo" />
+        {/* Left Section: Branding & Illustration */}
+        <div className="ad-log-brand-side">
+          <div className="ad-log-header">
+            <img src={sarry_logo} className="ad-log-brand-logo" alt="Jayastra Banner" />
+            <p className="ad-log-powered">Powered by Zorvixe Technologies</p>
+          </div>
+
+          <div className="ad-log-illustration-container">
+            <img src={login_image} className="ad-log-illustration" alt="Login Illustration" />
+          </div>
         </div>
-        
-        <div className="ad-log-method-switch">
-          <button 
-            type="button"
-            className={`ad-log-method-btn ${loginMethod === 'credentials' ? 'ad-log-active' : ''}`}
-            onClick={() => switchLoginMethod('credentials')}
-          >
-            <i className="bi bi-key"></i> Credentials
-          </button>
-          <button 
-            type="button"
-            className={`ad-log-method-btn ${loginMethod === 'pin' ? 'ad-log-active' : ''}`}
-            onClick={() => isMobile ? openPinSheet() : switchLoginMethod('pin')}
-          >
-            <i className="bi bi-shield-lock"></i> PIN Login
-          </button>
-        </div>
-        
-        {loginMethod === "credentials" && (
-          <form onSubmit={handleCredentialsLogin}>
-            <div className="ad-log-input-field">
-              <input
-                type="text"
-                placeholder="Email or Phone"
-                value={identifier}
-                onChange={(e) => setIdentifier(e.target.value)}
-                required
-                disabled={loading}
-              />
-            </div>
-            
-            <div className="ad-log-input-field ad-log-password-field">
-              <input
-                type={showPassword ? "text" : "password"}
-                placeholder="Password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-                disabled={loading}
-              />
-              <button
-                type="button"
-                className="ad-log-eye-icon"
-                onClick={() => setShowPassword(!showPassword)}
-              >
-                <i className={`bi ${showPassword ? "bi-eye-slash" : "bi-eye"}`}></i>
-              </button>
-            </div>
-            
-            <button type="submit" className="ad-log-login-btn" disabled={loading}>
-              {loading ? (
-                <>
-                  <i className="bi bi-hourglass-split"></i> Logging in...
-                </>
-              ) : (
-                <>
-                  <i className="bi bi-box-arrow-in-right"></i> Login
-                </>
-              )}
-            </button>
-          </form>
-        )}
-        
-        {loginMethod === "pin" && !isMobile && (
-          <div className="ad-log-pin-form">
-            <p className="ad-log-pin-description">Enter your 4-digit PIN</p>
-            
-            <div className="ad-log-pin-inputs" onPaste={handlePinPaste}>
-              {pin.map((digit, index) => (
-                <div key={index} className="ad-log-pin-input-wrapper">
-                  <input
-                    ref={pinInputRefs[index]}
-                    type={showPin ? "text" : "password"}
-                    maxLength="1"
-                    value={digit}
-                    onChange={(e) => handlePinChange(index, e.target.value)}
-                    onKeyDown={(e) => handlePinKeyDown(index, e)}
-                    className={`ad-log-pin-digit ${pinError ? 'ad-log-error-border' : ''}`}
-                    inputMode="numeric"
-                    pattern="\d*"
-                    disabled={pinLoading}
-                    autoComplete="off"
-                  />
-                </div>
-              ))}
-            </div>
-            
+
+        {/* Right Section: Interactive Login Form */}
+        <div className="ad-log-form-side">
+          {/* Welcome Section */}
+          <div className="ad-log-welcome-section">
+            <h2 className="ad-log-title">Welcome to jayastra</h2>
+            <p className="ad-log-subtitle">Please enter your details to continue</p>
+          </div>
+
+          {/* Sleek Method Selector */}
+          <div className="ad-log-method-switch">
             <button
               type="button"
-              className="ad-log-pin-eye-icon"
-              onClick={() => setShowPin(!showPin)}
+              className={`ad-log-method-btn ${loginMethod === 'credentials' ? 'ad-log-active' : ''}`}
+              onClick={() => switchLoginMethod('credentials')}
             >
-              <i className={`bi ${showPin ? "bi-eye-slash" : "bi-eye"}`}></i>
-              <span>{showPin ? "Hide" : "Show"} PIN</span>
+              <i className="bi bi-key"></i> Credentials
             </button>
-            
-            {pinError && (
-              <div className="ad-log-pin-error">
-                <i className="bi bi-exclamation-circle-fill"></i>
-                <span>{pinError}</span>
-              </div>
-            )}
-            
-            <div className="ad-log-remember-pin">
-              <label className="ad-log-checkbox-label">
-                <input
-                  type="checkbox"
-                  checked={rememberPinUser}
-                  onChange={(e) => setRememberPinUser(e.target.checked)}
-                />
-                <span>Remember me for next time</span>
-              </label>
-            </div>
-            
-            <button 
+            <button
               type="button"
-              className="ad-log-verify-btn"
-              onClick={handlePinLogin}
-              disabled={pinLoading || pin.join('').length !== 4}
+              className={`ad-log-method-btn ${loginMethod === 'pin' ? 'ad-log-active' : ''}`}
+              onClick={() => isMobile ? openPinSheet() : switchLoginMethod('pin')}
             >
-              {pinLoading ? (
-                <>
-                  <i className="bi bi-hourglass-split"></i> Verifying...
-                </>
-              ) : (
-                <>
-                  <i className="bi bi-shield-lock"></i> Login PIN
-                </>
-              )}
+              <i className="bi bi-shield-lock"></i> PIN Login
             </button>
           </div>
-        )}
+
+          {loginMethod === "credentials" && (
+            <form onSubmit={handleCredentialsLogin} className="ad-log-form">
+              {/* Custom Styled Email Field */}
+              <div className="ad-log-input-group">
+                <span className="ad-log-input-label-badge">Email or Phone *</span>
+                <div className="ad-log-input-wrapper">
+                  <i className="bi bi-envelope ad-log-input-icon"></i>
+                  <input
+                    type="text"
+                    placeholder="Enter your email or phone"
+                    value={identifier}
+                    onChange={(e) => setIdentifier(e.target.value)}
+                    required
+                    disabled={loading}
+                  />
+                </div>
+              </div>
+
+              {/* Custom Styled Password Field */}
+              <div className="ad-log-input-group">
+                <span className="ad-log-input-label-badge">Password *</span>
+                <div className="ad-log-input-wrapper">
+                  <i className="bi bi-lock ad-log-input-icon"></i>
+                  <input
+                    type={showPassword ? "text" : "password"}
+                    placeholder="Enter your password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    required
+                    disabled={loading}
+                  />
+                  <button
+                    type="button"
+                    className="ad-log-eye-btn"
+                    onClick={() => setShowPassword(!showPassword)}
+                  >
+                    <i className={`bi ${showPassword ? "bi-eye-slash" : "bi-eye"}`}></i>
+                  </button>
+                </div>
+              </div>
+
+              {/* Capsule Submit Button */}
+              <button type="submit" className="ad-log-capsule-submit-btn" disabled={loading}>
+                <span className="ad-log-btn-text">
+                  {loading ? "LOGGING IN..." : "LOGIN"}
+                </span>
+                <div className="ad-log-btn-arrow-circle">
+                  <i className="bi bi-arrow-right"></i>
+                </div>
+              </button>
+            </form>
+          )}
+
+          {loginMethod === "pin" && !isMobile && (
+            <div className="ad-log-pin-form">
+              <p className="ad-log-pin-description">Enter your 4-digit PIN</p>
+
+              <div className="ad-log-pin-inputs" onPaste={handlePinPaste}>
+                {pin.map((digit, index) => (
+                  <div key={index} className="ad-log-pin-input-wrapper">
+                    <input
+                      ref={pinInputRefs[index]}
+                      type={showPin ? "text" : "password"}
+                      maxLength="1"
+                      value={digit}
+                      onChange={(e) => handlePinChange(index, e.target.value)}
+                      onKeyDown={(e) => handlePinKeyDown(index, e)}
+                      className={`ad-log-pin-digit ${pinError ? 'ad-log-error-border' : ''}`}
+                      inputMode="numeric"
+                      pattern="\d*"
+                      disabled={pinLoading}
+                      autoComplete="off"
+                    />
+                  </div>
+                ))}
+              </div>
+
+              <button
+                type="button"
+                className="ad-log-pin-eye-icon"
+                onClick={() => setShowPin(!showPin)}
+              >
+                <i className={`bi ${showPin ? "bi-eye-slash" : "bi-eye"}`}></i>
+                <span>{showPin ? "Hide" : "Show"} PIN</span>
+              </button>
+
+              {pinError && (
+                <div className="ad-log-pin-error">
+                  <i className="bi bi-exclamation-circle-fill"></i>
+                  <span>{pinError}</span>
+                </div>
+              )}
+
+              <div className="ad-log-remember-pin">
+                <label className="ad-log-checkbox-label">
+                  <input
+                    type="checkbox"
+                    checked={rememberPinUser}
+                    onChange={(e) => setRememberPinUser(e.target.checked)}
+                  />
+                  <span className="ad-log-checkbox-custom"></span>
+                  <span>Remember me for next time</span>
+                </label>
+              </div>
+
+              <button
+                type="button"
+                className="ad-log-capsule-submit-btn"
+                onClick={handlePinLogin}
+                disabled={pinLoading || pin.join('').length !== 4}
+              >
+                <span className="ad-log-btn-text">
+                  {pinLoading ? "VERIFYING..." : "LOGIN PIN"}
+                </span>
+                <div className="ad-log-btn-arrow-circle">
+                  <i className="bi bi-arrow-right"></i>
+                </div>
+              </button>
+            </div>
+          )}
+        </div>
       </div>
-      
-      {/* 
-        Fixed Mobile Bottom Sheet: 
-        Rendered directly inline to avoid unmounting/remounting on input changes or eye toggles.
-      */}
+
+      {/* Fixed Mobile Bottom Sheet Layout */}
       {showPinSheet && (
         <>
           <div className="ad-log-sheet-overlay" onClick={closePinSheet}></div>
@@ -451,11 +472,11 @@ function AdminLogin() {
                 </button>
               </div>
             </div>
-            
+
             <div className="ad-log-sheet-content">
               <div className="ad-log-pin-form">
                 <p className="ad-log-pin-description">Enter your 4-digit PIN</p>
-                
+
                 <div className="ad-log-pin-inputs" onPaste={handlePinPaste}>
                   {pin.map((digit, index) => (
                     <div key={index} className="ad-log-pin-input-wrapper">
@@ -475,7 +496,7 @@ function AdminLogin() {
                     </div>
                   ))}
                 </div>
-                
+
                 <button
                   type="button"
                   className="ad-log-pin-eye-icon"
@@ -484,14 +505,14 @@ function AdminLogin() {
                   <i className={`bi ${showPin ? "bi-eye-slash" : "bi-eye"}`}></i>
                   <span>{showPin ? "Hide" : "Show"} PIN</span>
                 </button>
-                
+
                 {pinError && (
                   <div className="ad-log-pin-error">
                     <i className="bi bi-exclamation-circle-fill"></i>
                     <span>{pinError}</span>
                   </div>
                 )}
-                
+
                 <div className="ad-log-remember-pin">
                   <label className="ad-log-checkbox-label">
                     <input
@@ -499,25 +520,23 @@ function AdminLogin() {
                       checked={rememberPinUser}
                       onChange={(e) => setRememberPinUser(e.target.checked)}
                     />
+                    <span className="ad-log-checkbox-custom"></span>
                     <span>Remember me for next time</span>
                   </label>
                 </div>
-                
-                <button 
+
+                <button
                   type="button"
-                  className="ad-log-verify-btn"
+                  className="ad-log-capsule-submit-btn"
                   onClick={handlePinLogin}
                   disabled={pinLoading || pin.join('').length !== 4}
                 >
-                  {pinLoading ? (
-                    <>
-                      <i className="bi bi-hourglass-split"></i> Verifying...
-                    </>
-                  ) : (
-                    <>
-                      <i className="bi bi-shield-lock"></i> Login PIN
-                    </>
-                  )}
+                  <span className="ad-log-btn-text">
+                    {pinLoading ? "VERIFYING..." : "LOGIN PIN"}
+                  </span>
+                  <div className="ad-log-btn-arrow-circle">
+                    <i className="bi bi-arrow-right"></i>
+                  </div>
                 </button>
               </div>
             </div>

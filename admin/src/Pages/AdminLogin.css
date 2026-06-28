@@ -1,167 +1,311 @@
-/* AdminLogin.css - All class names start with ad-log */
+/* AdminLogin.css - Modern Responsive Authentication Interface */
 
 .ad-log-container {
   min-height: 100vh;
   display: flex;
   justify-content: center;
   align-items: center;
-  background: linear-gradient(135deg, #0f172a, #1e293b);
-  padding: 20px;
+  background-color: #f8fafc; /* Gentle desktop-only neutral backdrop */
+  padding: 32px 24px;
   position: relative;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
 }
 
+/* Master Grid Card Wrapper */
 .ad-log-box {
-  width: 100%;
-  max-width: 400px;
-  background: #fff;
-  padding: 35px;
-  border-radius: 16px;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
-}
-
-.ad-log-logo-container {
   display: flex;
-  justify-content: center;
-  margin-bottom: 25px;
+  flex-direction: row; /* Horizontal side-by-side alignment on desktop */
+  width: 100%;
+  max-width: 1024px;
+  background: #ffffff;
+  border-radius: 24px;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.04);
+  border: 1px solid #f1f5f9;
+  overflow: hidden;
+  align-items: stretch;
 }
 
-.ad-log-logo-img {
+/* Left Section: Branding & Graphics */
+.ad-log-brand-side {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  background-color: #fbfcfd; /* Clean split panel look on large devices */
+  padding: 48px;
+  border-right: 1px solid #f1f5f9;
+}
+
+/* Right Section: Form Interactivity */
+.ad-log-form-side {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 48px;
+  background: #ffffff;
+}
+
+/* Header & Logo Placement */
+.ad-log-header {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-bottom: 24px;
+  width: 100%;
+}
+
+.ad-log-brand-logo {
   width: 100%;
   max-width: 180px;
   height: auto;
+  object-fit: contain;
+}
+
+.ad-log-powered {
+  font-size: 9px;
+  font-weight: 500;
+  color: #64748b;
+  margin: 6px 0 0 0;
+  letter-spacing: 0.2px;
+}
+
+/* Illustration matching visual styling */
+.ad-log-illustration-container {
+  display: flex;
+  justify-content: center;
+  width: 100%;
+  padding: 10px;
+}
+
+.ad-log-illustration {
+  width: 100%;
+  max-width: 290px;
+  height: auto;
+  object-fit: contain;
+}
+
+/* Welcome Titles */
+.ad-log-welcome-section {
+  text-align: center;
+  margin-bottom: 30px;
+}
+
+.ad-log-title {
+  font-size: 22px;
+  font-weight: 700;
+  color: #0f172a;
+  margin: 0 0 8px 0;
+  letter-spacing: -0.5px;
+}
+
+.ad-log-subtitle {
+  font-size: 14px;
+  color: #4b5563;
+  margin: 0;
 }
 
 /* Method Switch Buttons */
 .ad-log-method-switch {
   display: flex;
-  gap: 10px;
+  gap: 8px;
   margin-bottom: 30px;
-  background: #f1f5f9;
-  padding: 5px;
-  border-radius: 12px;
+  background: #f3f4f6;
+  padding: 4px;
+  border-radius: 14px;
 }
 
 .ad-log-method-btn {
   flex: 1;
-  padding: 10px;
+  padding: 11px;
   background: transparent;
   border: none;
-  border-radius: 8px;
-  font-size: 14px;
-  font-weight: 500;
+  border-radius: 10px;
+  font-size: 13px;
+  font-weight: 600;
   cursor: pointer;
-  transition: all 0.3s ease;
-  color: #64748b;
+  transition: all 0.25s ease;
+  color: #6b7280;
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 8px;
+  gap: 6px;
 }
 
 .ad-log-method-btn i {
-  font-size: 16px;
+  font-size: 15px;
 }
 
 .ad-log-method-btn.ad-log-active {
-  background: #8E2139;
-  color: white;
-  box-shadow: 0 2px 8px rgba(142, 33, 57, 0.3);
+  background: #ffffff;
+  color: #111827;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.05);
 }
 
 .ad-log-method-btn:hover:not(.ad-log-active) {
-  background: #e2e8f0;
-  color: #1e293b;
+  background: #e5e7eb;
+  color: #1f2937;
 }
 
-/* Common Input Styles */
-.ad-log-input-field {
-  margin-bottom: 15px;
+/* Inputs with Overlapping Badges style */
+.ad-log-form {
+  display: flex;
+  flex-direction: column;
+}
+
+.ad-log-input-group {
   position: relative;
-}
-
-.ad-log-input-field input {
+  margin-bottom: 26px;
   width: 100%;
-  padding: 12px;
-  border: 1px solid #e2e8f0;
-  border-radius: 10px;
-  font-size: 14px;
-  transition: all 0.3s ease;
 }
 
-.ad-log-input-field input:focus {
-  outline: none;
-  border-color: #8E2139;
-  box-shadow: 0 0 0 3px rgba(142, 33, 57, 0.1);
-}
-
-.ad-log-input-field input:disabled {
-  background: #f8fafc;
-  cursor: not-allowed;
-}
-
-.ad-log-password-field {
-  position: relative;
-}
-
-.ad-log-eye-icon {
+.ad-log-input-label-badge {
   position: absolute;
-  right: 12px;
-  top: 50%;
-  transform: translateY(-50%);
-  background: none;
-  border: none;
-  cursor: pointer;
-  color: #94a3b8;
-  font-size: 18px;
-  padding: 0;
-  width: auto;
-}
-
-.ad-log-eye-icon:hover {
-  background: none;
-  transform: translateY(-50%);
-}
-
-.ad-log-login-btn {
-  width: 100%;
-  padding: 12px;
-  background: #8E2139;
-  color: white;
-  border: none;
-  border-radius: 10px;
-  font-size: 15px;
+  top: -10px;
+  left: 20px;
+  background: #ffffff;
+  border: 1px solid #bce4f4;
+  color: #4cb3d6;
+  border-radius: 20px;
+  padding: 2px 14px;
+  font-size: 11px;
   font-weight: 500;
-  cursor: pointer;
-  transition: all 0.3s ease;
+  z-index: 5;
+  pointer-events: none;
+  letter-spacing: 0.3px;
 }
 
-.ad-log-login-btn:hover {
-  background: #6b192d;
-  transform: translateY(-1px);
+.ad-log-input-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+  width: 100%;
 }
 
-.ad-log-login-btn:disabled {
-  opacity: 0.6;
+.ad-log-input-wrapper input {
+  width: 100%;
+  padding: 16px 16px 16px 48px;
+  border: 1px solid #d4e3eb;
+  border-radius: 16px;
+  font-size: 15px;
+  color: #111827;
+  background: #ffffff;
+  outline: none;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.ad-log-input-wrapper input:focus {
+  border-color: #4cb3d6;
+  box-shadow: 0 0 0 4px rgba(76, 179, 214, 0.08);
+}
+
+.ad-log-input-wrapper input:disabled {
+  background: #f9fafb;
   cursor: not-allowed;
-  transform: none;
 }
 
-/* PIN Login Specific Styles */
+.ad-log-input-icon {
+  position: absolute;
+  left: 18px;
+  color: #89cbdc;
+  font-size: 18px;
+  pointer-events: none;
+  display: flex;
+  align-items: center;
+}
+
+.ad-log-eye-btn {
+  position: absolute;
+  right: 16px;
+  background: none;
+  border: none;
+  color: #89cbdc;
+  cursor: pointer;
+  font-size: 18px;
+  padding: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.ad-log-eye-btn:focus {
+  outline: none;
+}
+
+/* Capsule Submit Button style with integrated right arrow circle */
+.ad-log-capsule-submit-btn {
+  width: 100%;
+  background: #414143;
+  border: none;
+  border-radius: 50px;
+  padding: 6px 6px 6px 24px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  color: #ffffff;
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0.8px;
+  cursor: pointer;
+  transition: background-color 0.2s, transform 0.1s;
+  height: 56px;
+  margin-top: 10px;
+}
+
+.ad-log-capsule-submit-btn:hover:not(:disabled) {
+  background: #2d2d2f;
+}
+
+.ad-log-capsule-submit-btn:active:not(:disabled) {
+  transform: scale(0.98);
+}
+
+.ad-log-capsule-submit-btn:disabled {
+  background: #88888a;
+  cursor: not-allowed;
+}
+
+.ad-log-btn-text {
+  flex-grow: 1;
+  text-align: center;
+  margin-right: -20px;
+  text-transform: uppercase;
+}
+
+.ad-log-btn-arrow-circle {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #ffffff;
+  font-size: 20px;
+  transition: transform 0.2s;
+}
+
+.ad-log-capsule-submit-btn:hover:not(:disabled) .ad-log-btn-arrow-circle {
+  transform: translateX(2px);
+}
+
+/* PIN Mode styling */
 .ad-log-pin-form {
   text-align: center;
 }
 
 .ad-log-pin-description {
-  color: #666;
-  font-size: 13px;
-  margin-bottom: 25px;
+  color: #6b7280;
+  font-size: 14px;
+  margin-bottom: 24px;
 }
 
 .ad-log-pin-inputs {
   display: flex;
   gap: 12px;
   justify-content: center;
-  margin-bottom: 15px;
+  margin-bottom: 20px;
 }
 
 .ad-log-pin-input-wrapper {
@@ -173,129 +317,123 @@
   height: 55px;
   text-align: center;
   font-size: 22px;
-  font-weight: 600;
-  border: 2px solid #e2e8f0;
-  border-radius: 12px;
-  transition: all 0.3s ease;
-  font-family: monospace;
+  font-weight: 700;
+  border: 1px solid #d4e3eb;
+  border-radius: 16px;
+  transition: all 0.25s ease;
   background: white;
+  color: #111827;
 }
 
 .ad-log-pin-digit:focus {
   outline: none;
-  border-color: #8E2139;
-  box-shadow: 0 0 0 3px rgba(142, 33, 57, 0.1);
+  border-color: #4cb3d6;
+  box-shadow: 0 0 0 4px rgba(76, 179, 214, 0.08);
 }
 
 .ad-log-pin-digit.ad-log-error-border {
-  border-color: #dc2626;
-  animation: ad-log-shake 0.3s ease;
+  border-color: #ef4444;
+  animation: ad-log-shake 0.35s ease-in-out;
 }
 
 @keyframes ad-log-shake {
   0%, 100% { transform: translateX(0); }
-  25% { transform: translateX(-5px); }
-  75% { transform: translateX(5px); }
+  25% { transform: translateX(-4px); }
+  75% { transform: translateX(4px); }
 }
 
 .ad-log-pin-eye-icon {
-  background: none;
+  background: #f3f4f6;
   border: none;
   cursor: pointer;
-  color: #8E2139;
+  color: #4cb3d6;
   font-size: 13px;
+  font-weight: 600;
   display: inline-flex;
   align-items: center;
   gap: 6px;
   padding: 8px 16px;
-  margin-bottom: 15px;
+  margin-bottom: 24px;
   border-radius: 20px;
-  transition: all 0.3s ease;
-  background: #f0f0f0;
+  transition: background 0.2s;
   width: auto;
 }
 
 .ad-log-pin-eye-icon:hover {
-  background: #e0e0e0;
-}
-
-.ad-log-pin-eye-icon i {
-  font-size: 16px;
+  background: #e5e7eb;
 }
 
 .ad-log-pin-error {
-  background: #fee2e2;
+  background: #fef2f2;
   color: #dc2626;
-  padding: 10px;
-  border-radius: 8px;
-  font-size: 13px;
-  margin-bottom: 15px;
-}
-
-.ad-log-attempts-left {
-  color: #f59e0b;
+  padding: 12px;
+  border-radius: 12px;
   font-size: 13px;
   margin-bottom: 20px;
+  border: 1px solid #fee2e2;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
 }
 
 .ad-log-remember-pin {
-  margin-bottom: 20px;
+  margin-bottom: 24px;
   text-align: left;
 }
 
 .ad-log-checkbox-label {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
   cursor: pointer;
-  font-size: 13px;
-  color: #666;
+  font-size: 14px;
+  color: #4b5563;
 }
 
 .ad-log-checkbox-label input {
-  width: 16px;
-  height: 16px;
-  cursor: pointer;
+  display: none;
 }
 
-.ad-log-checkbox-label span {
-  user-select: none;
+.ad-log-checkbox-custom {
+  width: 20px;
+  height: 20px;
+  border: 1px solid #d4e3eb;
+  border-radius: 6px;
+  display: inline-block;
+  position: relative;
+  transition: all 0.2s;
+  background: #ffffff;
 }
 
-.ad-log-verify-btn {
-  width: 100%;
-  padding: 12px;
-  background: #8E2139;
-  color: white;
-  border: none;
-  border-radius: 10px;
-  font-size: 15px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.3s ease;
+.ad-log-checkbox-label input:checked + .ad-log-checkbox-custom {
+  background-color: #4cb3d6;
+  border-color: #4cb3d6;
 }
 
-.ad-log-verify-btn:hover:not(:disabled) {
-  background: #6b192d;
-  transform: translateY(-1px);
+.ad-log-checkbox-label input:checked + .ad-log-checkbox-custom::after {
+  content: "";
+  position: absolute;
+  left: 6px;
+  top: 2px;
+  width: 6px;
+  height: 11px;
+  border: solid white;
+  border-width: 0 2px 2px 0;
+  transform: rotate(45deg);
 }
 
-.ad-log-verify-btn:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-  transform: none;
-}
-
-/* Bottom Sheet Styles - Mobile */
+/* Mobile Bottom Sheet Layout styling matching theme */
 .ad-log-sheet-overlay {
   position: fixed;
   top: 0;
   left: 0;
   right: 0;
   bottom: 0;
-  background: rgba(0, 0, 0, 0.5);
+  background: rgba(0, 0, 0, 0.4);
+  backdrop-filter: blur(2px);
   z-index: 1000;
-  animation: ad-log-fadeIn 0.3s ease;
+  animation: ad-log-fadeIn 0.25s ease;
 }
 
 @keyframes ad-log-fadeIn {
@@ -308,12 +446,13 @@
   bottom: 0;
   left: 0;
   right: 0;
-  background: #fff;
-  border-radius: 20px 20px 0 0;
+  background: #ffffff;
+  border-radius: 24px 24px 0 0;
   z-index: 1001;
-  animation: ad-log-slideUp 0.3s ease;
+  animation: ad-log-slideUp 0.35s cubic-bezier(0.16, 1, 0.3, 1);
   max-height: 85vh;
   overflow-y: auto;
+  box-shadow: 0 -10px 30px rgba(0, 0, 0, 0.1);
 }
 
 @keyframes ad-log-slideUp {
@@ -322,21 +461,20 @@
 }
 
 .ad-log-sheet-header {
-  padding: 12px 20px;
-  border-bottom: 1px solid #e2e8f0;
+  padding: 16px 20px;
+  border-bottom: 1px solid #f3f4f6;
   position: sticky;
   top: 0;
-  background: #fff;
+  background: #ffffff;
   z-index: 10;
 }
 
 .ad-log-sheet-drag-handle {
-  width: 40px;
-  height: 4px;
-  background: #cbd5e1;
-  border-radius: 2px;
-  margin: 0 auto 12px;
-  cursor: pointer;
+  width: 36px;
+  height: 5px;
+  background: #e5e7eb;
+  border-radius: 10px;
+  margin: 0 auto 14px;
 }
 
 .ad-log-sheet-title-wrapper {
@@ -347,8 +485,8 @@
 
 .ad-log-sheet-title {
   font-size: 18px;
-  font-weight: 600;
-  color: #333;
+  font-weight: 500;
+  color: #111111;
   margin: 0;
 }
 
@@ -357,71 +495,71 @@
   border: none;
   font-size: 20px;
   cursor: pointer;
-  color: #666;
-  padding: 5px;
-  width: auto;
+  color: #9ca3af;
+  padding: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .ad-log-sheet-close-btn:hover {
-  color: #333;
+  color: #111111;
 }
 
 .ad-log-sheet-content {
-  padding: 20px;
-  padding-bottom: 30px;
+  padding: 24px 20px 40px;
 }
 
-/* Mobile Responsive */
+/* Responsiveness: Switches side-by-side elements into a seamless stacked layout */
 @media (max-width: 768px) {
+  .ad-log-container {
+    background-color: #ffffff; /* Clean fallback design on small screens */
+    padding: 16px;
+    align-items: flex-start;
+  }
+
   .ad-log-box {
-    padding: 25px;
+    flex-direction: column; /* Stacked layout on tablets and mobile screens */
+    box-shadow: none;
+    max-width: 100%;
+    padding: 0;
+    border: none;
+    border-radius: 0;
+  }
+
+  .ad-log-brand-side {
+    background-color: transparent;
+    padding: 24px 16px 12px;
+    border-right: none;
+    border-bottom: none;
+  }
+
+  .ad-log-form-side {
+    padding: 12px 16px 24px;
+  }
+
+  .ad-log-illustration {
+    max-width: 180px; /* Scaling down illustration on mobile to fit nicely */
   }
   
-  .ad-log-pin-digit {
-    width: 50px;
-    height: 50px;
-    font-size: 20px;
-  }
-  
-  .ad-log-pin-inputs {
-    gap: 10px;
-  }
-  
-  .ad-log-method-btn {
-    font-size: 12px;
-    padding: 8px;
-  }
-  
-  .ad-log-method-btn i {
-    font-size: 14px;
-  }
-  
-  .ad-log-pin-eye-icon {
-    font-size: 12px;
-    padding: 6px 12px;
+  .ad-log-illustration-container {
+    margin-bottom: 12px;
   }
 }
 
 @media (max-width: 480px) {
   .ad-log-pin-digit {
-    width: 45px;
-    height: 45px;
+    width: 48px;
+    height: 48px;
     font-size: 18px;
+    border-radius: 12px;
   }
-  
+
   .ad-log-pin-inputs {
     gap: 8px;
   }
-}
 
-@media (max-width: 380px) {
-  .ad-log-pin-digit {
-    width: 40px;
-    height: 40px;
-    font-size: 16px;
-  }
-  
-  .ad-log-pin-inputs {
-    gap: 6px;
+  .ad-log-title {
+    font-size: 20px;
   }
 }
