@@ -94,28 +94,22 @@ const OrderSuccessPage = () => {
         e.target.onerror = null;
     };
 
-    // Safe Fallbacks for data to ensure accurate UI previewing
-    const orderIdVal = orderId || "9122235558";
-    const itemsList = orderDetails?.cartItems || [
-        {
-            name: "Trendy Stylish Mysore Silk Saree",
-            size: "Freesize",
-            quantity: 1,
-            price: 420,
-            image_url: null,
-            supplier: "Fab Ethnic Sarees"
-        }
-    ];
+    // ----- All data derived from state, no dummy fallbacks -----
     const deliveryDate = getEstimatedDelivery();
-    const recipientName = orderDetails?.customer_name || orderDetails?.fullName || orderDetails?.name || "Pravallika";
-    const phoneVal = orderDetails?.phone || orderDetails?.mobile || orderDetails?.contact || "+91 98765 43210";
-    const addressText = orderDetails?.address || orderDetails?.shipping_address || orderDetails?.delivery_address || "8404, SLR Complex, Bazaar Samiti Rd, Bangalore, Karnataka - 560108";
+
+    const itemsList = orderDetails?.cartItems || [];
+    const recipientName = orderDetails?.customer_name || "";
+    const phoneVal = orderDetails?.phone || "";
+    const addressText = orderDetails?.address || "";
     const displayPaymentMethod = paymentMethod === "COD" ? "Cash on Delivery" : "Online";
 
-    const subtotalVal = orderDetails ? (Number(orderDetails.total_amount || 0) + Number(orderDetails.discount || 0)) : 560;
-    const discountVal = orderDetails?.discount || 140;
-    const payableVal = finalPayable || orderDetails?.total_amount || 420;
+    const subtotalVal = (Number(orderDetails?.total_amount || 0) + Number(orderDetails?.discount || 0));
+    const discountVal = orderDetails?.discount || 0;
+    const payableVal = finalPayable ?? orderDetails?.total_amount ?? 0;
     const shippingVal = orderDetails?.shipping_charge || 0;
+
+    // Label for the total row based on payment method
+    const amountLabel = paymentMethod === "COD" ? "Amount COD" : "Amount Paid Online";
 
     return (
         <div className={`order-success-page-wrapper stage-${animationStage}`}>
@@ -182,7 +176,7 @@ const OrderSuccessPage = () => {
                                 <span className="banner-check-icon">✓</span>
                                 <span className="banner-main-text">Thank you for shopping with us</span>
                             </div>
-                            <div className="banner-sub-text">ID: #{orderIdVal}</div>
+                            <div className="banner-sub-text">Order ID :{orderId}</div>
                         </div>
 
                         {/* Estimated delivery banner */}
@@ -276,7 +270,7 @@ const OrderSuccessPage = () => {
                                     </div>
                                 )}
                                 <div className="price-row total-payable-row">
-                                    <span className="total-label">Amount Paid</span>
+                                    <span className="total-label">{amountLabel}</span>
                                     <span className="total-val-highlight">₹{payableVal}</span>
                                 </div>
                             </div>

@@ -19,6 +19,9 @@ const PaymentPage = () => {
     const [settings, setSettings] = useState({ online_payment_discount: 0, cod_fee: 0 });
     const [razorpayKey, setRazorpayKey] = useState(null);
 
+    // ✅ Add this line
+    const [currentStep, setCurrentStep] = useState(4);
+
     const token = localStorage.getItem("token");
 
     useEffect(() => {
@@ -84,7 +87,7 @@ const PaymentPage = () => {
                     ...item,
                     quantity: item.quantity || item.qty || 1
                 }));
-                
+
                 const finalOrderData = {
                     ...orderDetails,
                     cartItems: cartItemsWithCorrectQty,
@@ -241,23 +244,23 @@ const PaymentPage = () => {
             <div className="checkout-stepper-outer">
                 <div className="container">
                     <div className="checkout-stepper-new">
-                        <div className="step-new completed">
-                            <div className="circle"><i className="bi bi-check"></i></div>
+                        <div className="checkout-step-new checkout-completed">
+                            <div className="checkout-circle"><i className="bi bi-check"></i></div>
                             <span>LOGIN</span>
                         </div>
-                        <div className="line active"></div>
-                        <div className="step-new completed">
-                            <div className="circle"><i className="bi bi-check"></i></div>
+                        <div className="checkout-line checkout-active"></div>
+                        <div className={`checkout-step-new ${currentStep >= 2 ? 'checkout-active' : ''} ${currentStep > 2 ? 'checkout-completed' : ''}`}>
+                            <div className="checkout-circle">{currentStep > 2 ? <i className="bi bi-check"></i> : "2"}</div>
                             <span>DELIVERY</span>
                         </div>
-                        <div className="line active"></div>
-                        <div className={`step-new completed`}>
-                            <div className="circle"><i className="bi bi-check"></i></div>
+                       <div className="checkout-line checkout-active"></div>
+                        <div className={`checkout-step-new ${currentStep >= 3 ? 'checkout-active' : ''} ${currentStep > 3 ? 'checkout-completed' : ''}`}>
+                            <div className="checkout-circle">{currentStep > 3 ? <i className="bi bi-check"></i> : "3"}</div>
                             <span>SUMMARY</span>
                         </div>
-                        <div className={`line active`}></div>
-                        <div className={`step-new active`}>
-                            <div className="circle">4</div>
+                        <div className={`checkout-line ${currentStep >= 4 ? 'checkout-active' : ''}`}></div>
+                        <div className={`checkout-step-new ${currentStep >= 4 ? 'checkout-active' : ''}`}>
+                            <div className="checkout-circle">4</div>
                             <span>PAYMENT</span>
                         </div>
                     </div>
