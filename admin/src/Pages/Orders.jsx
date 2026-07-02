@@ -1257,7 +1257,6 @@ const Orders = () => {
               )}
 
               {/* SHIPPING LABEL BUTTON - For pasting on package */}
-              {selectedOrder.awb_code && (
                 <div className="step-btn-wrapper">
                   <div className="step-number">Step 3</div>
                   <button
@@ -1273,7 +1272,6 @@ const Orders = () => {
 
                   </button>
                 </div>
-              )}
 
               {/* Local PDF Invoice Download Button */}
               <div className="step-btn-wrapper">
