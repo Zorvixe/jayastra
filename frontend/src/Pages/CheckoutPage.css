@@ -1067,6 +1067,13 @@
     color: white;
 }
 
+@media (max-width: 768px) {
+    .checkout-mobile-footer {
+        margin-bottom: 80px;
+    }
+
+}
+
 @media (max-width: 600px) {
     .checkout-custom-toast {
         top: 20px;

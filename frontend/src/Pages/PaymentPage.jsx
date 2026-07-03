@@ -3,7 +3,10 @@ import { useState, useEffect } from "react";
 import { useCart } from "../context/CartContext";
 import axios from "axios";
 import { toast } from "react-toastify";
+import "./CheckoutPage.css";
+
 import "./PaymentPage.css";
+
 
 const API_URL = process.env.REACT_APP_API_URL;
 
@@ -253,7 +256,7 @@ const PaymentPage = () => {
                             <div className="checkout-circle">{currentStep > 2 ? <i className="bi bi-check"></i> : "2"}</div>
                             <span>DELIVERY</span>
                         </div>
-                       <div className="checkout-line checkout-active"></div>
+                        <div className="checkout-line checkout-active"></div>
                         <div className={`checkout-step-new ${currentStep >= 3 ? 'checkout-active' : ''} ${currentStep > 3 ? 'checkout-completed' : ''}`}>
                             <div className="checkout-circle">{currentStep > 3 ? <i className="bi bi-check"></i> : "3"}</div>
                             <span>SUMMARY</span>
