@@ -941,8 +941,8 @@ const Orders = () => {
                 <th>Products</th>
                 <th>P.Code</th>
                 <th>Total Amount</th>
-                <th>Status</th> 
-               {isSuperAdmin && <th>Action</th>}
+                <th>Status</th>
+                <th>Action</th>
                 {isSuperAdmin && !bulkDeleteMode && <th>Delete</th>}
               </tr>
             </thead>
@@ -1039,7 +1039,7 @@ const Orders = () => {
                     </td>
                     <td>
                       <button className="view-btn-admin" onClick={() => setSelectedOrder(order)} disabled={loading}>
-                        Details
+                        Packed
                       </button>
                     </td>
                     {isSuperAdmin && !bulkDeleteMode && (
@@ -1126,7 +1126,7 @@ const Orders = () => {
         <div className="order-modal-overlay">
           <div className="order-modal-card">
             <div className="modal-header-admin">
-              <h4>Order Details #ORD{selectedOrder.id}</h4>
+              <h4>Order Details <span className="order-modal-order-id-span">Order ID : {selectedOrder.id}</span></h4>
               <button className="close-modal-btn" onClick={() => setSelectedOrder(null)}>✕</button>
             </div>
 
@@ -1238,40 +1238,38 @@ const Orders = () => {
               })()}
 
               {/* SR INVOICE BUTTON - Tax invoice for records */}
-              {selectedOrder.shiprocket_order_id && (
-                <div className="step-btn-wrapper">
-                  <div className="step-number">Step 2</div>
-                  <button
-                    className="invoice-btn-admin shiprocket-invoice-btn"
-                    onClick={() => downloadShiprocketInvoice(selectedOrder.id)}
-                    disabled={loading}
-                  >
-                    <i className="bi bi-receipt"></i>
-                    <div className="btn-text-labels">
-                      SR Invoice
-                      <span className="btn-subtext">Inside Package</span>
-                    </div>
+              <div className="step-btn-wrapper">
+                <div className="step-number">Step 2</div>
+                <button
+                  className="invoice-btn-admin shiprocket-invoice-btn"
+                  onClick={() => downloadShiprocketInvoice(selectedOrder.id)}
+                  disabled={loading}
+                >
+                  <i className="bi bi-receipt"></i>
+                  <div className="btn-text-labels">
+                    SR Invoice
+                    <span className="btn-subtext">Inside Package</span>
+                  </div>
 
-                  </button>
-                </div>
-              )}
+                </button>
+              </div>
 
               {/* SHIPPING LABEL BUTTON - For pasting on package */}
-                <div className="step-btn-wrapper">
-                  <div className="step-number">Step 3</div>
-                  <button
-                    className="invoice-btn-admin label-btn"
-                    onClick={() => downloadLabel(selectedOrder.id)}
-                    disabled={loading}
-                  >
-                    <i className="bi bi-upc-scan"></i>
-                    <div className="btn-text-labels">
-                      Shipping Label
-                      <span className="btn-subtext">Outside Package</span>
-                    </div>
+              <div className="step-btn-wrapper">
+                <div className="step-number">Step 3</div>
+                <button
+                  className="invoice-btn-admin label-btn"
+                  onClick={() => downloadLabel(selectedOrder.id)}
+                  disabled={loading}
+                >
+                  <i className="bi bi-upc-scan"></i>
+                  <div className="btn-text-labels">
+                    Shipping Label
+                    <span className="btn-subtext">Outside Package</span>
+                  </div>
 
-                  </button>
-                </div>
+                </button>
+              </div>
 
               {/* Local PDF Invoice Download Button */}
               <div className="step-btn-wrapper">

@@ -2544,5 +2544,9 @@
   color: #8E2139;
 }
 
+.order-modal-order-id-span{
+  color: #8E2139;
+}
+
 /* ===== REMOVE OLD SOUND TOGGLE STYLES (if any) ===== */
 /* .sound-toggle-btn { ... } – you can delete these lines */
